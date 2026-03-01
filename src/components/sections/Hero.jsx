@@ -176,7 +176,7 @@ function Hero() {
   return (
     <section
       id="hero"
-      className="min-h-screen flex items-center justify-center relative pt-20 px-6 overflow-hidden bg-dark-950"
+      className="min-h-screen flex items-center justify-center relative pt-20 px-6 overflow-hidden"
       style={{ perspective: '1200px' }}
     >
       {/* Tech grid overlay for depth */}

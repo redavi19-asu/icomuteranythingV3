@@ -13,7 +13,7 @@ import IntroLoaderOverlay from './components/effects/IntroLoaderOverlay'
 
 function App() {
   const [activeSection, setActiveSection] = useState('hero')
-  const [showIntroLoader, setShowIntroLoader] = useState(true)
+  const [introVisible, setIntroVisible] = useState(true)
   const [reduceMotion, setReduceMotion] = useState(false)
   const { scrollY } = useScroll()
 
@@ -27,9 +27,9 @@ function App() {
 
     mediaQuery.addEventListener('change', setMotionPreference)
 
-    const loaderDuration = mediaQuery.matches ? 700 : 3000
+    const loaderDuration = mediaQuery.matches ? 1800 : 8000
     const timer = window.setTimeout(() => {
-      setShowIntroLoader(false)
+      setIntroVisible(false)
     }, loaderDuration)
 
     const handleScroll = () => {
@@ -58,7 +58,7 @@ function App() {
     <div className="bg-dark-950 text-white overflow-x-hidden relative">
       <GlobalCinematicBackground activeSection={activeSection} reduceMotion={reduceMotion} />
 
-      <div className="relative z-10">
+      <div className={`relative z-10 transition-opacity duration-700 ${introVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <Navigation activeSection={activeSection} />
         
         <motion.div style={{ opacity: heroOpacity }}>
@@ -73,7 +73,7 @@ function App() {
         <Footer />
       </div>
 
-      <IntroLoaderOverlay visible={showIntroLoader} reduceMotion={reduceMotion} />
+      <IntroLoaderOverlay visible={introVisible} reduceMotion={reduceMotion} />
     </div>
   )
 }
