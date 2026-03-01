@@ -1,13 +1,157 @@
 import React from 'react'
-import { motion } from 'framer-motion'
+import { motion, useScroll, useTransform } from 'framer-motion'
+
+function FloatingPanel({ panel, scrollY }) {
+  const panelScroll = useTransform(
+    scrollY,
+    [0, 600],
+    [0, panel.scrollOffset * -200]
+  )
+
+  return (
+    <motion.div
+      className="absolute"
+      style={{
+        top: panel.top,
+        bottom: panel.bottom,
+        left: panel.left,
+        right: panel.right,
+        y: panelScroll,
+      }}
+    >
+      <motion.div
+        className={`${panel.size} rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-600/10 to-purple-600/10 backdrop-blur-sm shadow-2xl`}
+        animate={{
+          rotateY: [0, 15, 0],
+          rotateX: [0, 8, 0],
+          y: [0, 30, 0],
+          scale: [1, 1.06, 1],
+        }}
+        transition={{
+          duration: panel.duration,
+          repeat: Infinity,
+          ease: 'easeInOut',
+          delay: panel.delay,
+        }}
+        initial={{ opacity: 0, rotateZ: panel.rotation }}
+        whileInView={{ opacity: panel.opacity, rotateZ: panel.rotation }}
+        viewport={{ once: false }}
+      >
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-blue-500/0 via-blue-500/0 to-purple-500/10 pointer-events-none" />
+
+        <div className="absolute inset-0 rounded-2xl opacity-20 pointer-events-none">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern
+                id={`panelGrid-${panel.id}`}
+                x="20"
+                y="20"
+                width="40"
+                height="40"
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M 40 0 L 0 0 0 40"
+                  fill="none"
+                  stroke="#4facfe"
+                  strokeWidth="0.5"
+                  opacity="0.3"
+                />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill={`url(#panelGrid-${panel.id})`} />
+          </svg>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
 
 function Hero() {
+  const { scrollY } = useScroll()
+  
+  // Scroll-reactive transforms for panels and content
+  const containerScale = useTransform(scrollY, [0, 400], [1, 0.95])
+  const panelY = useTransform(scrollY, [0, 500], [0, -150])
+  const contentY = useTransform(scrollY, [0, 500], [0, -60])
+  const contentOpacity = useTransform(scrollY, [0, 400], [1, 0.6])
+
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId)
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' })
     }
   }
+
+  // Floating panel configurations with different depths
+  const panels = [
+    {
+      id: 1,
+      size: 'w-72 h-48',
+      top: '-5%',
+      left: '5%',
+      delay: 0,
+      duration: 25,
+      rotation: 8,
+      opacity: 0.4,
+      scrollOffset: 0.3,
+    },
+    {
+      id: 2,
+      size: 'w-96 h-64',
+      top: '15%',
+      right: '8%',
+      delay: 1,
+      duration: 30,
+      rotation: -12,
+      opacity: 0.35,
+      scrollOffset: 0.5,
+    },
+    {
+      id: 3,
+      size: 'w-80 h-56',
+      bottom: '20%',
+      left: '12%',
+      delay: 2,
+      duration: 28,
+      rotation: 15,
+      opacity: 0.3,
+      scrollOffset: 0.25,
+    },
+    {
+      id: 4,
+      size: 'w-64 h-44',
+      top: '50%',
+      right: '5%',
+      delay: 1.5,
+      duration: 26,
+      rotation: -8,
+      opacity: 0.32,
+      scrollOffset: 0.4,
+    },
+    {
+      id: 5,
+      size: 'w-80 h-52',
+      bottom: '10%',
+      right: '20%',
+      delay: 3,
+      duration: 32,
+      rotation: -20,
+      opacity: 0.28,
+      scrollOffset: 0.35,
+    },
+    {
+      id: 6,
+      size: 'w-72 h-48',
+      top: '25%',
+      left: '50%',
+      delay: 0.5,
+      duration: 27,
+      rotation: 5,
+      opacity: 0.3,
+      scrollOffset: 0.2,
+    },
+  ]
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -32,32 +176,38 @@ function Hero() {
   return (
     <section
       id="hero"
-      className="min-h-screen flex items-center justify-center relative pt-20 px-6 overflow-hidden"
+      className="min-h-screen flex items-center justify-center relative pt-20 px-6 overflow-hidden bg-dark-950"
+      style={{ perspective: '1200px' }}
     >
-      {/* Animated background elements */}
-      <motion.div
-        className="absolute top-20 -right-40 w-80 h-80 bg-blue-600/20 rounded-full filter blur-3xl"
-        animate={{
-          x: [0, 50, -50, 0],
-          y: [0, 30, -30, 0],
-        }}
-        transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-600/20 rounded-full filter blur-3xl"
-        animate={{
-          x: [0, -50, 50, 0],
-          y: [0, -30, 30, 0],
-        }}
-        transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
-      />
+      {/* Tech grid overlay for depth */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none">
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="techGrid" x="40" y="40" width="80" height="80" patternUnits="userSpaceOnUse">
+              <path d="M 80 0 L 0 0 0 80" fill="none" stroke="#4facfe" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#techGrid)" />
+        </svg>
+      </div>
 
-      {/* Content */}
+      {/* Floating tech panels background */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        style={{ y: panelY }}
+      >
+        {panels.map((panel) => (
+          <FloatingPanel key={panel.id} panel={panel} scrollY={scrollY} />
+        ))}
+      </motion.div>
+
+      {/* Content with scroll reactivity */}
       <motion.div
         className="max-w-4xl mx-auto text-center z-10 relative"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
+        style={{ y: contentY, opacity: contentOpacity, scale: containerScale }}
       >
         {/* Badge */}
         <motion.div

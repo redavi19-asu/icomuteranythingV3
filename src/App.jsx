@@ -8,15 +8,30 @@ import WhyChooseUs from './components/sections/WhyChooseUs'
 import WhoItFor from './components/sections/WhoItFor'
 import FinalCTA from './components/sections/FinalCTA'
 import Footer from './components/Footer'
+import GlobalCinematicBackground from './components/effects/GlobalCinematicBackground'
+import IntroLoaderOverlay from './components/effects/IntroLoaderOverlay'
 
 function App() {
   const [activeSection, setActiveSection] = useState('hero')
+  const [showIntroLoader, setShowIntroLoader] = useState(true)
+  const [reduceMotion, setReduceMotion] = useState(false)
   const { scrollY } = useScroll()
 
   // Parallax effect on hero
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0.8])
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const setMotionPreference = () => setReduceMotion(mediaQuery.matches)
+    setMotionPreference()
+
+    mediaQuery.addEventListener('change', setMotionPreference)
+
+    const loaderDuration = mediaQuery.matches ? 700 : 3000
+    const timer = window.setTimeout(() => {
+      setShowIntroLoader(false)
+    }, loaderDuration)
+
     const handleScroll = () => {
       const sections = ['hero', 'what-we-do', 'how-it-works', 'why-choose-us', 'who-it-for', 'final-cta']
       
@@ -32,23 +47,33 @@ function App() {
     }
 
     window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    return () => {
+      window.clearTimeout(timer)
+      mediaQuery.removeEventListener('change', setMotionPreference)
+      window.removeEventListener('scroll', handleScroll)
+    }
   }, [])
 
   return (
-    <div className="bg-dark-950 text-white overflow-x-hidden">
-      <Navigation activeSection={activeSection} />
-      
-      <motion.div style={{ opacity: heroOpacity }}>
-        <Hero />
-      </motion.div>
+    <div className="bg-dark-950 text-white overflow-x-hidden relative">
+      <GlobalCinematicBackground activeSection={activeSection} reduceMotion={reduceMotion} />
 
-      <WhatWeDo />
-      <HowItWorks />
-      <WhyChooseUs />
-      <WhoItFor />
-      <FinalCTA />
-      <Footer />
+      <div className="relative z-10">
+        <Navigation activeSection={activeSection} />
+        
+        <motion.div style={{ opacity: heroOpacity }}>
+          <Hero />
+        </motion.div>
+
+        <WhatWeDo />
+        <HowItWorks />
+        <WhyChooseUs />
+        <WhoItFor />
+        <FinalCTA />
+        <Footer />
+      </div>
+
+      <IntroLoaderOverlay visible={showIntroLoader} reduceMotion={reduceMotion} />
     </div>
   )
 }
