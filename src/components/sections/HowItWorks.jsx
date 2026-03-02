@@ -27,7 +27,7 @@ function useInView(options) {
   return { ref, inView }
 }
 
-function HowItWorks() {
+function HowItWorks({ onRequestService }) {
   const { ref, inView } = useInView({
     triggerOnce: true,
     threshold: 0.1,
@@ -148,6 +148,7 @@ function HowItWorks() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={onRequestService}
             className="btn-primary"
           >
             Request Service Now

@@ -33,27 +33,72 @@ function WhatWeDo() {
     threshold: 0.1,
   })
 
-  const services = [
+  const coreServices = [
     {
       title: 'Computer Repair',
-      description: 'Laptop crashes, hardware failures, virus removal, and more. We diagnose and fix problems quickly.',
+      description: 'Fast diagnostics and repair for hardware failures, crashes, and virus removal.',
       icon: '🛠️',
       color: 'from-orange-500/20 to-orange-600/20',
       borderColor: 'border-orange-500/30'
     },
     {
       title: 'Web Development',
-      description: 'Custom websites, e-commerce platforms, and web applications built with modern technology.',
+      description: 'Custom websites and web applications built with modern technology and best practices.',
       icon: '💻',
       color: 'from-blue-500/20 to-blue-600/20',
       borderColor: 'border-blue-500/30'
     },
     {
       title: 'IT Support',
-      description: 'Network setup, server management, backup solutions, and ongoing technical support.',
+      description: 'Comprehensive technical support for networks, servers, and ongoing operations.',
       icon: '🔧',
       color: 'from-purple-500/20 to-purple-600/20',
       borderColor: 'border-purple-500/30'
+    },
+  ]
+
+  const advancedServices = [
+    {
+      title: 'Cybersecurity Consulting',
+      description: 'Protect your business with security audits, threat assessments, and best practices.',
+      icon: '🔒',
+      color: 'from-emerald-500/20 to-emerald-600/20',
+      borderColor: 'border-emerald-500/30'
+    },
+    {
+      title: 'Data Backup & Recovery',
+      description: 'Reliable backup solutions and emergency data recovery services to protect your information.',
+      icon: '💾',
+      color: 'from-cyan-500/20 to-cyan-600/20',
+      borderColor: 'border-cyan-500/30'
+    },
+    {
+      title: 'Hardware Installation & Upgrades',
+      description: 'Expert installation and upgrades for computers, peripherals, and enterprise equipment.',
+      icon: '⚙️',
+      color: 'from-amber-500/20 to-amber-600/20',
+      borderColor: 'border-amber-500/30'
+    },
+    {
+      title: 'Managed IT Services',
+      description: 'Complete IT infrastructure management with proactive monitoring and maintenance.',
+      icon: '📊',
+      color: 'from-indigo-500/20 to-indigo-600/20',
+      borderColor: 'border-indigo-500/30'
+    },
+    {
+      title: 'Event Tech Deployment',
+      description: 'Full-service technology setup and support for conferences, presentations, and events.',
+      icon: '🎥',
+      color: 'from-pink-500/20 to-pink-600/20',
+      borderColor: 'border-pink-500/30'
+    },
+    {
+      title: 'Networking & Server Setup',
+      description: 'Professional network infrastructure design, installation, and server configuration.',
+      icon: '🌐',
+      color: 'from-violet-500/20 to-violet-600/20',
+      borderColor: 'border-violet-500/30'
     },
   ]
 
@@ -93,43 +138,101 @@ function WhatWeDo() {
           </p>
         </motion.div>
 
-        {/* Service cards */}
+        {/* Core Services */}
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate={inView ? 'visible' : 'hidden'}
-          className="grid md:grid-cols-3 gap-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="mb-16"
         >
-          {services.map((service, index) => (
-            <motion.div
-              key={index}
-              variants={cardVariants}
-              whileHover={{
-                y: -10,
-                boxShadow: '0 20px 50px rgba(59, 130, 246, 0.2)',
-              }}
-              className={`group relative p-8 rounded-2xl border ${service.borderColor} bg-gradient-to-br ${service.color} backdrop-blur-sm overflow-hidden cursor-pointer transition-all duration-300`}
-            >
-              {/* Glow effect on hover */}
-              <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          <h3 className="text-xl md:text-2xl font-bold text-blue-200/90 mb-6 tracking-wide text-center">
+            Core Services
+          </h3>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate={inView ? 'visible' : 'hidden'}
+            className="grid md:grid-cols-3 gap-6"
+          >
+            {coreServices.map((service, index) => (
+              <motion.div
+                key={index}
+                variants={cardVariants}
+                whileHover={{
+                  y: -10,
+                  boxShadow: '0 20px 50px rgba(59, 130, 246, 0.2)',
+                }}
+                className={`group relative p-8 rounded-2xl border ${service.borderColor} bg-gradient-to-br ${service.color} backdrop-blur-sm overflow-hidden cursor-pointer transition-all duration-300`}
+              >
+                {/* Glow effect on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-              {/* Content */}
-              <div className="relative z-10">
-                <div className="text-5xl mb-4">{service.icon}</div>
-                <h3 className="text-2xl font-bold mb-3">{service.title}</h3>
-                <p className="text-gray-400 leading-relaxed">{service.description}</p>
-                
-                {/* Arrow accent */}
-                <motion.div
-                  className="mt-6 flex items-center gap-2 text-blue-400 font-medium"
-                  whileHover={{ gap: '12px' }}
-                >
-                  Learn more
-                  <span>→</span>
-                </motion.div>
-              </div>
-            </motion.div>
-          ))}
+                {/* Content */}
+                <div className="relative z-10">
+                  <div className="text-5xl mb-4">{service.icon}</div>
+                  <h3 className="text-2xl font-bold mb-3">{service.title}</h3>
+                  <p className="text-gray-400 leading-relaxed">{service.description}</p>
+                  
+                  {/* Arrow accent */}
+                  <motion.div
+                    className="mt-6 flex items-center gap-2 text-blue-400 font-medium"
+                    whileHover={{ gap: '12px' }}
+                  >
+                    Learn more
+                    <span>→</span>
+                  </motion.div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </motion.div>
+
+        {/* Advanced & Business Services */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <h3 className="text-xl md:text-2xl font-bold text-blue-200/90 mb-6 tracking-wide text-center">
+            Advanced &amp; Business Services
+          </h3>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate={inView ? 'visible' : 'hidden'}
+            className="grid md:grid-cols-3 gap-5"
+          >
+            {advancedServices.map((service, index) => (
+              <motion.div
+                key={index}
+                variants={cardVariants}
+                whileHover={{
+                  y: -8,
+                  boxShadow: '0 15px 40px rgba(59, 130, 246, 0.15)',
+                }}
+                className={`group relative p-6 rounded-xl border ${service.borderColor} bg-gradient-to-br ${service.color} backdrop-blur-sm overflow-hidden cursor-pointer transition-all duration-300`}
+              >
+                {/* Glow effect on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                {/* Content */}
+                <div className="relative z-10">
+                  <div className="text-4xl mb-3">{service.icon}</div>
+                  <h3 className="text-xl font-bold mb-2">{service.title}</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">{service.description}</p>
+                  
+                  {/* Arrow accent */}
+                  <motion.div
+                    className="mt-4 flex items-center gap-2 text-blue-400 text-sm font-medium"
+                    whileHover={{ gap: '10px' }}
+                  >
+                    Learn more
+                    <span>→</span>
+                  </motion.div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
         </motion.div>
       </div>
     </section>

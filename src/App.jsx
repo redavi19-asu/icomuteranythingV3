@@ -5,16 +5,19 @@ import Hero from './components/sections/Hero'
 import WhatWeDo from './components/sections/WhatWeDo'
 import HowItWorks from './components/sections/HowItWorks'
 import WhyChooseUs from './components/sections/WhyChooseUs'
+import MeetTheLeadTech from './components/sections/MeetTheLeadTech'
 import WhoItFor from './components/sections/WhoItFor'
 import FinalCTA from './components/sections/FinalCTA'
 import Footer from './components/Footer'
 import GlobalCinematicBackground from './components/effects/GlobalCinematicBackground'
 import IntroLoaderOverlay from './components/effects/IntroLoaderOverlay'
+import RequestServiceOverlay from './components/RequestServiceOverlay'
 
 function App() {
   const [activeSection, setActiveSection] = useState('hero')
   const [introVisible, setIntroVisible] = useState(true)
   const [reduceMotion, setReduceMotion] = useState(false)
+  const [isRequestServiceOpen, setIsRequestServiceOpen] = useState(false)
   const { scrollY } = useScroll()
 
   // Parallax effect on hero
@@ -33,7 +36,7 @@ function App() {
     }, loaderDuration)
 
     const handleScroll = () => {
-      const sections = ['hero', 'what-we-do', 'how-it-works', 'why-choose-us', 'who-it-for', 'final-cta']
+      const sections = ['hero', 'what-we-do', 'how-it-works', 'why-choose-us', 'meet-the-lead-tech', 'who-it-for', 'final-cta']
       
       for (let section of sections) {
         const element = document.getElementById(section)
@@ -59,21 +62,23 @@ function App() {
       <GlobalCinematicBackground activeSection={activeSection} reduceMotion={reduceMotion} />
 
       <div className={`relative z-10 transition-opacity duration-700 ${introVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-        <Navigation activeSection={activeSection} />
+        <Navigation activeSection={activeSection} onRequestService={() => setIsRequestServiceOpen(true)} />
         
         <motion.div style={{ opacity: heroOpacity }}>
           <Hero />
         </motion.div>
 
         <WhatWeDo />
-        <HowItWorks />
+        <HowItWorks onRequestService={() => setIsRequestServiceOpen(true)} />
         <WhyChooseUs />
+        <MeetTheLeadTech />
         <WhoItFor />
-        <FinalCTA />
+        <FinalCTA onRequestService={() => setIsRequestServiceOpen(true)} />
         <Footer />
       </div>
 
       <IntroLoaderOverlay visible={introVisible} reduceMotion={reduceMotion} />
+      <RequestServiceOverlay isOpen={isRequestServiceOpen} onClose={() => setIsRequestServiceOpen(false)} />
     </div>
   )
 }

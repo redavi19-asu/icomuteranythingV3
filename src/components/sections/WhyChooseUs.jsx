@@ -1,5 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import InlineTechTicker from '../InlineTechTicker'
 
 function useInViewHook(options) {
   const ref = React.useRef(null)
@@ -32,6 +33,8 @@ function WhyChooseUs() {
     triggerOnce: true,
     threshold: 0.1,
   })
+
+
 
   const features = [
     {
@@ -132,22 +135,14 @@ function WhyChooseUs() {
           ))}
         </motion.div>
 
-        {/* Testimonial bar */}
+        {/* Tech Ticker */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-20 p-8 rounded-2xl border border-green-500/20 bg-gradient-to-r from-green-500/5 to-emerald-500/5 backdrop-blur-sm"
+          className="mt-20 p-6 rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-500/5 to-purple-500/5 backdrop-blur-sm overflow-hidden"
         >
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <p className="text-gray-300 mb-2">Trusted by hundreds of customers</p>
-              <p className="text-green-400 font-bold">⭐⭐⭐⭐⭐ Highly Rated Service</p>
-            </div>
-            <button className="btn-secondary">
-              Read Reviews
-            </button>
-          </div>
+          <InlineTechTicker height={64} speed={60} />
         </motion.div>
       </div>
     </section>

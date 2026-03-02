@@ -27,7 +27,7 @@ function useInViewHook(options) {
   return { ref, inView }
 }
 
-function FinalCTA() {
+function FinalCTA({ onRequestService }) {
   const { ref, inView } = useInViewHook({
     triggerOnce: true,
     threshold: 0.1,
@@ -113,6 +113,7 @@ function FinalCTA() {
               boxShadow: '0 20px 50px rgba(59, 130, 246, 0.4)',
             }}
             whileTap={{ scale: 0.95 }}
+            onClick={onRequestService}
             className="btn-primary px-10 py-4 text-lg shadow-lg shadow-blue-600/30"
           >
             Request Service

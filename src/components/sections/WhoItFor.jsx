@@ -119,7 +119,9 @@ function WhoItFor() {
                 y: -12,
                 boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
               }}
-              className={`group relative p-10 rounded-2xl border ${persona.borderColor} bg-gradient-to-br ${persona.color} backdrop-blur-sm overflow-hidden cursor-pointer`}
+              className={`group relative p-10 rounded-2xl border ${persona.borderColor} bg-gradient-to-br ${persona.color} backdrop-blur-sm overflow-hidden cursor-pointer ${
+                persona.title === 'Churches' ? 'opacity-75' : ''
+              }`}
             >
               {/* Animated accent line */}
               <motion.div
@@ -130,7 +132,7 @@ function WhoItFor() {
               />
 
               {/* Content */}
-              <div className="relative z-10">
+              <div className={`relative z-10 ${persona.title === 'Churches' ? 'blur-sm' : ''}`}>
                 <div className="text-6xl mb-6 group-hover:scale-125 transition-transform duration-300">
                   {persona.icon}
                 </div>
@@ -151,6 +153,32 @@ function WhoItFor() {
                   </div>
                 </div>
               </div>
+
+              {/* Coming Soon Overlay */}
+              {persona.title === 'Churches' && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-dark-950/50 via-dark-950/60 to-dark-950/50 backdrop-blur-sm rounded-2xl z-20"
+                >
+                  <div className="text-center">
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.4, delay: 0.1 }}
+                      className="px-8 py-6 rounded-xl border-2 border-purple-500/60 bg-purple-950/40 backdrop-blur"
+                    >
+                      <div className="text-5xl md:text-6xl font-black text-transparent bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 bg-clip-text mb-2">
+                        COMING SOON
+                      </div>
+                      <p className="text-purple-200/80 text-sm font-semibold tracking-wider uppercase">
+                        We're preparing specialized solutions
+                      </p>
+                    </motion.div>
+                  </div>
+                </motion.div>
+              )}
             </motion.div>
           ))}
         </motion.div>

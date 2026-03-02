@@ -214,8 +214,14 @@ function Hero() {
           variants={itemVariants}
           className="inline-block mb-6"
         >
-          <div className="px-4 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-300 text-sm font-medium">
-            ✨ Premium Tech Solutions for Everyone
+          <div className="px-8 py-5 rounded-full border-2 border-blue-500/40 bg-blue-500/10 text-blue-300 text-lg md:text-xl font-semibold flex items-center gap-4">
+            <img 
+              src="/icomuteranythingV3/ica-icon.png" 
+              alt="ICA" 
+              className="w-20 h-20 md:w-24 md:h-24 object-contain"
+              style={{ imageRendering: 'crisp-edges' }}
+            />
+            <span>Premium Tech Solutions for Everyone</span>
           </div>
         </motion.div>
 
