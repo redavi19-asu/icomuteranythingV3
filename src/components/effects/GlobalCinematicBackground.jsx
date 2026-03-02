@@ -92,7 +92,7 @@ function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
   const gradientShiftX = useTransform(scrollYProgress, [0, 1], ['0%', '145%'])
   const gradientShiftY = useTransform(scrollYProgress, [0, 1], ['0%', '80%'])
 
-  const gridOpacity = reduceMotion ? 0.12 : 0.15 + sectionLevel * 0.25
+  const gridOpacity = reduceMotion ? 0.18 : 0.35 + sectionLevel * 0.40
   const streakOpacity = reduceMotion ? 0.18 : 0.35 + sectionLevel * 0.45
   const streakSpeedBoost = reduceMotion ? 0 : chapter.streakBoost
 
@@ -146,7 +146,7 @@ function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
             transform: `perspective(900px) rotateX(66deg) rotateZ(${chapter.gridTilt}deg)`,
             transformOrigin: 'center center',
             backgroundImage:
-              'linear-gradient(rgba(132,184,255,0.82) 1px, transparent 1px), linear-gradient(90deg, rgba(132,184,255,0.72) 1px, transparent 1px)',
+              'linear-gradient(rgba(132,184,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(132,184,255,0.95) 1px, transparent 1px)',
             backgroundSize: '72px 72px',
             backgroundPosition: 'center center',
           }}
