@@ -223,7 +223,7 @@ function RequestServiceOverlay({ isOpen, onClose }) {
                       >
                         <option value="">Select a service...</option>
                         <option value="Computer Repair">Computer Repair</option>
-                        <option value="Web Development">Web Development</option>
+                        <option value="Full Stack Development">Full Stack Development</option>
                         <option value="IT Support">IT Support</option>
                         <option value="Cybersecurity Consulting">Cybersecurity Consulting</option>
                         <option value="Data Backup & Recovery">Data Backup & Recovery</option>

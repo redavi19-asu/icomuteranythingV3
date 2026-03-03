@@ -61,27 +61,51 @@ function WhatWeDo() {
       ]
     },
     {
-      title: 'Web Development',
+      title: 'Full Stack Development',
       category: 'Core Service',
-      description: 'Custom websites and web applications built with modern technology and best practices.',
+      description: 'End-to-end web solutions with custom front-end interfaces and powerful back-end systems.',
       icon: '💻',
       color: 'from-blue-500/20 to-blue-600/20',
       borderColor: 'border-blue-500/30',
-      overview: 'We build custom websites and web applications that look stunning and perform flawlessly. Every site is built for speed, mobile responsiveness, and conversions.',
+      overview: 'We build complete full stack solutions from front-end to back-end. Custom websites, web applications, API integrations, and database-driven systems that are production-ready and scalable.',
       includes: [
-        'Responsive web design',
-        'Custom website development',
-        'E-commerce solutions',
-        'Web application development',
-        'SEO optimization',
-        'Performance tuning and hosting setup'
+        'Front-end development with modern frameworks',
+        'Back-end API development and integration',
+        'Database design and management',
+        'Custom web applications',
+        'Deployment and hosting setup',
+        'Authentication and security implementation'
       ],
       useCases: [
-        'You need a professional website to showcase your business',
-        'You want to sell products online with an e-commerce platform',
-        'Your current website is outdated or slow',
-        'You need a custom web application for your business',
-        'You want better search engine visibility'
+        'You need a custom web application with user accounts and data management',
+        'You want to build an API-driven platform with front-end and back-end',
+        'Your business requires a database-backed web solution',
+        'You need third-party API integrations with a custom interface',
+        'You want a complete deployment-ready full stack solution'
+      ]
+    },
+    {
+      title: 'AI Integration & AI-Assisted Solutions',
+      category: 'Core Service',
+      description: 'Practical AI integrations for websites and business tools, from AI-powered features to workflow and support automation.',
+      icon: '🤖',
+      color: 'from-teal-500/20 to-cyan-600/20',
+      borderColor: 'border-teal-500/30',
+      overview: 'We help businesses adopt AI in a practical, reliable way. From adding AI-powered features to websites and digital tools to streamlining content, support, and internal workflows, every implementation is designed to fit your operations and goals.',
+      includes: [
+        'AI-powered feature integration for websites and digital tools',
+        'Small business AI tool setup and configuration',
+        'AI-assisted content and workflow support solutions',
+        'Form and customer support automation',
+        'Simple AI-enhanced business tool integrations',
+        'Secure implementation with human-guided oversight'
+      ],
+      useCases: [
+        'You want to add AI capabilities to an existing website or app',
+        'Your team needs faster content, communication, or support workflows',
+        'You need practical AI tools without replacing your current systems',
+        'You want AI-assisted processes that still keep human control',
+        'You need clean integrations that work with your day-to-day operations'
       ]
     },
     {

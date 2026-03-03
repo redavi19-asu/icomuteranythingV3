@@ -19,6 +19,7 @@ function Navigation({ activeSection, onRequestService }) {
     { id: 'what-we-do', label: 'Services' },
     { id: 'how-it-works', label: 'How It Works' },
     { id: 'why-choose-us', label: 'Why Us' },
+    { id: 'ica-projects', label: 'ICA Projects' },
     { id: 'who-it-for', label: 'Who It\'s For' },
   ]
 

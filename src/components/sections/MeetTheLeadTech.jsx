@@ -36,7 +36,7 @@ function MeetTheLeadTech() {
   const specialties = [
     'Hardware Repair',
     'Network Solutions',
-    'Web Development',
+    'Full Stack Development',
     'System Administration',
     'Technical Support',
     'Problem Solving'
@@ -110,11 +110,39 @@ function MeetTheLeadTech() {
       borderColor: 'border-cyan-500/30'
     },
     {
-      title: 'Frontend / Web Development',
+      title: 'Frontend Development',
       description: 'React, JavaScript, responsive design',
       icon: '⚛️',
       color: 'from-purple-500/20 to-pink-600/20',
       borderColor: 'border-purple-500/30'
+    },
+    {
+      title: 'Backend / Full Stack',
+      description: 'Node.js, APIs, Cloudflare Workers, form handling',
+      icon: '🔧',
+      color: 'from-violet-500/20 to-purple-600/20',
+      borderColor: 'border-violet-500/30'
+    },
+    {
+      title: 'AI-Assisted Development',
+      description: 'AI-powered implementation support for faster delivery',
+      icon: '🤖',
+      color: 'from-cyan-500/20 to-teal-600/20',
+      borderColor: 'border-cyan-500/30'
+    },
+    {
+      title: 'Prompt-Based Workflow',
+      description: 'Structured prompting for content, planning, and execution',
+      icon: '🧠',
+      color: 'from-sky-500/20 to-blue-600/20',
+      borderColor: 'border-sky-500/30'
+    },
+    {
+      title: 'AI-Enhanced Troubleshooting',
+      description: 'Hybrid diagnostic workflows combining AI and hands-on IT expertise',
+      icon: '🛡️',
+      color: 'from-emerald-500/20 to-teal-600/20',
+      borderColor: 'border-emerald-500/30'
     },
     {
       title: 'Web Basics / Site Building',

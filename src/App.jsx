@@ -5,6 +5,7 @@ import Hero from './components/sections/Hero'
 import WhatWeDo from './components/sections/WhatWeDo'
 import HowItWorks from './components/sections/HowItWorks'
 import WhyChooseUs from './components/sections/WhyChooseUs'
+import ICAProjects from './components/sections/ICAProjects'
 import MeetTheLeadTech from './components/sections/MeetTheLeadTech'
 import WhoItFor from './components/sections/WhoItFor'
 import FinalCTA from './components/sections/FinalCTA'
@@ -36,7 +37,7 @@ function App() {
     }, loaderDuration)
 
     const handleScroll = () => {
-      const sections = ['hero', 'what-we-do', 'how-it-works', 'why-choose-us', 'meet-the-lead-tech', 'who-it-for', 'final-cta']
+      const sections = ['hero', 'what-we-do', 'how-it-works', 'why-choose-us', 'ica-projects', 'meet-the-lead-tech', 'who-it-for', 'final-cta']
       
       for (let section of sections) {
         const element = document.getElementById(section)
@@ -71,6 +72,7 @@ function App() {
         <WhatWeDo />
         <HowItWorks onRequestService={() => setIsRequestServiceOpen(true)} />
         <WhyChooseUs />
+        <ICAProjects />
         <MeetTheLeadTech />
         <WhoItFor />
         <FinalCTA onRequestService={() => setIsRequestServiceOpen(true)} />

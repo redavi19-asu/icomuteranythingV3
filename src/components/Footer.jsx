@@ -34,7 +34,7 @@ function Footer() {
       title: 'Services',
       links: [
         { label: 'Computer Repair', action: () => handleScrollToService('Computer Repair') },
-        { label: 'Web Development', action: () => handleScrollToService('Web Development') },
+        { label: 'Full Stack Development', action: () => handleScrollToService('Full Stack Development') },
         { label: 'IT Support', action: () => handleScrollToService('IT Support') }
       ]
     },
