@@ -20,7 +20,7 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
     ]
   }, [])
 
-  const sequenceDuration = reduceMotion ? 1.8 : 8
+  const sequenceDuration = reduceMotion ? 1.8 : 7
 
   return (
     <AnimatePresence initial={false}>

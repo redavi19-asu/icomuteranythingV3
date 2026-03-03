@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
+import EmailContactModal from '../EmailContactModal'
 
 function useInViewHook(options) {
   const ref = React.useRef(null)
@@ -28,10 +29,36 @@ function useInViewHook(options) {
 }
 
 function FinalCTA({ onRequestService }) {
+  const [tawkLoaded, setTawkLoaded] = useState(false)
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false)
   const { ref, inView } = useInViewHook({
     triggerOnce: true,
     threshold: 0.1,
   })
+
+  const handleOpenChat = () => {
+    if (!tawkLoaded) {
+      // Lazy load Tawk script
+      const script = document.createElement('script')
+      script.async = true
+      script.src = 'https://embed.tawk.to/68c4b6410b3548192e8590fb/1j506fs5q'
+      script.onload = () => {
+        setTawkLoaded(true)
+        // Open the widget after loading
+        if (window.Tawk_API) {
+          window.Tawk_API.onLoaded = () => {
+            window.Tawk_API.maximize()
+          }
+        }
+      }
+      document.head.appendChild(script)
+    } else {
+      // Widget already loaded, just open it
+      if (window.Tawk_API) {
+        window.Tawk_API.maximize()
+      }
+    }
+  }
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -124,9 +151,10 @@ function FinalCTA({ onRequestService }) {
               backgroundColor: 'rgba(59, 130, 246, 0.15)',
             }}
             whileTap={{ scale: 0.95 }}
+            onClick={handleOpenChat}
             className="btn-secondary px-10 py-4 text-lg"
           >
-            Schedule a Call
+            Live Chat
           </motion.button>
         </motion.div>
 
@@ -137,14 +165,24 @@ function FinalCTA({ onRequestService }) {
         >
           <p className="font-medium text-white">Quick contact options:</p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-blue-400">📞</span>
-              <span>Call or text us</span>
-            </div>
-            <div className="flex items-center gap-2">
+            <motion.button
+              whileHover={{ scale: 1.05, color: '#60a5fa' }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleOpenChat}
+              className="flex items-center gap-2 cursor-pointer hover:text-blue-400 transition-colors text-gray-400"
+            >
+              <span className="text-blue-400">💬</span>
+              <span>Live Chat</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05, color: '#60a5fa' }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsEmailModalOpen(true)}
+              className="flex items-center gap-2 cursor-pointer hover:text-blue-400 transition-colors text-gray-400"
+            >
               <span className="text-blue-400">✉️</span>
-              <span>Email inquiry</span>
-            </div>
+              <span>ryanedavis@gmail.com</span>
+            </motion.button>
             <div className="flex items-center gap-2">
               <span className="text-blue-400">⏰</span>
               <span>24/7 availability</span>
@@ -168,6 +206,12 @@ function FinalCTA({ onRequestService }) {
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Email Contact Modal */}
+      <EmailContactModal 
+        isOpen={isEmailModalOpen} 
+        onClose={() => setIsEmailModalOpen(false)} 
+      />
     </section>
   )
 }

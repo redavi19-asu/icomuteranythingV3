@@ -1,5 +1,6 @@
 import React from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
+import LiquidPill from '../LiquidPill'
 
 function FloatingPanel({ panel, scrollY }) {
   const panelScroll = useTransform(
@@ -209,20 +210,22 @@ function Hero() {
         animate="visible"
         style={{ y: contentY, opacity: contentOpacity, scale: containerScale }}
       >
-        {/* Badge */}
+        {/* Badge with canvas-based liquid effect */}
         <motion.div
           variants={itemVariants}
           className="inline-block mb-6"
         >
-          <div className="px-8 py-5 rounded-full border-2 border-blue-500/40 bg-blue-500/10 text-blue-300 text-lg md:text-xl font-semibold flex items-center gap-4">
-            <img 
-              src="/icomuteranythingV3/ica-icon.png" 
-              alt="ICA" 
-              className="w-20 h-20 md:w-24 md:h-24 object-contain"
-              style={{ imageRendering: 'crisp-edges' }}
-            />
-            <span>Premium Tech Solutions for Everyone</span>
-          </div>
+          <LiquidPill className="px-8 py-5 rounded-full border-2 border-blue-500/40 overflow-hidden text-blue-300 text-lg md:text-xl font-semibold">
+            <div className="flex items-center gap-4">
+              <img 
+                src="/icomuteranythingV3/ica-icon.png" 
+                alt="ICA" 
+                className="w-20 h-20 md:w-24 md:h-24 object-contain"
+                style={{ imageRendering: 'crisp-edges' }}
+              />
+              <span className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]">Premium Tech Solutions for Everyone</span>
+            </div>
+          </LiquidPill>
         </motion.div>
 
         {/* Main Headline */}
@@ -290,7 +293,7 @@ function Hero() {
       <motion.div
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
-        className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 text-gray-500"
+        className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 text-gray-500 text-center"
       >
         <p className="text-xs">Scroll to explore</p>
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
