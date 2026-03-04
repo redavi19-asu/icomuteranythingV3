@@ -69,7 +69,7 @@ function App() {
           <Hero />
         </motion.div>
 
-        <WhatWeDo />
+        <WhatWeDo onRequestService={() => setIsRequestServiceOpen(true)} />
         <HowItWorks onRequestService={() => setIsRequestServiceOpen(true)} />
         <WhyChooseUs />
         <ICAProjects />

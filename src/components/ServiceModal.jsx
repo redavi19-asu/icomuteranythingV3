@@ -1,8 +1,34 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 function ServiceModal({ isOpen, service, onClose, onRequestService }) {
+  const [tawkLoaded, setTawkLoaded] = useState(false)
+
   if (!service) return null
+
+  const handleOpenChat = () => {
+    if (!tawkLoaded) {
+      // Lazy load Tawk script
+      const script = document.createElement('script')
+      script.async = true
+      script.src = 'https://embed.tawk.to/68c4b6410b3548192e8590fb/1j506fs5q'
+      script.onload = () => {
+        setTawkLoaded(true)
+        // Open the widget after loading
+        if (window.Tawk_API) {
+          window.Tawk_API.onLoaded = () => {
+            window.Tawk_API.maximize()
+          }
+        }
+      }
+      document.head.appendChild(script)
+    } else {
+      // Widget already loaded, just open it
+      if (window.Tawk_API) {
+        window.Tawk_API.maximize()
+      }
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -89,10 +115,21 @@ function ServiceModal({ isOpen, service, onClose, onRequestService }) {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={onRequestService}
+                    onClick={() => {
+                      onClose()
+                      onRequestService()
+                    }}
                     className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-600/30"
                   >
                     Request This Service
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleOpenChat}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-500 hover:from-teal-500 hover:to-cyan-400 text-white font-semibold rounded-xl transition-all shadow-lg shadow-teal-600/30"
+                  >
+                    Live Chat
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.05 }}

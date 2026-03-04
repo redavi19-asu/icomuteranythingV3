@@ -28,7 +28,7 @@ function useInView(options) {
   return { ref, inView }
 }
 
-function WhatWeDo() {
+function WhatWeDo({ onRequestService }) {
   const [selectedService, setSelectedService] = useState(null)
   const { ref, inView } = useInView({
     triggerOnce: true,
@@ -301,14 +301,8 @@ function WhatWeDo() {
   }
 
   const handleRequestService = () => {
-    const element = document.getElementById('request-service')
-    if (element) {
-      setSelectedService(null) // Close modal
-      element.scrollIntoView({ behavior: 'smooth' })
-      // Open the RequestServiceOverlay if it exists
-      const btn = element.querySelector('button')
-      if (btn) btn.click()
-    }
+    setSelectedService(null) // Close service modal
+    onRequestService() // Open request service modal
   }
 
   return (

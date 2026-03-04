@@ -37,46 +37,72 @@ function ICAProjects() {
 
   const projects = [
     {
-      title: 'IntriguedMutts.com',
-      description: 'Full-stack e-commerce platform for premium dog training resources and smart gear, built with modern web technologies.',
-      tags: ['React', 'E-commerce', 'Full Stack', 'Stripe'],
-      icon: '🐕',
-      link: 'https://www.intriguedmutts.com/',
-      buttonText: 'Live',
-      buttonType: 'live',
-      color: 'from-emerald-500/20 to-green-600/20',
-      borderColor: 'border-emerald-500/30'
-    },
-    {
-      title: 'I Computer Anything',
-      description: 'Business landing page showcasing IT services with responsive design, smooth animations, and modern UI/UX.',
-      tags: ['React', 'Framer Motion', 'Tailwind', 'Responsive'],
-      icon: '💻',
-      link: 'https://redavi19-asu.github.io/icomputeranything-react-/',
-      buttonText: 'Live',
+      title: 'Land of Shopping',
+      type: 'Retail Demo',
+      description: 'A storefront-style concept showcasing product presentation, layout structure, and consumer-facing design.',
+      link: 'https://redavi19-asu.github.io/Land-of-shopping/',
+      buttonText: 'View Project',
       buttonType: 'live',
       color: 'from-blue-500/20 to-cyan-600/20',
       borderColor: 'border-blue-500/30'
     },
     {
-      title: 'Portable Event Wi-Fi',
-      description: 'Custom-built portable network infrastructure solution for events, conferences, and temporary deployments.',
-      tags: ['Networking', 'Hardware', 'Infrastructure', 'Enterprise'],
-      icon: '📡',
-      buttonText: 'Coming Soon',
-      buttonType: 'coming-soon',
+      title: 'Energy Website Example',
+      type: 'Business Demo',
+      description: 'A clean modern business-style site focused on service presentation, trust-building layout, and responsive design.',
+      link: 'https://redavi19-asu.github.io/energy-website-example/',
+      buttonText: 'View Project',
+      buttonType: 'live',
+      color: 'from-emerald-500/20 to-green-600/20',
+      borderColor: 'border-emerald-500/30'
+    },
+    {
+      title: 'Paralegal Services Demo',
+      type: 'Legal Services Demo',
+      description: 'A professional demo site built around trust, clarity, and structured service communication for legal support.',
+      link: 'https://redavi19-asu.github.io/paralegal-services-demo/',
+      buttonText: 'View Project',
+      buttonType: 'live',
       color: 'from-purple-500/20 to-violet-600/20',
       borderColor: 'border-purple-500/30'
     },
     {
-      title: 'Payments + Fulfillment Pipeline',
-      description: 'Integrated payment processing and order fulfillment system with API integrations and automated workflows.',
-      tags: ['APIs', 'Automation', 'Backend', 'Cloudflare'],
-      icon: '⚡',
-      buttonText: 'Overview',
-      buttonType: 'overview',
+      title: 'IntriguedMutts.com',
+      type: 'E-commerce Platform',
+      description: 'Full-stack e-commerce platform for premium dog training resources and smart gear, built with modern web technologies.',
+      link: 'https://www.intriguedmutts.com/',
+      buttonText: 'View Project',
+      buttonType: 'live',
       color: 'from-amber-500/20 to-orange-600/20',
       borderColor: 'border-amber-500/30'
+    },
+    {
+      title: 'I Computer Anything',
+      type: 'Business Website',
+      description: 'Business landing page showcasing IT services with responsive design, smooth animations, and modern UI/UX.',
+      link: 'https://redavi19-asu.github.io/icomputeranything-react-/',
+      buttonText: 'View Project',
+      buttonType: 'live',
+      color: 'from-cyan-500/20 to-blue-600/20',
+      borderColor: 'border-cyan-500/30'
+    },
+    {
+      title: 'Portable Event Wi-Fi',
+      type: 'Infrastructure Project',
+      description: 'Custom-built portable network infrastructure solution for events, conferences, and temporary deployments.',
+      buttonText: 'Coming Soon',
+      buttonType: 'coming-soon',
+      color: 'from-rose-500/20 to-pink-600/20',
+      borderColor: 'border-rose-500/30'
+    },
+    {
+      title: 'Payments + Fulfillment Pipeline',
+      type: 'Backend Integration',
+      description: 'Integrated payment processing and order fulfillment system with API integrations and automated workflows.',
+      buttonText: 'Learn More',
+      buttonType: 'overview',
+      color: 'from-violet-500/20 to-purple-600/20',
+      borderColor: 'border-violet-500/30'
     },
   ]
 
@@ -114,15 +140,15 @@ function ICAProjects() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <h2 className="section-title mb-6">ICA Projects</h2>
+          <h2 className="section-title mb-6">Projects / Portfolio</h2>
           <p className="section-subtitle">
-            Real builds, live deployments, and concept work showcasing full-stack capabilities.
+            A selection of live demo builds and working project examples.
           </p>
         </motion.div>
 
         {/* Projects grid */}
         <motion.div
-          className="grid md:grid-cols-2 gap-8"
+          className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
         >
           {projects.map((project, index) => (
             <motion.div
@@ -132,7 +158,7 @@ function ICAProjects() {
               initial="hidden"
               animate={inView ? 'visible' : 'hidden'}
               whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(79, 172, 254, 0.15)' }}
-              className="group relative p-8 rounded-2xl border bg-gradient-to-br from-dark-800/80 to-dark-900/80 backdrop-blur-sm overflow-hidden"
+              className="group relative p-8 rounded-2xl border bg-gradient-to-br from-dark-800/80 to-dark-900/80 backdrop-blur-sm overflow-hidden flex flex-col h-full"
               style={{ borderColor: `var(--tw-${project.borderColor})` }}
             >
               {/* Gradient overlay */}
@@ -140,43 +166,35 @@ function ICAProjects() {
                 className={`absolute inset-0 bg-gradient-to-br ${project.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
               />
 
-              {/* Icon */}
-              <div className="text-5xl mb-6 group-hover:scale-110 transition-transform duration-300">
-                {project.icon}
-              </div>
-
               {/* Content */}
-              <div className="relative z-10">
-                <h3 className="text-2xl font-bold mb-3">{project.title}</h3>
-                <p className="text-gray-400 mb-6 leading-relaxed">{project.description}</p>
-
-                {/* Tech tags */}
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {project.tags.map((tag, i) => (
-                    <span
-                      key={i}
-                      className="px-3 py-1 text-xs font-medium rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+              <div className="relative z-10 flex flex-col h-full">
+                {/* Type label */}
+                <div className="mb-4">
+                  <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">
+                    {project.type}
+                  </span>
                 </div>
+
+                {/* Title */}
+                <h3 className="text-2xl font-bold mb-4 flex-shrink-0">{project.title}</h3>
+
+                {/* Description */}
+                <p className="text-gray-400 mb-6 leading-relaxed flex-grow">{project.description}</p>
 
                 {/* Action button */}
                 <motion.button
-                  whileHover={project.buttonType === 'live' ? { scale: 1.05 } : {}}
-                  whileTap={project.buttonType === 'live' ? { scale: 0.95 } : {}}
+                  whileHover={project.buttonType === 'live' || project.buttonType === 'overview' ? { scale: 1.05 } : {}}
+                  whileTap={project.buttonType === 'live' || project.buttonType === 'overview' ? { scale: 0.95 } : {}}
                   onClick={() => handleButtonClick(project)}
-                  className={`w-full px-6 py-3 rounded-lg font-semibold transition-all ${
-                    project.buttonType === 'live'
+                  disabled={project.buttonType === 'coming-soon'}
+                  className={`w-full px-6 py-3 rounded-lg font-semibold transition-all flex-shrink-0 ${
+                    project.buttonType === 'live' || project.buttonType === 'overview'
                       ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-600/30 cursor-pointer'
-                      : project.buttonType === 'coming-soon'
-                      ? 'bg-gray-700/50 text-gray-400 border border-gray-600/30 cursor-default'
-                      : 'bg-gray-700/50 text-gray-300 border border-gray-600/30 hover:bg-gray-700/70 cursor-pointer'
+                      : 'bg-gray-700/50 text-gray-400 border border-gray-600/30 cursor-default'
                   }`}
                 >
                   {project.buttonText}
-                  {project.buttonType === 'live' && (
+                  {(project.buttonType === 'live' || project.buttonType === 'overview') && (
                     <span className="ml-2">→</span>
                   )}
                 </motion.button>
