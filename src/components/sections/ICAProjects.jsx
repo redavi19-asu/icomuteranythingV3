@@ -68,8 +68,8 @@ function ICAProjects() {
     },
     {
       title: 'IntriguedMutts.com',
-      type: 'E-commerce Platform',
-      description: 'Full-stack e-commerce platform for premium dog training resources and smart gear, built with modern web technologies.',
+      type: 'Digital Brand Platform',
+      description: 'A multi-feature digital brand platform combining original dog-themed artwork, merchandise, NFTs, and stock-focused tools in one interactive web experience.',
       link: 'https://www.intriguedmutts.com/',
       buttonText: 'View Project',
       buttonType: 'live',
