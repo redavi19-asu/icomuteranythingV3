@@ -1,6 +1,5 @@
 import React from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
-import LiquidPill from '../LiquidPill'
 
 function FloatingPanel({ panel, scrollY }) {
   const panelScroll = useTransform(
@@ -70,6 +69,7 @@ function FloatingPanel({ panel, scrollY }) {
 
 function Hero() {
   const { scrollY } = useScroll()
+  const iconSrc = `${import.meta.env.BASE_URL}ica-icon.png`
   
   // Scroll-reactive transforms for panels and content
   const containerScale = useTransform(scrollY, [0, 400], [1, 0.95])
@@ -175,11 +175,16 @@ function Hero() {
   }
 
   return (
-    <section
-      id="hero"
-      className="min-h-screen flex items-center justify-center relative pt-20 px-6 overflow-hidden"
-      style={{ perspective: '1200px' }}
-    >
+    <>
+      <style>
+        {`@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&display=swap');`}
+      </style>
+
+      <section
+        id="hero"
+        className="min-h-screen flex items-center justify-center relative pt-20 px-6 overflow-hidden"
+        style={{ perspective: '1200px' }}
+      >
       {/* Tech grid overlay for depth */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
         <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -210,40 +215,125 @@ function Hero() {
         animate="visible"
         style={{ y: contentY, opacity: contentOpacity, scale: containerScale }}
       >
-        {/* Badge with canvas-based liquid effect */}
+        {/* Centered 3D-style spinning ICA icon */}
         <motion.div
           variants={itemVariants}
-          className="inline-block mb-6"
+          className="mb-10 flex justify-center"
         >
-          <LiquidPill className="px-8 py-5 rounded-full border-2 border-blue-500/40 overflow-hidden text-blue-300 text-lg md:text-xl font-semibold">
-            <div className="flex items-center gap-4">
-              <img 
-                src="/icomuteranythingV3/ica-icon.png" 
-                alt="ICA" 
-                className="w-20 h-20 md:w-24 md:h-24 object-contain"
-                style={{ imageRendering: 'crisp-edges' }}
+          <div
+            className="relative"
+            style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}
+          >
+            <motion.div
+              className="relative w-44 h-44 md:w-56 md:h-56 rounded-[36px] overflow-hidden"
+              style={{
+                ...{
+                  transformStyle: 'preserve-3d',
+                  boxShadow: '0 16px 45px rgba(59,130,246,0.28), 0 0 35px rgba(96,165,250,0.18)',
+                },
+                ...(window.innerWidth <= 640 ? {
+                  overflow: 'hidden',
+                  borderRadius: '36px',
+                  WebkitBorderRadius: '36px',
+                  willChange: 'transform',
+                  transform: 'translateZ(0)',
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                } : {})
+              }}
+              animate={{
+                rotateY: [0, 180, 360],
+                rotateX: [8, -8, 8],
+              }}
+              transition={{
+                duration: 14,
+                repeat: Infinity,
+                ease: 'linear',
+              }}
+              style={{
+                transformStyle: 'preserve-3d',
+                boxShadow: '0 16px 45px rgba(59,130,246,0.28), 0 0 35px rgba(96,165,250,0.18)',
+              }}
+            >
+              <img
+                src={iconSrc}
+                alt="ICA"
+                className="w-full h-full object-contain"
+                style={{
+                  imageRendering: 'crisp-edges',
+                  ...(window.innerWidth <= 640 ? {
+                    borderRadius: '36px',
+                    WebkitBorderRadius: '36px',
+                    overflow: 'hidden',
+                    willChange: 'transform',
+                    transform: 'translateZ(0)',
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                  } : {})
+                }}
               />
-              <span className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]">Premium Tech Solutions for Everyone</span>
-            </div>
-          </LiquidPill>
+
+              {/* Subtle moving sheen for a premium finish */}
+              <motion.div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background:
+                    'linear-gradient(110deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.28) 48%, rgba(255,255,255,0) 74%)',
+                  mixBlendMode: 'screen',
+                  ...(window.innerWidth <= 640 ? {
+                    borderRadius: '36px',
+                    WebkitBorderRadius: '36px',
+                    overflow: 'hidden',
+                    willChange: 'transform',
+                    transform: 'translateZ(0)',
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                  } : {})
+                }}
+                animate={{ x: ['-130%', '130%'] }}
+                transition={{
+                  duration: 3.8,
+                  repeat: Infinity,
+                  repeatDelay: 1.8,
+                  ease: 'easeInOut',
+                }}
+              />
+
+              <div
+                className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-blue-400/10 via-transparent to-white/10"
+                style={window.innerWidth <= 640 ? {
+                  borderRadius: '36px',
+                  WebkitBorderRadius: '36px',
+                  overflow: 'hidden',
+                  willChange: 'transform',
+                  transform: 'translateZ(0)',
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                } : {}}
+              />
+            </motion.div>
+          </div>
         </motion.div>
 
         {/* Main Headline */}
         <motion.h1
           variants={itemVariants}
-          className="text-6xl md:text-7xl lg:text-8xl font-black mb-6 leading-tight"
+          className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-[-0.02em] mb-5 leading-[0.95]"
+          style={{ fontFamily: '"DM Serif Display", serif', fontWeight: 400 }}
         >
           <span className="bg-gradient-to-r from-white via-blue-200 to-blue-400 bg-clip-text text-transparent">
             I Computer Anything
           </span>
         </motion.h1>
 
-        {/* Subheadline */}
+        {/* Compact tagline */}
         <motion.p
           variants={itemVariants}
-          className="text-xl md:text-2xl text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed"
+          className="text-xs md:text-sm text-gray-300/90 mb-12 tracking-[0.16em] uppercase font-medium"
+          style={{ fontFamily: 'Inter, sans-serif', fontVariant: 'all-small-caps', letterSpacing: '0.14em' }}
         >
-          Expert computer repair, custom web development, and trusted IT support. We solve your tech problems so you can focus on what matters.
+          Premium Tech Solutions for Everyone
         </motion.p>
 
         {/* CTA Buttons */}
@@ -300,7 +390,8 @@ function Hero() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
         </svg>
       </motion.div>
-    </section>
+      </section>
+    </>
   )
 }
 
