@@ -61,27 +61,51 @@ function WhatWeDo({ onRequestService }) {
       ]
     },
     {
-      title: 'Full Stack Development',
+      title: 'Web & SaaS Development',
       category: 'Core Service',
-      description: 'End-to-end web solutions with custom front-end interfaces and powerful back-end systems.',
+      description: 'Custom websites, web applications, SaaS platforms, and business automation solutions.',
       icon: '💻',
       color: 'from-blue-500/20 to-blue-600/20',
       borderColor: 'border-blue-500/30',
-      overview: 'We build complete full stack solutions from front-end to back-end. Custom websites, web applications, API integrations, and database-driven systems that are production-ready and scalable.',
+      overview: 'We build modern websites, web apps, and SaaS platforms for businesses and entrepreneurs. From custom interfaces to backend automation, our solutions are scalable, secure, and tailored to your needs.',
       includes: [
-        'Front-end development with modern frameworks',
-        'Back-end API development and integration',
+        'Custom website and web app development',
+        'SaaS platform design and build',
+        'Business process automation',
+        'API integration and backend systems',
         'Database design and management',
-        'Custom web applications',
-        'Deployment and hosting setup',
-        'Authentication and security implementation'
+        'Deployment, hosting, and security'
       ],
       useCases: [
-        'You need a custom web application with user accounts and data management',
-        'You want to build an API-driven platform with front-end and back-end',
-        'Your business requires a database-backed web solution',
-        'You need third-party API integrations with a custom interface',
-        'You want a complete deployment-ready full stack solution'
+        'You need a custom web application or SaaS platform',
+        'You want to automate business workflows online',
+        'Your business requires a secure, scalable digital solution',
+        'You need API integrations or backend automation',
+        'You want a complete, production-ready web solution'
+      ]
+    },
+    {
+      title: 'Custom Software Development',
+      category: 'Core Service',
+      description: 'Tailored software solutions, business tools, and workflow automation for your unique needs.',
+      icon: '🧩',
+      color: 'from-green-500/20 to-teal-600/20',
+      borderColor: 'border-green-500/30',
+      overview: 'We design and build custom software, business tools, and automation systems to streamline your operations and solve specific challenges. Every solution is crafted for your goals and workflow.',
+      includes: [
+        'Custom business software',
+        'Workflow automation tools',
+        'Internal dashboards and reporting',
+        'Integration with existing systems',
+        'Mobile and desktop app development',
+        'Ongoing support and enhancements'
+      ],
+      useCases: [
+        'You need a software tool built for your business',
+        'You want to automate manual tasks or reporting',
+        'You need integration with your current systems',
+        'You want a custom app for your team or clients',
+        'You need ongoing support for a business solution'
       ]
     },
     {
@@ -319,7 +343,7 @@ function WhatWeDo({ onRequestService }) {
         >
           <h2 className="section-title mb-6">What We Do</h2>
           <p className="section-subtitle">
-            Comprehensive tech solutions designed to solve your problems and grow your business.
+            Professional web development, custom software, SaaS platforms, and IT solutions for businesses and individuals. We build, automate, and support your digital operations.
           </p>
         </motion.div>
 
@@ -337,7 +361,7 @@ function WhatWeDo({ onRequestService }) {
             variants={containerVariants}
             initial="hidden"
             animate={inView ? 'visible' : 'hidden'}
-            className="grid md:grid-cols-3 gap-6"
+            className="core-services-cards mobile-horizontal-scroll grid md:grid-cols-3 gap-6"
           >
             {coreServices.map((service, index) => (
               <motion.div
@@ -358,7 +382,6 @@ function WhatWeDo({ onRequestService }) {
                   <div className="text-5xl mb-4">{service.icon}</div>
                   <h3 className="text-2xl font-bold mb-3">{service.title}</h3>
                   <p className="text-gray-400 leading-relaxed">{service.description}</p>
-                  
                   {/* Arrow accent */}
                   <motion.div
                     className="mt-6 flex items-center gap-2 text-blue-400 font-medium"
@@ -386,7 +409,7 @@ function WhatWeDo({ onRequestService }) {
             variants={containerVariants}
             initial="hidden"
             animate={inView ? 'visible' : 'hidden'}
-            className="grid md:grid-cols-3 gap-5"
+            className="advanced-services-cards mobile-horizontal-scroll grid md:grid-cols-3 gap-5"
           >
             {advancedServices.map((service, index) => (
               <motion.div
@@ -407,7 +430,6 @@ function WhatWeDo({ onRequestService }) {
                   <div className="text-4xl mb-3">{service.icon}</div>
                   <h3 className="text-xl font-bold mb-2">{service.title}</h3>
                   <p className="text-gray-400 text-sm leading-relaxed">{service.description}</p>
-                  
                   {/* Arrow accent */}
                   <motion.div
                     className="mt-4 flex items-center gap-2 text-blue-400 text-sm font-medium"

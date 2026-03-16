@@ -89,81 +89,67 @@ function MeetTheLeadTech() {
 
   const skills = [
     {
+      title: 'Web Development',
+      description: 'Modern websites, responsive design, and user experience',
+      icon: '⚛️',
+      color: 'from-purple-500/20 to-pink-600/20',
+      borderColor: 'border-purple-500/30'
+    },
+    {
+      title: 'Custom Software / Full Stack',
+      description: 'Tailored apps, APIs, and scalable backend systems',
+      icon: '🔧',
+      color: 'from-violet-500/20 to-purple-600/20',
+      borderColor: 'border-violet-500/30'
+    },
+    {
+      title: 'IT Support',
+      description: 'Technical assistance, troubleshooting, and maintenance',
+      icon: '🔍',
+      color: 'from-orange-500/20 to-amber-600/20',
+      borderColor: 'border-orange-500/30'
+    },
+    {
       title: 'Windows / Active Directory',
-      description: 'Domain management, GPO, user administration',
+      description: 'Domain management, user administration, GPO',
       icon: '🪟',
       color: 'from-blue-500/20 to-blue-600/20',
       borderColor: 'border-blue-500/30'
     },
     {
       title: 'Linux / Servers',
-      description: 'Ubuntu, CentOS, server configuration',
+      description: 'Server setup, automation, and cloud deployment',
       icon: '🐧',
       color: 'from-green-500/20 to-emerald-600/20',
       borderColor: 'border-green-500/30'
     },
     {
       title: 'Networking',
-      description: 'TCP/IP, routing, VLANs, wireless systems',
+      description: 'TCP/IP, routing, wireless, and secure connectivity',
       icon: '🌐',
       color: 'from-cyan-500/20 to-blue-600/20',
       borderColor: 'border-cyan-500/30'
     },
     {
-      title: 'Frontend Development',
-      description: 'React, JavaScript, responsive design',
-      icon: '⚛️',
-      color: 'from-purple-500/20 to-pink-600/20',
-      borderColor: 'border-purple-500/30'
-    },
-    {
-      title: 'Backend / Full Stack',
-      description: 'Node.js, APIs, Cloudflare Workers, form handling',
-      icon: '🔧',
-      color: 'from-violet-500/20 to-purple-600/20',
-      borderColor: 'border-violet-500/30'
-    },
-    {
-      title: 'AI-Assisted Development',
-      description: 'AI-powered implementation support for faster delivery',
-      icon: '🤖',
-      color: 'from-cyan-500/20 to-teal-600/20',
-      borderColor: 'border-cyan-500/30'
-    },
-    {
-      title: 'Prompt-Based Workflow',
-      description: 'Structured prompting for content, planning, and execution',
-      icon: '🧠',
-      color: 'from-sky-500/20 to-blue-600/20',
-      borderColor: 'border-sky-500/30'
-    },
-    {
-      title: 'AI-Enhanced Troubleshooting',
-      description: 'Hybrid diagnostic workflows combining AI and hands-on IT expertise',
-      icon: '🛡️',
-      color: 'from-emerald-500/20 to-teal-600/20',
-      borderColor: 'border-emerald-500/30'
-    },
-    {
-      title: 'Web Basics / Site Building',
-      description: 'HTML, CSS, WordPress, hosting',
-      icon: '🎨',
-      color: 'from-pink-500/20 to-rose-600/20',
-      borderColor: 'border-pink-500/30'
-    },
-    {
-      title: 'Deployment / Automation',
-      description: 'CI/CD, scripting, infrastructure as code',
+      title: 'Cloud / Deployment',
+      description: 'CI/CD, cloud platforms, and infrastructure as code',
       icon: '⚙️',
       color: 'from-indigo-500/20 to-violet-600/20',
       borderColor: 'border-indigo-500/30'
     },
     {
-      title: 'Troubleshooting / Diagnostics',
-      description: 'Root cause analysis, systematic debugging',
-      icon: '🔍',
-      color: 'from-orange-500/20 to-amber-600/20',
-      borderColor: 'border-orange-500/30'
+      title: 'AI Integration',
+      description: 'Practical AI features and automation for business',
+      icon: '🤖',
+      color: 'from-cyan-500/20 to-teal-600/20',
+      borderColor: 'border-cyan-500/30'
+    },
+    {
+      title: 'Cybersecurity Basics',
+      description: 'Security best practices, risk reduction, and compliance',
+      icon: '🛡️',
+      color: 'from-emerald-500/20 to-teal-600/20',
+      borderColor: 'border-emerald-500/30'
     }
   ]
 
@@ -295,7 +281,7 @@ function MeetTheLeadTech() {
             variants={containerVariants}
             initial="hidden"
             animate={inView ? 'visible' : 'hidden'}
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="mobile-horizontal-scroll grid md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
             {experiences.map((exp, index) => (
               <motion.div
@@ -320,14 +306,14 @@ function MeetTheLeadTech() {
           </motion.div>
         </motion.div>
 
-        {/* 3. Skills Area */}
+        {/* 3. Technical Expertise Area */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
           <h3 className="text-2xl md:text-3xl font-bold text-blue-200/90 mb-8 text-center tracking-wide">
-            Skills
+            Technical Expertise
           </h3>
           <p className="text-center text-gray-400 mb-10 max-w-3xl mx-auto">
             Technical proficiencies developed through years of continuous learning and practical application.
@@ -337,7 +323,7 @@ function MeetTheLeadTech() {
             variants={containerVariants}
             initial="hidden"
             animate={inView ? 'visible' : 'hidden'}
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-5"
+            className="mobile-horizontal-scroll grid md:grid-cols-2 lg:grid-cols-3 gap-5"
           >
             {skills.map((skill, index) => (
               <motion.div

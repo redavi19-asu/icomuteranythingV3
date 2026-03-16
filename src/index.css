@@ -1,3 +1,32 @@
+@media (max-width: 768px) {
+  .mobile-horizontal-scroll {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 16px !important;
+    padding: 0 16px 12px !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+  }
+
+  .mobile-horizontal-scroll > * {
+    flex: 0 0 85% !important;
+    min-width: 85% !important;
+    max-width: 85% !important;
+    width: 85% !important;
+    scroll-snap-align: start !important;
+    box-sizing: border-box !important;
+  }
+
+  html,
+  body {
+    overflow-x: hidden !important;
+  }
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

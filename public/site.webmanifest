@@ -1,0 +1,20 @@
+{
+  "name": "I Computer Anything",
+  "short_name": "ICA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/public/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/public/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
