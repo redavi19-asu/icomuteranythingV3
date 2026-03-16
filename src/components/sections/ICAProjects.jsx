@@ -1,39 +1,36 @@
-import React, { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+// ...existing code...
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function useInViewHook(options) {
-  const ref = React.useRef(null)
-  const [inView, setInView] = React.useState(false)
+  const ref = React.useRef(null);
+  const [inView, setInView] = React.useState(false);
 
   React.useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
-        setInView(true)
+        setInView(true);
         if (options.triggerOnce) {
-          observer.unobserve(entry.target)
+          observer.unobserve(entry.target);
         }
       }
     }, {
       threshold: options.threshold || 0.1,
-    })
+    });
 
     if (ref.current) {
-      observer.observe(ref.current)
+      observer.observe(ref.current);
     }
 
-    return () => observer.disconnect()
-  }, [options.triggerOnce, options.threshold])
+    return () => observer.disconnect();
+  }, [options.triggerOnce, options.threshold]);
 
-  return { ref, inView }
+  return { ref, inView };
 }
 
 function ICAProjects() {
-  const [isOverviewOpen, setIsOverviewOpen] = useState(false)
-
-  const { ref, inView } = useInViewHook({
-    triggerOnce: true,
-    threshold: 0.1,
-  })
+  const [isOverviewOpen, setIsOverviewOpen] = useState(false);
+  const { ref, inView } = useInViewHook({ triggerOnce: true, threshold: 0.1 });
 
   const projects = [
     {
@@ -104,7 +101,7 @@ function ICAProjects() {
       color: 'from-violet-500/20 to-purple-600/20',
       borderColor: 'border-violet-500/30'
     },
-  ]
+  ];
 
   const cardVariants = {
     hidden: { opacity: 0, y: 30 },
@@ -116,18 +113,18 @@ function ICAProjects() {
         duration: 0.5,
       },
     }),
-  }
+  };
 
   const handleButtonClick = (project) => {
     if (project.buttonType === 'live' && project.link) {
-      window.open(project.link, '_blank', 'noopener,noreferrer')
-      return
+      window.open(project.link, '_blank', 'noopener,noreferrer');
+      return;
     }
 
     if (project.buttonType === 'overview' && project.title === 'Payments + Fulfillment Pipeline') {
-      setIsOverviewOpen(true)
+      setIsOverviewOpen(true);
     }
-  }
+  };
 
   return (
     <section id="ica-projects" className="py-24 px-6 relative">
@@ -148,7 +145,7 @@ function ICAProjects() {
 
         {/* Projects grid */}
         <motion.div
-          className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+          className="mobile-horizontal-scroll grid md:grid-cols-2 lg:grid-cols-3 gap-8"
         >
           {projects.map((project, index) => (
             <motion.div
@@ -284,7 +281,7 @@ function ICAProjects() {
         </AnimatePresence>
       </div>
     </section>
-  )
+  );
 }
 
-export default ICAProjects
+export default ICAProjects;
