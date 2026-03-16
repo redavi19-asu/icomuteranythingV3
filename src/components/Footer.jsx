@@ -49,10 +49,11 @@ function Footer() {
       title: 'Legal',
       links: [
         { label: 'Privacy Policy', action: () => setOpenModal('privacy') },
-        { label: 'Terms of Service', action: () => setOpenModal('terms') }
+        { label: 'Terms of Service', action: () => setOpenModal('terms') },
+        { label: 'Cookie Settings', action: () => setOpenModal('cookie') }
       ]
     },
-  ]
+  ];
 
   return (
     <footer className="relative px-6 py-16 border-t border-gray-800/50 bg-gradient-to-b from-dark-950 to-dark-900">
@@ -114,6 +115,18 @@ function Footer() {
           <p>© {currentYear} I Computer Anything. All rights reserved.</p>
         </motion.div>
 
+        {/* Cookie Preferences Modal */}
+        <AnimatePresence>
+          {openModal === 'cookie' && (
+            <>
+              <CookiePreferencesModal
+                initialPrefs={{ essential: true, analytics: false, marketing: false }}
+                onSave={() => setOpenModal(null)}
+                onCancel={() => setOpenModal(null)}
+              />
+            </>
+          )}
+        </AnimatePresence>
         {/* Privacy Policy Modal */}
         <AnimatePresence>
           {openModal === 'privacy' && (
