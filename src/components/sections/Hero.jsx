@@ -336,6 +336,22 @@ function Hero() {
           Premium Tech Solutions for Everyone
         </motion.p>
 
+        {/* Branded Definition Block */}
+        <div className="flex flex-col items-center justify-center mb-8 -mt-8 px-4">
+          <span
+            className="text-base md:text-lg text-blue-100 text-center"
+            style={{ fontFamily: 'DM Serif Display, serif', fontStyle: 'italic', fontWeight: 500, letterSpacing: '0.01em' }}
+          >
+            Here, “computer” is used as a verb.
+          </span>
+          <span
+            className="text-xs md:text-sm text-blue-100/80 mt-1 text-center max-w-[90vw] md:max-w-[520px] leading-snug"
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            To diagnose, repair, build, configure, and improve technology of all kinds.
+          </span>
+        </div>
+
         {/* CTA Buttons */}
         <motion.div
           variants={itemVariants}
