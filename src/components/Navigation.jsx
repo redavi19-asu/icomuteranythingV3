@@ -19,6 +19,8 @@ function Navigation({ activeSection, onRequestService }) {
     { id: 'what-we-do', label: 'Services' },
     { id: 'how-it-works', label: 'How It Works' },
     { id: 'why-choose-us', label: 'Why Us' },
+    // Insert Software/SaaS nav item before Projects
+    { id: 'ica-projects', label: 'Software' },
     { id: 'ica-projects', label: 'Projects / Portfolio' },
     { id: 'who-it-for', label: 'Who It\'s For' },
   ]

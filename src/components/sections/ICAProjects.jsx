@@ -1,6 +1,10 @@
 // ...existing code...
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Live DispatchOS platform link
+const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform/';
 
 function useInViewHook(options) {
   const ref = React.useRef(null);
@@ -32,7 +36,20 @@ function ICAProjects() {
   const [isOverviewOpen, setIsOverviewOpen] = useState(false);
   const { ref, inView } = useInViewHook({ triggerOnce: true, threshold: 0.1 });
 
+  // Insert featured DispatchOS project as the first card
   const projects = [
+    {
+      title: 'DispatchOS',
+      type: 'SaaS / Dispatch Platform',
+      description:
+        'A premium dispatch and service operations platform built by I Computer Anything for field service businesses. Includes booking flow, dispatch dashboard, driver mission view, and customer-facing workflow.',
+      link: DISPATCH_URL,
+      buttonText: 'View Platform',
+      buttonType: 'live',
+      color: 'from-blue-700/30 to-blue-900/40',
+      borderColor: 'border-blue-400/60',
+      featured: true, // Custom property for visual emphasis
+    },
     {
       title: 'Land of Shopping',
       type: 'Retail Demo',
@@ -141,6 +158,7 @@ function ICAProjects() {
           <p className="section-subtitle">
             A selection of live demo builds and working project examples.
           </p>
+          <p className="text-xs text-blue-300 mt-2">DispatchOS is a software product built and offered by I Computer Anything.</p>
         </motion.div>
 
         {/* Projects grid */}
@@ -154,9 +172,14 @@ function ICAProjects() {
               variants={cardVariants}
               initial="hidden"
               animate={inView ? 'visible' : 'hidden'}
-              whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(79, 172, 254, 0.15)' }}
-              className="group relative p-8 rounded-2xl border bg-gradient-to-br from-dark-800/80 to-dark-900/80 backdrop-blur-sm overflow-hidden flex flex-col h-full"
-              style={{ borderColor: `var(--tw-${project.borderColor})` }}
+              whileHover={{
+                y: project.featured ? -14 : -8,
+                boxShadow: project.featured
+                  ? '0 28px 60px rgba(59, 130, 246, 0.25)'
+                  : '0 20px 40px rgba(79, 172, 254, 0.15)',
+              }}
+              className={`group relative p-8 rounded-2xl border bg-gradient-to-br ${project.featured ? 'from-blue-800/80 to-blue-900/90 border-2 border-blue-400/80 shadow-xl shadow-blue-700/30 scale-[1.04]' : 'from-dark-800/80 to-dark-900/80'} backdrop-blur-sm overflow-hidden flex flex-col h-full transition-all duration-300`}
+              style={project.featured ? { zIndex: 2 } : {}}
             >
               {/* Gradient overlay */}
               <motion.div
@@ -167,27 +190,29 @@ function ICAProjects() {
               <div className="relative z-10 flex flex-col h-full">
                 {/* Type label */}
                 <div className="mb-4">
-                  <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">
+                  <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${project.featured ? 'bg-blue-500/20 border border-blue-400/40 text-blue-200' : 'bg-blue-500/10 border border-blue-500/20 text-blue-300'}`}>
                     {project.type}
                   </span>
                 </div>
 
                 {/* Title */}
-                <h3 className="text-2xl font-bold mb-4 flex-shrink-0">{project.title}</h3>
+                <h3 className={`text-2xl font-bold mb-4 flex-shrink-0 ${project.featured ? 'text-blue-100 drop-shadow' : ''}`}>{project.title}</h3>
 
                 {/* Description */}
-                <p className="text-gray-400 mb-6 leading-relaxed flex-grow">{project.description}</p>
+                <p className={`mb-6 leading-relaxed flex-grow ${project.featured ? 'text-blue-100/90 font-medium' : 'text-gray-400'}`}>{project.description}</p>
 
                 {/* Action button */}
                 <motion.button
-                  whileHover={project.buttonType === 'live' || project.buttonType === 'overview' ? { scale: 1.05 } : {}}
-                  whileTap={project.buttonType === 'live' || project.buttonType === 'overview' ? { scale: 0.95 } : {}}
+                  whileHover={project.buttonType === 'live' || project.buttonType === 'overview' ? { scale: 1.07 } : {}}
+                  whileTap={project.buttonType === 'live' || project.buttonType === 'overview' ? { scale: 0.96 } : {}}
                   onClick={() => handleButtonClick(project)}
                   disabled={project.buttonType === 'coming-soon'}
                   className={`w-full px-6 py-3 rounded-lg font-semibold transition-all flex-shrink-0 ${
-                    project.buttonType === 'live' || project.buttonType === 'overview'
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-600/30 cursor-pointer'
-                      : 'bg-gray-700/50 text-gray-400 border border-gray-600/30 cursor-default'
+                    project.featured
+                      ? 'bg-gradient-to-r from-blue-700 to-blue-500 hover:from-blue-600 hover:to-blue-400 text-white shadow-lg shadow-blue-700/40 cursor-pointer border-2 border-blue-400/60'
+                      : project.buttonType === 'live' || project.buttonType === 'overview'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-600/30 cursor-pointer'
+                        : 'bg-gray-700/50 text-gray-400 border border-gray-600/30 cursor-default'
                   }`}
                 >
                   {project.buttonText}
@@ -199,6 +224,21 @@ function ICAProjects() {
             </motion.div>
           ))}
         </motion.div>
+
+        {/* Secondary CTA: Need custom software? */}
+        <div className="flex justify-center mt-14">
+          <motion.button
+            whileHover={{ scale: 1.07, backgroundColor: 'rgba(59,130,246,0.12)' }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => {
+              const el = document.getElementById('final-cta');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="px-8 py-3 rounded-lg bg-blue-700/80 text-blue-100 font-semibold shadow-md shadow-blue-700/20 hover:bg-blue-600/90 transition-all text-lg border border-blue-400/40"
+          >
+            Need custom software?
+          </motion.button>
+        </div>
 
         <AnimatePresence>
           {isOverviewOpen && (
