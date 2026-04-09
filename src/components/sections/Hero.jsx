@@ -235,8 +235,8 @@ function Hero() {
                   WebkitBorderRadius: '36px',
                   willChange: 'transform',
                   transform: 'translateZ(0)',
-                  backfaceVisibility: 'hidden',
-                  WebkitBackfaceVisibility: 'hidden',
+                  backfaceVisibility: 'visible',
+                  WebkitBackfaceVisibility: 'visible',
                 } : {})
               }}
               animate={{
@@ -261,8 +261,8 @@ function Hero() {
                     overflow: 'hidden',
                     willChange: 'transform',
                     transform: 'translateZ(0)',
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
+                    backfaceVisibility: 'visible',
+                    WebkitBackfaceVisibility: 'visible',
                   } : {})
                 }}
               />
@@ -281,8 +281,8 @@ function Hero() {
                     overflow: 'hidden',
                     willChange: 'transform',
                     transform: 'translateZ(0)',
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
+                    backfaceVisibility: 'visible',
+                    WebkitBackfaceVisibility: 'visible',
                   } : {})
                 }}
                 animate={{ x: ['-130%', '130%'] }}
@@ -302,8 +302,8 @@ function Hero() {
                   overflow: 'hidden',
                   willChange: 'transform',
                   transform: 'translateZ(0)',
-                  backfaceVisibility: 'hidden',
-                  WebkitBackfaceVisibility: 'hidden',
+                  backfaceVisibility: 'visible',
+                  WebkitBackfaceVisibility: 'visible',
                 } : {}}
               />
             </motion.div>
