@@ -227,10 +227,8 @@ function Hero() {
             <motion.div
               className="relative w-44 h-44 md:w-56 md:h-56 rounded-[36px] overflow-hidden"
               style={{
-                ...{
-                  transformStyle: 'preserve-3d',
-                  boxShadow: '0 16px 45px rgba(59,130,246,0.28), 0 0 35px rgba(96,165,250,0.18)',
-                },
+                transformStyle: 'preserve-3d',
+                boxShadow: '0 16px 45px rgba(59,130,246,0.28), 0 0 35px rgba(96,165,250,0.18)',
                 ...(window.innerWidth <= 640 ? {
                   overflow: 'hidden',
                   borderRadius: '36px',
@@ -249,10 +247,6 @@ function Hero() {
                 duration: 14,
                 repeat: Infinity,
                 ease: 'linear',
-              }}
-              style={{
-                transformStyle: 'preserve-3d',
-                boxShadow: '0 16px 45px rgba(59,130,246,0.28), 0 0 35px rgba(96,165,250,0.18)',
               }}
             >
               <img
