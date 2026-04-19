@@ -142,7 +142,7 @@ function WhyChooseUs() {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mt-20 p-6 rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-500/5 to-purple-500/5 backdrop-blur-sm overflow-hidden"
         >
-          <InlineTechTicker height={64} speed={60} />
+          <InlineTechTicker height={120} speed={60} />
         </motion.div>
       </div>
     </section>

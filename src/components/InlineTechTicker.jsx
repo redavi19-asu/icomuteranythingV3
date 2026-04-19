@@ -23,7 +23,7 @@ function renderIcon(icon, label) {
   return null;
 }
 
-export default function InlineTechTicker({ height = 64, speed = 60 }) {
+export default function InlineTechTicker({ height = 120, speed = 60 }) {
   const [paused, setPaused] = useState(false);
 
   const items = useMemo(
@@ -144,20 +144,20 @@ const s = {
     overflow: "hidden",
     background: "transparent",
     border: "0",
-    borderRadius: 18,
+    borderRadius: 22,
   },
   track: {
     display: "flex",
-    gap: 14,
-    padding: "8px 6px",
+    gap: 24,
+    padding: "14px 10px",
     width: "max-content",
     willChange: "transform",
   },
   pill: {
     display: "inline-flex",
     alignItems: "center",
-    gap: 10,
-    padding: "8px 14px",
+    gap: 14,
+    padding: "14px 22px",
     borderRadius: 999,
     background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
@@ -170,9 +170,9 @@ const s = {
     flex: "0 0 auto",
   },
   icoBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
@@ -181,7 +181,8 @@ const s = {
     flex: "0 0 auto",
   },
   txt: {
-    fontSize: 14,
+    fontSize: "clamp(1.125rem, 1.9vw, 1.375rem)",
     opacity: 0.95,
+    lineHeight: 1.2,
   },
 };
