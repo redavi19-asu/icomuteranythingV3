@@ -12,7 +12,7 @@ function renderIcon(icon, label) {
       <img
         src={icon}
         alt={label || ""}
-        style={{ width: 16, height: 16, display: "block" }}
+        style={{ width: "clamp(1.25rem, 1.9vw, 1.625rem)", height: "clamp(1.25rem, 1.9vw, 1.625rem)", display: "block" }}
         onError={(e) => {
           e.currentTarget.style.display = "none";
         }}
