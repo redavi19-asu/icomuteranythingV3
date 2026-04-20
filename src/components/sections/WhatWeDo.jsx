@@ -137,8 +137,8 @@ function WhatWeDo({ onRequestService }) {
       category: 'Core Service',
       description: 'Comprehensive technical support for networks, servers, and ongoing operations.',
       icon: '🔧',
-      color: 'from-purple-500/20 to-purple-600/20',
-      borderColor: 'border-purple-500/30',
+      color: 'from-blue-500/20 to-cyan-600/20',
+      borderColor: 'border-blue-500/30',
       overview: 'Get reliable IT support when you need it. We handle everything from troubleshooting to ongoing maintenance, keeping your systems running 24/7.',
       includes: [
         'Remote and onsite technical support',
@@ -260,8 +260,8 @@ function WhatWeDo({ onRequestService }) {
       category: 'Advanced Service',
       description: 'Full-service technology setup and support for conferences, presentations, and events.',
       icon: '🎥',
-      color: 'from-pink-500/20 to-pink-600/20',
-      borderColor: 'border-pink-500/30',
+      color: 'from-cyan-500/20 to-blue-600/20',
+      borderColor: 'border-cyan-500/30',
       overview: 'Make your events run smoothly with reliable tech support. We handle setup, troubleshooting, and live support throughout your event.',
       includes: [
         'Audio/visual equipment setup',
@@ -284,8 +284,8 @@ function WhatWeDo({ onRequestService }) {
       category: 'Advanced Service',
       description: 'Professional network infrastructure design, installation, and server configuration.',
       icon: '🌐',
-      color: 'from-violet-500/20 to-violet-600/20',
-      borderColor: 'border-violet-500/30',
+      color: 'from-blue-500/20 to-sky-600/20',
+      borderColor: 'border-blue-500/30',
       overview: 'Build a foundation for reliable business operations. We design and implement networks and servers tailored to your needs.',
       includes: [
         'Network design and architecture',
@@ -306,7 +306,7 @@ function WhatWeDo({ onRequestService }) {
   ]
 
   const containerVariants = {
-    hidden: { opacity: 0 },
+    hidden: { opacity: 1 },
     visible: {
       opacity: 1,
       transition: {
@@ -316,7 +316,7 @@ function WhatWeDo({ onRequestService }) {
   }
 
   const cardVariants = {
-    hidden: { opacity: 0, y: 40 },
+    hidden: { opacity: 1, y: 40 },
     visible: {
       opacity: 1,
       y: 0,
@@ -336,7 +336,7 @@ function WhatWeDo({ onRequestService }) {
         {/* Section header */}
         <motion.div
           ref={ref}
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
@@ -349,7 +349,7 @@ function WhatWeDo({ onRequestService }) {
 
         {/* Core Services */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mb-16"
@@ -398,7 +398,7 @@ function WhatWeDo({ onRequestService }) {
 
         {/* Advanced & Business Services */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.4 }}
         >

@@ -54,22 +54,22 @@ function WhoItFor() {
       title: 'Churches',
       description: 'Specialized support for AV systems, communications, and operations.',
       icon: '⛪',
-      color: 'from-indigo-500/20 to-purple-500/20',
-      borderColor: 'border-indigo-500/30',
+      color: 'from-blue-500/20 to-cyan-500/20',
+      borderColor: 'border-blue-500/30',
       examples: ['AV setup', 'Sound systems', 'Live streaming', 'Tech training']
     },
     {
       title: 'Events & On-Site',
       description: 'Mobile support for events, conferences, and on-location tech needs.',
       icon: '🎪',
-      color: 'from-pink-500/20 to-rose-500/20',
-      borderColor: 'border-pink-500/30',
+      color: 'from-cyan-500/20 to-sky-500/20',
+      borderColor: 'border-cyan-500/30',
       examples: ['Event tech', 'Equipment setup', 'Live support', 'Quick fixes']
     },
   ]
 
   const containerVariants = {
-    hidden: { opacity: 0 },
+    hidden: { opacity: 1 },
     visible: {
       opacity: 1,
       transition: {
@@ -79,7 +79,7 @@ function WhoItFor() {
   }
 
   const cardVariants = {
-    hidden: { opacity: 0, scale: 0.9 },
+    hidden: { opacity: 1, scale: 0.9 },
     visible: {
       opacity: 1,
       scale: 1,
@@ -88,12 +88,12 @@ function WhoItFor() {
   }
 
   return (
-    <section id="who-it-for" className="py-24 px-6 relative bg-gradient-to-b from-transparent to-purple-950/10">
+    <section id="who-it-for" className="py-24 px-6 relative bg-gradient-to-b from-transparent to-blue-950/10">
       <div className="max-w-6xl mx-auto">
         {/* Section header */}
         <motion.div
           ref={ref}
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
@@ -146,7 +146,7 @@ function WhoItFor() {
                   <div className="grid grid-cols-2 gap-2">
                     {persona.examples.map((example, i) => (
                       <div key={i} className="text-sm text-gray-400 flex items-start gap-2">
-                        <span className="text-purple-400 mt-1">•</span>
+                        <span className="text-blue-400 mt-1">•</span>
                         {example}
                       </div>
                     ))}
@@ -157,22 +157,22 @@ function WhoItFor() {
               {/* Coming Soon Overlay */}
               {persona.title === 'Churches' && (
                 <motion.div
-                  initial={{ opacity: 0 }}
+                  initial={{ opacity: 1 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.5 }}
                   className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-dark-950/50 via-dark-950/60 to-dark-950/50 backdrop-blur-sm rounded-2xl z-20"
                 >
                   <div className="text-center">
                     <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
+                      initial={{ scale: 0.8, opacity: 1 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ duration: 0.4, delay: 0.1 }}
-                      className="px-8 py-6 rounded-xl border-2 border-purple-500/60 bg-purple-950/40 backdrop-blur"
+                      className="px-8 py-6 rounded-xl border-2 border-blue-500/60 bg-blue-950/40 backdrop-blur"
                     >
-                      <div className="text-5xl md:text-6xl font-black text-transparent bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 bg-clip-text mb-2">
+                      <div className="text-5xl md:text-6xl font-black text-transparent bg-gradient-to-r from-blue-300 via-cyan-300 to-blue-300 bg-clip-text mb-2">
                         COMING SOON
                       </div>
-                      <p className="text-purple-200/80 text-sm font-semibold tracking-wider uppercase">
+                      <p className="text-blue-200/80 text-sm font-semibold tracking-wider uppercase">
                         We're preparing specialized solutions
                       </p>
                     </motion.div>
@@ -185,14 +185,14 @@ function WhoItFor() {
 
         {/* Bottom insight */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.5 }}
           className="mt-16 text-center"
         >
           <p className="text-gray-300 text-lg mb-4">
             If you have a tech problem,
-            <span className="font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text"> we can solve it.</span>
+            <span className="font-bold text-transparent bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text"> we can solve it.</span>
           </p>
           <p className="text-gray-500 text-sm">
             Not sure if we serve your specific need? Reach out and let's talk about it.

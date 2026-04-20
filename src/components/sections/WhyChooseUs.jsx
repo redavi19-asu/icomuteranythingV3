@@ -64,7 +64,7 @@ function WhyChooseUs() {
   ]
 
   const cardVariants = {
-    hidden: { opacity: 0, y: 30 },
+    hidden: { opacity: 1, y: 30 },
     visible: (i) => ({
       opacity: 1,
       y: 0,
@@ -81,7 +81,7 @@ function WhyChooseUs() {
         {/* Section header */}
         <motion.div
           ref={ref}
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
@@ -108,7 +108,7 @@ function WhyChooseUs() {
             >
               {/* Subtle gradient overlay on hover */}
               <motion.div
-                className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
               />
 
               {/* Icon */}
@@ -137,10 +137,10 @@ function WhyChooseUs() {
 
         {/* Tech Ticker */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 1, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-20 p-6 rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-500/5 to-purple-500/5 backdrop-blur-sm overflow-hidden"
+          className="mt-20 p-6 rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-500/5 to-cyan-500/5 backdrop-blur-sm overflow-hidden"
         >
           <InlineTechTicker height={120} speed={60} />
         </motion.div>

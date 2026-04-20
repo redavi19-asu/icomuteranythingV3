@@ -13,7 +13,6 @@ import Footer from './components/Footer'
 import GlobalCinematicBackground from './components/effects/GlobalCinematicBackground'
 import IntroLoaderOverlay from './components/effects/IntroLoaderOverlay'
 import RequestServiceOverlay from './components/RequestServiceOverlay'
-import CookieBanner from './components/CookieBanner';
 
 function App() {
   const [activeSection, setActiveSection] = useState('hero')
@@ -62,8 +61,6 @@ function App() {
   return (
     <div className="bg-dark-950 text-white overflow-x-hidden relative">
       <GlobalCinematicBackground activeSection={activeSection} reduceMotion={reduceMotion} />
-
-      <CookieBanner />
 
       <div className={`relative z-10 transition-opacity duration-700 ${introVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <Navigation activeSection={activeSection} onRequestService={() => setIsRequestServiceOpen(true)} />

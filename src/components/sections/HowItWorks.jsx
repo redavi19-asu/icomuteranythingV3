@@ -55,7 +55,7 @@ function HowItWorks({ onRequestService }) {
   ]
 
   const containerVariants = {
-    hidden: { opacity: 0 },
+    hidden: { opacity: 1 },
     visible: {
       opacity: 1,
       transition: {
@@ -65,7 +65,7 @@ function HowItWorks({ onRequestService }) {
   }
 
   const stepVariants = {
-    hidden: { opacity: 0, x: -40 },
+    hidden: { opacity: 1, x: -40 },
     visible: {
       opacity: 1,
       x: 0,
@@ -79,7 +79,7 @@ function HowItWorks({ onRequestService }) {
         {/* Section header */}
         <motion.div
           ref={ref}
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-20"
@@ -139,7 +139,7 @@ function HowItWorks({ onRequestService }) {
 
         {/* Bottom CTA */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.6 }}
           className="text-center mt-16"

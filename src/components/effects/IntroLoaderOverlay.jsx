@@ -36,7 +36,7 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
               {centerSquares.map((square) => (
                 <motion.div
                   key={square.id}
-                  className={`absolute ${square.size} rounded-md border border-blue-200/85 bg-gradient-to-br from-blue-300/40 to-violet-300/35 shadow-[0_0_28px_rgba(101,145,255,0.65)]`}
+                  className={`absolute ${square.size} rounded-md border border-blue-200/80 bg-gradient-to-br from-blue-300/35 to-cyan-300/30 shadow-[0_0_18px_rgba(101,145,255,0.42)]`}
                   style={{ left: square.left, top: square.top }}
                   initial={{ opacity: 0, scale: 0.7, rotate: -12 }}
                   animate={{
@@ -107,7 +107,7 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
 
             <div className="relative h-[3px] rounded-full bg-blue-500/20 overflow-hidden">
               <motion.div
-                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-300/85 via-violet-300/95 to-blue-200/80 shadow-[0_0_16px_rgba(109,152,255,0.7)]"
+                className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-300/80 via-cyan-300/90 to-blue-200/75 shadow-[0_0_12px_rgba(109,152,255,0.46)]"
                 initial={{ width: '0%' }}
                 animate={{ width: '100%' }}
                 transition={{ duration: sequenceDuration - 0.35, ease: 'easeInOut' }}

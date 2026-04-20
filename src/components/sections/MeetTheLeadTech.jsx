@@ -61,8 +61,8 @@ function MeetTheLeadTech() {
       title: 'Goodwill',
       description: 'Junior Network Administrator',
       icon: '🖥️',
-      color: 'from-purple-500/20 to-indigo-500/20',
-      borderColor: 'border-purple-500/30'
+      color: 'from-blue-500/20 to-indigo-500/20',
+      borderColor: 'border-blue-500/30'
     },
     {
       title: 'USPS',
@@ -92,15 +92,15 @@ function MeetTheLeadTech() {
       title: 'Web Development',
       description: 'Modern websites, responsive design, and user experience',
       icon: '⚛️',
-      color: 'from-purple-500/20 to-pink-600/20',
-      borderColor: 'border-purple-500/30'
+      color: 'from-blue-500/20 to-cyan-600/20',
+      borderColor: 'border-blue-500/30'
     },
     {
       title: 'Custom Software / Full Stack',
       description: 'Tailored apps, APIs, and scalable backend systems',
       icon: '🔧',
-      color: 'from-violet-500/20 to-purple-600/20',
-      borderColor: 'border-violet-500/30'
+      color: 'from-blue-500/20 to-sky-600/20',
+      borderColor: 'border-blue-500/30'
     },
     {
       title: 'IT Support',
@@ -134,7 +134,7 @@ function MeetTheLeadTech() {
       title: 'Cloud / Deployment',
       description: 'CI/CD, cloud platforms, and infrastructure as code',
       icon: '⚙️',
-      color: 'from-indigo-500/20 to-violet-600/20',
+      color: 'from-indigo-500/20 to-blue-600/20',
       borderColor: 'border-indigo-500/30'
     },
     {
@@ -154,7 +154,7 @@ function MeetTheLeadTech() {
   ]
 
   const containerVariants = {
-    hidden: { opacity: 0 },
+    hidden: { opacity: 1 },
     visible: {
       opacity: 1,
       transition: {
@@ -164,7 +164,7 @@ function MeetTheLeadTech() {
   }
 
   const cardVariants = {
-    hidden: { opacity: 0, y: 30 },
+    hidden: { opacity: 1, y: 30 },
     visible: {
       opacity: 1,
       y: 0,
@@ -178,7 +178,7 @@ function MeetTheLeadTech() {
         {/* Section header */}
         <motion.div
           ref={ref}
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
@@ -191,15 +191,15 @@ function MeetTheLeadTech() {
 
         {/* 1. Lead Tech Profile Card */}
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 1, y: 40 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mb-20"
         >
-          <div className="relative p-10 md:p-12 rounded-3xl border border-blue-500/30 bg-gradient-to-br from-blue-600/10 via-purple-600/10 to-blue-600/10 backdrop-blur-sm overflow-hidden">
+          <div className="relative p-10 md:p-12 rounded-3xl border border-blue-500/30 bg-gradient-to-br from-blue-600/10 via-cyan-600/10 to-blue-600/10 backdrop-blur-sm overflow-hidden">
             {/* Animated gradient accent */}
             <motion.div
-              className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500"
+              className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500"
               animate={{
                 backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
               }}
@@ -229,7 +229,7 @@ function MeetTheLeadTech() {
               {/* Profile content */}
               <div className="flex-1 text-center md:text-left">
                 <h3 className="text-3xl md:text-4xl font-bold mb-2">
-                  <span className="bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent">
                     Lead Tech
                   </span>
                 </h3>
@@ -248,7 +248,7 @@ function MeetTheLeadTech() {
                     {specialties.map((specialty, index) => (
                       <motion.span
                         key={index}
-                        initial={{ opacity: 0, scale: 0.9 }}
+                        initial={{ opacity: 1, scale: 0.9 }}
                         animate={inView ? { opacity: 1, scale: 1 } : {}}
                         transition={{ delay: 0.4 + index * 0.05 }}
                         className="px-4 py-2 rounded-full bg-blue-500/10 border border-blue-400/30 text-sm text-blue-200 font-medium hover:bg-blue-500/20 transition-colors"
@@ -265,7 +265,7 @@ function MeetTheLeadTech() {
 
         {/* 2. Experience Area */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.4 }}
           className="mb-20"
@@ -308,7 +308,7 @@ function MeetTheLeadTech() {
 
         {/* 3. Technical Expertise Area */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
@@ -359,13 +359,13 @@ function MeetTheLeadTech() {
 
         {/* Bottom credibility statement */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.8 }}
           className="mt-16 text-center"
         >
           <p className="text-gray-300 text-lg mb-4">
-            <span className="font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text">
+            <span className="font-bold text-transparent bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text">
               Real experience. Real results.
             </span>
           </p>

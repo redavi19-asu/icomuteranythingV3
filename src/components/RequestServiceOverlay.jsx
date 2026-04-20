@@ -147,7 +147,7 @@ function RequestServiceOverlay({ isOpen, onClose }) {
                 <>
                   {/* Header */}
                   <div className="mb-8">
-                    <h2 className="text-3xl md:text-4xl font-bold mb-3 bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">
+                    <h2 className="text-3xl md:text-4xl font-bold mb-3 bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent">
                       Request Service
                     </h2>
                     <p className="text-gray-400">

@@ -77,8 +77,8 @@ function ICAProjects() {
       link: 'https://redavi19-asu.github.io/paralegal-services-demo/',
       buttonText: 'View Project',
       buttonType: 'live',
-      color: 'from-purple-500/20 to-violet-600/20',
-      borderColor: 'border-purple-500/30'
+      color: 'from-blue-500/20 to-cyan-600/20',
+      borderColor: 'border-blue-500/30'
     },
     {
       title: 'IntriguedMutts.com',
@@ -106,8 +106,8 @@ function ICAProjects() {
       description: 'Custom-built portable network infrastructure solution for events, conferences, and temporary deployments.',
       buttonText: 'Coming Soon',
       buttonType: 'coming-soon',
-      color: 'from-rose-500/20 to-pink-600/20',
-      borderColor: 'border-rose-500/30'
+      color: 'from-cyan-500/20 to-blue-600/20',
+      borderColor: 'border-cyan-500/30'
     },
     {
       title: 'Payments + Fulfillment Pipeline',
@@ -115,13 +115,13 @@ function ICAProjects() {
       description: 'Integrated payment processing and order fulfillment system with API integrations and automated workflows.',
       buttonText: 'Learn More',
       buttonType: 'overview',
-      color: 'from-violet-500/20 to-purple-600/20',
-      borderColor: 'border-violet-500/30'
+      color: 'from-blue-500/20 to-sky-600/20',
+      borderColor: 'border-blue-500/30'
     },
   ];
 
   const cardVariants = {
-    hidden: { opacity: 0, y: 30 },
+    hidden: { opacity: 1, y: 30 },
     visible: (i) => ({
       opacity: 1,
       y: 0,
@@ -149,7 +149,7 @@ function ICAProjects() {
         {/* Section header */}
         <motion.div
           ref={ref}
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 1, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
@@ -244,7 +244,7 @@ function ICAProjects() {
           {isOverviewOpen && (
             <>
               <motion.div
-                initial={{ opacity: 0 }}
+                initial={{ opacity: 1 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsOverviewOpen(false)}
@@ -252,7 +252,7 @@ function ICAProjects() {
               />
 
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                initial={{ opacity: 1, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}

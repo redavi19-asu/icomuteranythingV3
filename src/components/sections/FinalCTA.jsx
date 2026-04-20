@@ -61,7 +61,7 @@ function FinalCTA({ onRequestService }) {
   }
 
   const containerVariants = {
-    hidden: { opacity: 0 },
+    hidden: { opacity: 1 },
     visible: {
       opacity: 1,
       transition: {
@@ -72,7 +72,7 @@ function FinalCTA({ onRequestService }) {
   }
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 1, y: 20 },
     visible: {
       opacity: 1,
       y: 0,
@@ -88,7 +88,7 @@ function FinalCTA({ onRequestService }) {
     >
       {/* Gradient orbs */}
       <motion.div
-        className="absolute top-0 right-0 w-96 h-96 bg-blue-600/30 rounded-full filter blur-3xl"
+        className="absolute top-0 right-0 w-96 h-96 bg-blue-600/16 rounded-full filter blur-2xl"
         animate={{
           y: [0, 40, -40, 0],
           x: [0, 40, -40, 0],
@@ -96,7 +96,7 @@ function FinalCTA({ onRequestService }) {
         transition={{ duration: 30, repeat: Infinity, ease: 'easeInOut' }}
       />
       <motion.div
-        className="absolute bottom-0 left-0 w-96 h-96 bg-purple-600/20 rounded-full filter blur-3xl"
+        className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-500/12 rounded-full filter blur-2xl"
         animate={{
           y: [0, -40, 40, 0],
           x: [0, -40, 40, 0],

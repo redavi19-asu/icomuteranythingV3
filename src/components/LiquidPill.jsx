@@ -6,7 +6,7 @@ function LiquidPill({ children, className = '' }) {
   return (
     <div className={`relative ${className}`}>
       {/* Base liquid fill layer */}
-      <div className="absolute inset-0 rounded-full bg-gradient-to-b from-rose-950/40 via-red-950/45 to-purple-950/50" />
+      <div className="absolute inset-0 rounded-full bg-gradient-to-b from-blue-950/45 via-slate-950/55 to-blue-950/60" />
       
       {/* Smooth wave layer 1 - Slowest, darker */}
       <motion.div
@@ -25,8 +25,8 @@ function LiquidPill({ children, className = '' }) {
         >
           <defs>
             <linearGradient id="wave1Grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="rgba(136, 19, 55, 0.35)" />
-              <stop offset="100%" stopColor="rgba(88, 28, 135, 0.25)" />
+              <stop offset="0%" stopColor="rgba(37, 99, 235, 0.30)" />
+              <stop offset="100%" stopColor="rgba(15, 23, 42, 0.34)" />
             </linearGradient>
           </defs>
           <path
@@ -53,8 +53,8 @@ function LiquidPill({ children, className = '' }) {
         >
           <defs>
             <linearGradient id="wave2Grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="rgba(159, 18, 57, 0.40)" />
-              <stop offset="100%" stopColor="rgba(88, 28, 135, 0.30)" />
+              <stop offset="0%" stopColor="rgba(14, 116, 220, 0.32)" />
+              <stop offset="100%" stopColor="rgba(15, 23, 42, 0.36)" />
             </linearGradient>
           </defs>
           <path
@@ -81,8 +81,8 @@ function LiquidPill({ children, className = '' }) {
         >
           <defs>
             <linearGradient id="wave3Grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="rgba(190, 24, 93, 0.45)" />
-              <stop offset="100%" stopColor="rgba(88, 28, 135, 0.35)" />
+              <stop offset="0%" stopColor="rgba(56, 189, 248, 0.34)" />
+              <stop offset="100%" stopColor="rgba(15, 23, 42, 0.42)" />
             </linearGradient>
           </defs>
           <path
