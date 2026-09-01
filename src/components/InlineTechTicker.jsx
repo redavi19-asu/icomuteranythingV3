@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const brandColors = {
   "fa-google": "#4285F4",
@@ -98,6 +98,123 @@ const brandColors = {
   "fa-film": "#ffb347",
 };
 
+const techLinks = {
+  Microsoft: "https://www.microsoft.com/",
+  Google: "https://www.google.com/",
+  Amazon: "https://www.amazon.com/",
+  Meta: "https://www.meta.com/",
+  X: "https://x.com/",
+  GitHub: "https://github.com/",
+  Docker: "https://www.docker.com/",
+  Spotify: "https://www.spotify.com/",
+  YouTube: "https://www.youtube.com/",
+  Instagram: "https://www.instagram.com/",
+  Uber: "https://www.uber.com/",
+  TikTok: "https://www.tiktok.com/",
+  Apple: "https://www.apple.com/",
+  Linux: "https://www.kernel.org/",
+  Windows: "https://www.microsoft.com/windows/",
+  IBM: "https://www.ibm.com/",
+  Intel: "https://www.intel.com/",
+  AMD: "https://www.amd.com/",
+  Oracle: "https://www.oracle.com/",
+  Cisco: "https://www.cisco.com/",
+  Dell: "https://www.dell.com/",
+  HP: "https://www.hp.com/",
+  Salesforce: "https://www.salesforce.com/",
+  Zoom: "https://www.zoom.com/",
+  Slack: "https://slack.com/",
+  Stripe: "https://stripe.com/",
+  PayPal: "https://www.paypal.com/",
+  eBay: "https://www.ebay.com/",
+  Reddit: "https://www.reddit.com/",
+  Pinterest: "https://www.pinterest.com/",
+  LinkedIn: "https://www.linkedin.com/",
+  Snapchat: "https://www.snapchat.com/",
+  Shopify: "https://www.shopify.com/",
+  GitLab: "https://gitlab.com/",
+  DigitalOcean: "https://www.digitalocean.com/",
+  Heroku: "https://www.heroku.com/",
+  Vercel: "https://vercel.com/",
+  Netlify: "https://www.netlify.com/",
+  Linode: "https://www.linode.com/",
+  Cloudflare: "https://www.cloudflare.com/",
+  Proton: "https://proton.me/",
+  Fastly: "https://www.fastly.com/",
+  HashiCorp: "https://www.hashicorp.com/",
+  MongoDB: "https://www.mongodb.com/",
+  Elastic: "https://www.elastic.co/",
+  Postman: "https://www.postman.com/",
+  Figma: "https://www.figma.com/",
+  Notion: "https://www.notion.com/",
+  Trello: "https://trello.com/",
+  Zapier: "https://zapier.com/",
+  IFTTT: "https://ifttt.com/",
+  Bitbucket: "https://bitbucket.org/",
+  Sentry: "https://sentry.io/",
+  Segment: "https://segment.com/",
+  Auth0: "https://auth0.com/",
+  Plausible: "https://plausible.io/",
+  Render: "https://render.com/",
+  Railway: "https://railway.com/",
+  "Fly.io": "https://fly.io/",
+  Discord: "https://discord.com/",
+  Dribbble: "https://dribbble.com/",
+  "Stack Overflow": "https://stackoverflow.com/",
+  Android: "https://www.android.com/",
+  Firefox: "https://www.mozilla.org/firefox/",
+  Chrome: "https://www.google.com/chrome/",
+  Edge: "https://www.microsoft.com/edge/",
+  Vimeo: "https://vimeo.com/",
+  Dropbox: "https://www.dropbox.com/",
+  Skype: "https://www.skype.com/",
+  AWS: "https://aws.amazon.com/",
+  "Raspberry Pi": "https://www.raspberrypi.com/",
+  Ethereum: "https://ethereum.org/",
+  Bitcoin: "https://bitcoin.org/",
+  Telegram: "https://telegram.org/",
+  WeChat: "https://www.wechat.com/",
+  WhatsApp: "https://www.whatsapp.com/",
+  Yahoo: "https://www.yahoo.com/",
+  Tumblr: "https://www.tumblr.com/",
+  Medium: "https://medium.com/",
+  Quora: "https://www.quora.com/",
+  WordPress: "https://wordpress.org/",
+  Joomla: "https://www.joomla.org/",
+  Drupal: "https://www.drupal.org/",
+  Magento: "https://business.adobe.com/products/magento/magento-commerce.html",
+  PrestaShop: "https://www.prestashop.com/",
+  Waze: "https://www.waze.com/",
+  Swank: "https://www.swank.com/",
+  Signal: "https://signal.org/",
+  Viber: "https://www.viber.com/",
+  Twitch: "https://www.twitch.tv/",
+  Steam: "https://store.steampowered.com/",
+  SoundCloud: "https://soundcloud.com/",
+  Mastodon: "https://joinmastodon.org/",
+  "Apple Pay": "https://www.apple.com/apple-pay/",
+  "Google Pay": "https://pay.google.com/",
+  Venmo: "https://venmo.com/",
+  "Creative Commons": "https://creativecommons.org/",
+  OSI: "https://opensource.org/",
+  freeCodeCamp: "https://www.freecodecamp.org/",
+  HackerRank: "https://www.hackerrank.com/",
+  CodePen: "https://codepen.io/",
+  JavaScript: "https://developer.mozilla.org/docs/Web/JavaScript",
+  Python: "https://www.python.org/",
+  Java: "https://www.java.com/",
+  PHP: "https://www.php.net/",
+  Rust: "https://www.rust-lang.org/",
+  Go: "https://go.dev/",
+  React: "https://react.dev/",
+  Angular: "https://angular.dev/",
+  "Vue.js": "https://vuejs.org/",
+  "Node.js": "https://nodejs.org/",
+  Kubernetes: "https://kubernetes.io/",
+  Jenkins: "https://www.jenkins.io/",
+  Git: "https://git-scm.com/",
+};
+
 function MicrosoftIcon() {
   return (
     <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
@@ -156,6 +273,15 @@ function renderIcon(item) {
 
 export default function InlineTechTicker({ height = 96, speed = 72 }) {
   const [paused, setPaused] = useState(false);
+  const wrapRef = useRef(null);
+  const trackRef = useRef(null);
+  const pausedRef = useRef(false);
+  const pointerDownRef = useRef(false);
+  const draggedRef = useRef(false);
+  const startXRef = useRef(0);
+  const startYRef = useRef(0);
+  const startScrollRef = useRef(0);
+  const resumeTimerRef = useRef(null);
 
   const items = useMemo(() => [
     { label: "Microsoft", special: "microsoft" },
@@ -276,31 +402,156 @@ export default function InlineTechTicker({ height = 96, speed = 72 }) {
 
   const loop = [...items, ...items];
 
+  const setPauseState = (value) => {
+    pausedRef.current = value;
+    setPaused(value);
+  };
+
+  const clearResumeTimer = () => {
+    if (resumeTimerRef.current) {
+      window.clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+  };
+
+  const scheduleResume = () => {
+    clearResumeTimer();
+    resumeTimerRef.current = window.setTimeout(() => {
+      if (!pointerDownRef.current) setPauseState(false);
+    }, 2600);
+  };
+
+  const getLoopWidth = () => (trackRef.current?.scrollWidth || 0) / 2;
+
+  const setWrappedScroll = (value) => {
+    const wrap = wrapRef.current;
+    const loopWidth = getLoopWidth();
+    if (!wrap || !loopWidth) return;
+
+    let next = value;
+    while (next < 0) next += loopWidth;
+    while (next >= loopWidth) next -= loopWidth;
+    wrap.scrollLeft = next;
+  };
+
+  useEffect(() => {
+    let frameId;
+    let lastTime = performance.now();
+
+    const tick = (now) => {
+      const wrap = wrapRef.current;
+      const loopWidth = getLoopWidth();
+      const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+
+      if (wrap && loopWidth && !pausedRef.current && !pointerDownRef.current) {
+        const pixelsPerSecond = loopWidth / Math.max(speed, 1);
+        setWrappedScroll(wrap.scrollLeft + pixelsPerSecond * deltaSeconds);
+      }
+
+      frameId = requestAnimationFrame(tick);
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [speed]);
+
+  useEffect(() => {
+    const handleOutsidePointer = (event) => {
+      if (wrapRef.current && !wrapRef.current.contains(event.target)) {
+        clearResumeTimer();
+        pointerDownRef.current = false;
+        setPauseState(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleOutsidePointer);
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsidePointer);
+      clearResumeTimer();
+    };
+  }, []);
+
+  const handlePointerDown = (event) => {
+    clearResumeTimer();
+    pointerDownRef.current = true;
+    draggedRef.current = false;
+    startXRef.current = event.clientX;
+    startYRef.current = event.clientY;
+    startScrollRef.current = wrapRef.current?.scrollLeft || 0;
+    setPauseState(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handlePointerMove = (event) => {
+    if (!pointerDownRef.current) return;
+
+    const dx = event.clientX - startXRef.current;
+    const dy = event.clientY - startYRef.current;
+
+    if (Math.abs(dx) > 5 && Math.abs(dx) >= Math.abs(dy)) {
+      draggedRef.current = true;
+      event.preventDefault();
+      setWrappedScroll(startScrollRef.current - dx);
+    }
+  };
+
+  const handlePointerUp = (event) => {
+    if (!pointerDownRef.current) return;
+    pointerDownRef.current = false;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    scheduleResume();
+  };
+
+  const handleMouseEnter = () => {
+    clearResumeTimer();
+    setPauseState(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (!pointerDownRef.current) {
+      clearResumeTimer();
+      setPauseState(false);
+    }
+  };
+
+  const handleLinkClick = (event) => {
+    if (draggedRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      draggedRef.current = false;
+    }
+  };
+
   return (
     <div
-      style={{ ...s.wrap, height }}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      aria-label="Technology ticker"
+      ref={wrapRef}
+      style={{ ...s.wrap, height, cursor: pointerDownRef.current ? "grabbing" : "grab" }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      aria-label="Technology ticker. Touch or hover to pause, drag left or right to browse, and tap a technology to visit its website."
+      data-paused={paused ? "true" : "false"}
     >
-      <style>{`
-        @keyframes inlineTechTickerScroll {
-          0% { transform: translate3d(0,0,0); }
-          100% { transform: translate3d(-50%,0,0); }
-        }
-      `}</style>
-      <div
-        style={{
-          ...s.track,
-          animation: `inlineTechTickerScroll ${speed}s linear infinite`,
-          animationPlayState: paused ? "paused" : "running",
-        }}
-      >
+      <div ref={trackRef} style={s.track}>
         {loop.map((item, idx) => (
-          <span key={`${item.label}-${idx}`} style={s.item} title={item.label}>
+          <a
+            key={`${item.label}-${idx}`}
+            href={techLinks[item.label]}
+            target="_blank"
+            rel="noreferrer"
+            style={s.item}
+            title={`Visit ${item.label}`}
+            aria-label={`Visit ${item.label}`}
+            draggable="false"
+            onClick={handleLinkClick}
+          >
             <span style={s.icon}>{renderIcon(item)}</span>
             <span style={s.txt}>{item.label}</span>
-          </span>
+          </a>
         ))}
       </div>
     </div>
@@ -320,6 +571,9 @@ const s = {
     backdropFilter: "none",
     WebkitMaskImage: "linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%)",
     maskImage: "linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%)",
+    touchAction: "pan-y",
+    userSelect: "none",
+    WebkitUserSelect: "none",
   },
   track: {
     display: "flex",
@@ -340,6 +594,10 @@ const s = {
     boxShadow: "none",
     whiteSpace: "nowrap",
     flex: "0 0 auto",
+    color: "inherit",
+    textDecoration: "none",
+    cursor: "pointer",
+    WebkitUserDrag: "none",
   },
   icon: {
     width: 30,
