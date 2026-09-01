@@ -62,7 +62,7 @@ function App() {
     <div className="bg-dark-950 text-white overflow-x-hidden relative">
       <GlobalCinematicBackground activeSection={activeSection} reduceMotion={reduceMotion} />
 
-      <div className={`relative z-10 transition-opacity duration-500 ${introVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+      <div className={`relative z-10 ${introVisible ? 'invisible pointer-events-none' : 'visible'}`}>
         <Navigation activeSection={activeSection} onRequestService={() => setIsRequestServiceOpen(true)} />
 
         <motion.div style={{ opacity: heroOpacity }}>
