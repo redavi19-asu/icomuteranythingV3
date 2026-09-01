@@ -82,15 +82,15 @@ function Hero() {
               style={{
                 transformStyle: 'preserve-3d',
                 boxShadow: '0 16px 45px rgba(59,130,246,0.28), 0 0 35px rgba(96,165,250,0.18)',
-                ...(window.innerWidth <= 640 ? {
-                  overflow: 'hidden',
-                  borderRadius: '36px',
-                  WebkitBorderRadius: '36px',
-                  willChange: 'transform',
-                  transform: 'translateZ(0)',
-                  backfaceVisibility: 'visible',
-                  WebkitBackfaceVisibility: 'visible',
-                } : {})
+                borderRadius: '36px',
+                WebkitBorderRadius: '36px',
+                clipPath: 'inset(0 round 36px)',
+                WebkitClipPath: 'inset(0 round 36px)',
+                overflow: 'hidden',
+                willChange: 'transform',
+                transform: 'translateZ(0)',
+                backfaceVisibility: 'visible',
+                WebkitBackfaceVisibility: 'visible',
               }}
               animate={{
                 rotateY: [0, 180, 360],
@@ -105,38 +105,26 @@ function Hero() {
               <img
                 src={iconSrc}
                 alt="ICA"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain rounded-[36px]"
                 style={{
                   imageRendering: 'crisp-edges',
-                  ...(window.innerWidth <= 640 ? {
-                    borderRadius: '36px',
-                    WebkitBorderRadius: '36px',
-                    overflow: 'hidden',
-                    willChange: 'transform',
-                    transform: 'translateZ(0)',
-                    backfaceVisibility: 'visible',
-                    WebkitBackfaceVisibility: 'visible',
-                  } : {})
+                  borderRadius: '36px',
+                  WebkitBorderRadius: '36px',
                 }}
               />
 
               {/* Subtle moving sheen for a premium finish */}
               <motion.div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0"
+                className="pointer-events-none absolute inset-0 rounded-[36px] overflow-hidden"
                 style={{
                   background:
                     'linear-gradient(110deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.28) 48%, rgba(255,255,255,0) 74%)',
                   mixBlendMode: 'screen',
-                  ...(window.innerWidth <= 640 ? {
-                    borderRadius: '36px',
-                    WebkitBorderRadius: '36px',
-                    overflow: 'hidden',
-                    willChange: 'transform',
-                    transform: 'translateZ(0)',
-                    backfaceVisibility: 'visible',
-                    WebkitBackfaceVisibility: 'visible',
-                  } : {})
+                  borderRadius: '36px',
+                  WebkitBorderRadius: '36px',
+                  clipPath: 'inset(0 round 36px)',
+                  WebkitClipPath: 'inset(0 round 36px)',
                 }}
                 animate={{ x: ['-130%', '130%'] }}
                 transition={{
@@ -148,16 +136,13 @@ function Hero() {
               />
 
               <div
-                className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-blue-400/10 via-transparent to-white/10"
-                style={window.innerWidth <= 640 ? {
+                className="pointer-events-none absolute inset-0 rounded-[36px] overflow-hidden bg-gradient-to-tr from-blue-400/10 via-transparent to-white/10"
+                style={{
                   borderRadius: '36px',
                   WebkitBorderRadius: '36px',
-                  overflow: 'hidden',
-                  willChange: 'transform',
-                  transform: 'translateZ(0)',
-                  backfaceVisibility: 'visible',
-                  WebkitBackfaceVisibility: 'visible',
-                } : {}}
+                  clipPath: 'inset(0 round 36px)',
+                  WebkitClipPath: 'inset(0 round 36px)',
+                }}
               />
             </motion.div>
           </div>
