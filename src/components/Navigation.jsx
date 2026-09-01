@@ -28,6 +28,34 @@ function Navigation({ activeSection, onRequestService }) {
     }
   }
 
+  const handleOpenChat = () => {
+    if (window.Tawk_API && typeof window.Tawk_API.maximize === 'function') {
+      window.Tawk_API.maximize()
+      return
+    }
+
+    const existingScript = document.querySelector('script[src*="embed.tawk.to/68c4b6410b3548192e8590fb/1j506fs5q"]')
+    if (!existingScript) {
+      const script = document.createElement('script')
+      script.async = true
+      script.src = 'https://embed.tawk.to/68c4b6410b3548192e8590fb/1j506fs5q'
+      script.onload = () => {
+        if (window.Tawk_API) {
+          window.Tawk_API.onLoaded = () => window.Tawk_API.maximize()
+        }
+      }
+      document.head.appendChild(script)
+    } else {
+      const waitForTawk = window.setInterval(() => {
+        if (window.Tawk_API && typeof window.Tawk_API.maximize === 'function') {
+          window.clearInterval(waitForTawk)
+          window.Tawk_API.maximize()
+        }
+      }, 150)
+      window.setTimeout(() => window.clearInterval(waitForTawk), 5000)
+    }
+  }
+
   return (
     <motion.nav
       initial={{ y: -100 }}
@@ -71,14 +99,24 @@ function Navigation({ activeSection, onRequestService }) {
           ))}
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onRequestService}
-          className="hidden md:block px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold transition-all text-sm"
-        >
-          Request Service
-        </motion.button>
+        <div className="hidden md:flex items-center gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onRequestService}
+            className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold transition-all text-sm"
+          >
+            Request Service
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleOpenChat}
+            className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold transition-all text-sm"
+          >
+            Live Chat
+          </motion.button>
+        </div>
 
         <motion.button
           whileTap={{ scale: 0.95 }}
@@ -136,6 +174,17 @@ function Navigation({ activeSection, onRequestService }) {
                   className="mt-2 py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold transition-all w-full"
                 >
                   Request Service
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    handleOpenChat()
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className="py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold transition-all w-full"
+                >
+                  Live Chat
                 </motion.button>
               </div>
             </motion.div>
