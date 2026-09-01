@@ -31,8 +31,7 @@ function App() {
 
     mediaQuery.addEventListener('change', setMotionPreference)
 
-    // Keep the cinematic intro, but never make visitors wait on it.
-    const loaderDuration = mediaQuery.matches ? 250 : 950
+    const loaderDuration = mediaQuery.matches ? 1200 : 3500
     const timer = window.setTimeout(() => {
       setIntroVisible(false)
     }, loaderDuration)
@@ -63,7 +62,7 @@ function App() {
     <div className="bg-dark-950 text-white overflow-x-hidden relative">
       <GlobalCinematicBackground activeSection={activeSection} reduceMotion={reduceMotion} />
 
-      <div className={`relative z-10 transition-opacity duration-300 ${introVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+      <div className={`relative z-10 transition-opacity duration-500 ${introVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <Navigation activeSection={activeSection} onRequestService={() => setIsRequestServiceOpen(true)} />
 
         <motion.div style={{ opacity: heroOpacity }}>
