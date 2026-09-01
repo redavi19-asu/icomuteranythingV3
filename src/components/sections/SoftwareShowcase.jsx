@@ -54,7 +54,7 @@ function SoftwareShowcase() {
                   View DispatchOS
                 </a>
                 <a
-                  href={`${DISPATCH_URL}subscribe`}
+                  href={`${DISPATCH_URL}plans`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-blue-400/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-100 font-semibold transition-all"
