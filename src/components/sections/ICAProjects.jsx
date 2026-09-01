@@ -70,9 +70,9 @@ function ICAProjects() {
       button: 'from-amber-700 to-orange-500 hover:from-amber-600 hover:to-orange-400 shadow-amber-950/30'
     },
     {
-      title: 'Portable Event Wi-Fi',
-      type: 'Infrastructure Project',
-      description: 'Portable network infrastructure designed for events, conferences, temporary deployments, and remote connectivity.',
+      title: 'Starlink Event Connectivity',
+      type: 'Mobile Internet & Streaming',
+      description: 'Reliable high-speed internet and Wi-Fi for outdoor and indoor events, live streamers, productions, pop-ups, remote locations, and temporary sites where dependable connectivity is limited or unavailable. Built around portable network equipment with Starlink service capability.',
       buttonText: 'Coming Soon',
       buttonType: 'coming-soon',
       card: 'from-violet-950/80 to-slate-950/90 border-violet-500/25',
