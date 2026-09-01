@@ -5,6 +5,7 @@ import Hero from './components/sections/Hero'
 import WhatWeDo from './components/sections/WhatWeDo'
 import HowItWorks from './components/sections/HowItWorks'
 import WhyChooseUs from './components/sections/WhyChooseUs'
+import SoftwareShowcase from './components/sections/SoftwareShowcase'
 import ICAProjects from './components/sections/ICAProjects'
 import MeetTheLeadTech from './components/sections/MeetTheLeadTech'
 import WhoItFor from './components/sections/WhoItFor'
@@ -21,7 +22,6 @@ function App() {
   const [isRequestServiceOpen, setIsRequestServiceOpen] = useState(false)
   const { scrollY } = useScroll()
 
-  // Parallax effect on hero
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0.8])
 
   useEffect(() => {
@@ -37,8 +37,8 @@ function App() {
     }, loaderDuration)
 
     const handleScroll = () => {
-      const sections = ['hero', 'what-we-do', 'how-it-works', 'why-choose-us', 'ica-projects', 'meet-the-lead-tech', 'who-it-for', 'final-cta']
-      
+      const sections = ['hero', 'what-we-do', 'how-it-works', 'why-choose-us', 'software', 'ica-projects', 'meet-the-lead-tech', 'who-it-for', 'final-cta']
+
       for (let section of sections) {
         const element = document.getElementById(section)
         if (element) {
@@ -64,7 +64,7 @@ function App() {
 
       <div className={`relative z-10 transition-opacity duration-700 ${introVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <Navigation activeSection={activeSection} onRequestService={() => setIsRequestServiceOpen(true)} />
-        
+
         <motion.div style={{ opacity: heroOpacity }}>
           <Hero />
         </motion.div>
@@ -72,6 +72,7 @@ function App() {
         <WhatWeDo onRequestService={() => setIsRequestServiceOpen(true)} />
         <HowItWorks onRequestService={() => setIsRequestServiceOpen(true)} />
         <WhyChooseUs />
+        <SoftwareShowcase />
         <ICAProjects />
         <MeetTheLeadTech />
         <WhoItFor />
