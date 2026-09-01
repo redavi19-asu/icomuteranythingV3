@@ -31,7 +31,7 @@ function App() {
 
     mediaQuery.addEventListener('change', setMotionPreference)
 
-    const loaderDuration = mediaQuery.matches ? 1200 : 3500
+    const loaderDuration = mediaQuery.matches ? 1200 : 4500
     const timer = window.setTimeout(() => {
       setIntroVisible(false)
     }, loaderDuration)
