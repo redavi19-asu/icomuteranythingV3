@@ -12,11 +12,6 @@ const loaderPalette = [
 function IntroLoaderOverlay({ visible, reduceMotion = false }) {
   const words = ['Booting', 'Calibrating', 'Rendering', 'Launching']
 
-  const tiles = useMemo(() => Array.from({ length: 100 }, (_, index) => ({
-    id: index,
-    delay: (index % 10) * 0.022 + Math.floor(index / 10) * 0.018,
-  })), [])
-
   const centerSquares = useMemo(() => [
     { id: 1, left: '-86px', top: '-44px', size: 'w-6 h-6', delay: 0.05 },
     { id: 2, left: '68px', top: '-36px', size: 'w-5 h-5', delay: 0.18 },
@@ -33,8 +28,9 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
         <motion.div
           className="fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-[#050914]"
           initial={{ opacity: 1 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: reduceMotion ? 0.25 : 0.5, ease: 'easeOut' }}
+          transition={{ duration: 0.08, ease: 'linear' }}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.12),transparent_30%),radial-gradient(circle_at_80%_28%,rgba(139,92,246,.10),transparent_34%),radial-gradient(circle_at_50%_80%,rgba(16,185,129,.09),transparent_34%)]" />
 
@@ -66,7 +62,7 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
             </div>
           )}
 
-          <div className="relative z-10 text-center px-6">
+          <div className="relative z-20 text-center px-6">
             <div className="text-[10px] tracking-[0.5em] text-cyan-200/65 uppercase mb-5">I Computer Anything</div>
 
             {!reduceMotion ? (
@@ -119,20 +115,6 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
               />
             </div>
           </div>
-
-          {!reduceMotion && (
-            <div className="absolute inset-0 grid grid-cols-10 grid-rows-10 z-20 pointer-events-none">
-              {tiles.map((tile) => (
-                <motion.div
-                  key={tile.id}
-                  className="bg-[#050914]"
-                  initial={{ opacity: 1 }}
-                  animate={{ opacity: [1, 1, 0] }}
-                  transition={{ duration: 0.45, delay: 3.7 + tile.delay, ease: 'easeOut' }}
-                />
-              ))}
-            </div>
-          )}
         </motion.div>
       )}
     </AnimatePresence>
