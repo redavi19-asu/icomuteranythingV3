@@ -74,6 +74,7 @@ function ICAProjects() {
       type: 'Streetwear & E-Commerce Brand',
       description: 'A premium fashion storefront built around original Ghost Money Millionaire collections, custom apparel concepts, branded product presentation, and a connected commerce workflow.',
       link: 'https://redavi19-asu.github.io/GhostMoneyMillionaire/',
+      mascot: '/ghost-money-mark.svg',
       buttonText: 'View Project',
       buttonType: 'live',
       card: 'from-lime-950/80 to-slate-950/90 border-lime-500/25',
@@ -134,8 +135,18 @@ function ICAProjects() {
               whileHover={{ y: -8 }}
               className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br ${project.card} p-8 backdrop-blur-sm flex flex-col min-h-[330px] shadow-xl`}
             >
-              <span className={`w-fit px-3 py-1 text-xs font-medium rounded-full border ${project.badge}`}>{project.type}</span>
-              <h3 className="text-2xl font-bold mt-5 mb-4 text-white">{project.title}</h3>
+              {project.mascot && (
+                <motion.img
+                  src={project.mascot}
+                  alt="Ghost Money Millionaire crowned ghost mascot"
+                  initial={{ opacity: 0, rotate: -8, scale: 0.88 }}
+                  animate={inView ? { opacity: 0.95, rotate: 0, scale: 1 } : {}}
+                  transition={{ duration: 0.5, delay: index * 0.07 + 0.15 }}
+                  className="absolute right-5 top-5 h-20 w-auto drop-shadow-[0_0_18px_rgba(163,230,53,0.28)] pointer-events-none select-none"
+                />
+              )}
+              <span className={`w-fit max-w-[72%] px-3 py-1 text-xs font-medium rounded-full border ${project.badge}`}>{project.type}</span>
+              <h3 className="text-2xl font-bold mt-5 mb-4 text-white pr-2">{project.title}</h3>
               <p className="text-gray-300 leading-relaxed flex-grow">{project.description}</p>
 
               <motion.button
