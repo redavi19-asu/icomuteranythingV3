@@ -74,7 +74,7 @@ function ICAProjects() {
       type: 'Streetwear & E-Commerce Brand',
       description: 'A premium fashion storefront built around original Ghost Money Millionaire collections, custom apparel concepts, branded product presentation, and a connected commerce workflow.',
       link: 'https://redavi19-asu.github.io/GhostMoneyMillionaire/',
-      mascot: '/ghost-money-mark.svg',
+      mascot: `${import.meta.env.BASE_URL}ghost-money-mark.svg`,
       buttonText: 'View Project',
       buttonType: 'live',
       card: 'from-lime-950/80 to-slate-950/90 border-lime-500/25',
