@@ -2,12 +2,12 @@ import React, { useMemo } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 
 const binaryPalette = [
-  { color: 'rgba(103, 232, 249, 0.95)', glow: 'rgba(34, 211, 238, 0.48)' },
-  { color: 'rgba(110, 231, 183, 0.95)', glow: 'rgba(16, 185, 129, 0.46)' },
-  { color: 'rgba(251, 191, 36, 0.95)', glow: 'rgba(245, 158, 11, 0.44)' },
-  { color: 'rgba(248, 113, 113, 0.92)', glow: 'rgba(185, 28, 28, 0.46)' },
-  { color: 'rgba(196, 181, 253, 0.94)', glow: 'rgba(139, 92, 246, 0.45)' },
-  { color: 'rgba(147, 197, 253, 0.95)', glow: 'rgba(59, 130, 246, 0.44)' },
+  { color: 'rgba(103, 232, 249, 1)', glow: 'rgba(34, 211, 238, 0.68)' },
+  { color: 'rgba(110, 231, 183, 1)', glow: 'rgba(16, 185, 129, 0.66)' },
+  { color: 'rgba(251, 191, 36, 1)', glow: 'rgba(245, 158, 11, 0.64)' },
+  { color: 'rgba(248, 113, 113, 1)', glow: 'rgba(185, 28, 28, 0.66)' },
+  { color: 'rgba(196, 181, 253, 1)', glow: 'rgba(139, 92, 246, 0.65)' },
+  { color: 'rgba(147, 197, 253, 1)', glow: 'rgba(59, 130, 246, 0.64)' },
 ]
 
 function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
@@ -31,7 +31,7 @@ function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
   const gridShiftX = useTransform(scrollYProgress, [0, 1], ['0px', '160px'])
   const gridShiftY = useTransform(scrollYProgress, [0, 1], ['0px', '-210px'])
   const gridRotate = useTransform(scrollYProgress, [0, 1], [-5, 8])
-  const binaryLayerOpacity = useTransform(scrollYProgress, [0, 0.45, 1], [0.98, 0.9, 0.78])
+  const binaryLayerOpacity = useTransform(scrollYProgress, [0, 0.45, 1], [1, 0.96, 0.88])
 
   const binaryDigits = useMemo(() => Array.from({ length: 50 }, (_, index) => {
     const palette = binaryPalette[index % binaryPalette.length]
@@ -45,7 +45,7 @@ function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
       duration: 5.4 + Math.random() * 7.2,
       travel: 90 + Math.random() * 190,
       scale: 0.7 + Math.random() * 0.95,
-      opacity: 0.18 + Math.random() * 0.3,
+      opacity: 0.30 + Math.random() * 0.34,
       fontSize: 10 + Math.floor(Math.random() * 6),
       variant: Math.random() > 0.5 ? 'fall' : 'diagonal',
       color: palette.color,
@@ -120,11 +120,11 @@ function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
                   top: digit.top,
                   fontSize: `${digit.fontSize}px`,
                   color: digit.color,
-                  textShadow: `0 0 6px ${digit.glow}, 0 0 12px ${digit.glow}`,
+                  textShadow: `0 0 7px ${digit.glow}, 0 0 15px ${digit.glow}, 0 0 24px ${digit.glow}`,
                 }}
                 initial={{ opacity: 0, y: 0, scale: digit.scale }}
                 animate={{
-                  opacity: [0, Math.min(0.72, digit.opacity * 1.05), 0],
+                  opacity: [0, Math.min(0.88, digit.opacity * 1.12), 0],
                   y: [0, digit.variant === 'fall' ? digit.travel : digit.travel * 0.7],
                   x: [0, digit.variant === 'diagonal' ? digit.driftX : digit.driftX * 0.2],
                   scale: [digit.scale * 0.88, digit.scale * 1.12, digit.scale * 0.92],
