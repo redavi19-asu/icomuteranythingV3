@@ -1,55 +1,30 @@
-// ...existing code...
-
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-// Live DispatchOS platform link
-const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform/';
+import React, { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 function useInViewHook(options) {
-  const ref = React.useRef(null);
-  const [inView, setInView] = React.useState(false);
+  const ref = React.useRef(null)
+  const [inView, setInView] = React.useState(false)
 
   React.useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
-        setInView(true);
-        if (options.triggerOnce) {
-          observer.unobserve(entry.target);
-        }
+        setInView(true)
+        if (options.triggerOnce) observer.unobserve(entry.target)
       }
-    }, {
-      threshold: options.threshold || 0.1,
-    });
+    }, { threshold: options.threshold || 0.1 })
 
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [options.triggerOnce, options.threshold])
 
-    return () => observer.disconnect();
-  }, [options.triggerOnce, options.threshold]);
-
-  return { ref, inView };
+  return { ref, inView }
 }
 
 function ICAProjects() {
-  const [isOverviewOpen, setIsOverviewOpen] = useState(false);
-  const { ref, inView } = useInViewHook({ triggerOnce: true, threshold: 0.1 });
+  const [isOverviewOpen, setIsOverviewOpen] = useState(false)
+  const { ref, inView } = useInViewHook({ triggerOnce: true, threshold: 0.1 })
 
-  // Insert featured DispatchOS project as the first card
   const projects = [
-    {
-      title: 'DispatchOS',
-      type: 'SaaS / Dispatch Platform',
-      description:
-        'A premium dispatch and service operations platform built by I Computer Anything for field service businesses. Includes booking flow, dispatch dashboard, driver mission view, and customer-facing workflow.',
-      link: DISPATCH_URL,
-      buttonText: 'View Platform',
-      buttonType: 'live',
-      color: 'from-blue-700/30 to-blue-900/40',
-      borderColor: 'border-blue-400/60',
-      featured: true, // Custom property for visual emphasis
-    },
     {
       title: 'Land of Shopping',
       type: 'Retail Demo',
@@ -57,8 +32,9 @@ function ICAProjects() {
       link: 'https://redavi19-asu.github.io/Land-of-shopping/',
       buttonText: 'View Project',
       buttonType: 'live',
-      color: 'from-blue-500/20 to-cyan-600/20',
-      borderColor: 'border-blue-500/30'
+      card: 'from-emerald-950/80 to-slate-950/90 border-emerald-500/25',
+      badge: 'bg-emerald-500/10 border-emerald-400/25 text-emerald-200',
+      button: 'from-emerald-700 to-green-500 hover:from-emerald-600 hover:to-green-400 shadow-emerald-900/30'
     },
     {
       title: 'Energy Website Example',
@@ -67,8 +43,9 @@ function ICAProjects() {
       link: 'https://redavi19-asu.github.io/energy-website-example/',
       buttonText: 'View Project',
       buttonType: 'live',
-      color: 'from-emerald-500/20 to-green-600/20',
-      borderColor: 'border-emerald-500/30'
+      card: 'from-cyan-950/80 to-slate-950/90 border-cyan-500/25',
+      badge: 'bg-cyan-500/10 border-cyan-400/25 text-cyan-200',
+      button: 'from-cyan-700 to-sky-500 hover:from-cyan-600 hover:to-sky-400 shadow-cyan-900/30'
     },
     {
       title: 'Paralegal Services Demo',
@@ -77,164 +54,98 @@ function ICAProjects() {
       link: 'https://redavi19-asu.github.io/paralegal-services-demo/',
       buttonText: 'View Project',
       buttonType: 'live',
-      color: 'from-blue-500/20 to-cyan-600/20',
-      borderColor: 'border-blue-500/30'
+      card: 'from-rose-950/80 to-slate-950/90 border-rose-500/25',
+      badge: 'bg-rose-500/10 border-rose-400/25 text-rose-200',
+      button: 'from-rose-800 to-red-600 hover:from-rose-700 hover:to-red-500 shadow-rose-950/30'
     },
     {
       title: 'IntriguedMutts.com',
       type: 'Digital Brand Platform',
-      description: 'A multi-feature digital brand platform combining original dog-themed artwork, merchandise, NFTs, and stock-focused tools in one interactive web experience.',
+      description: 'A multi-feature digital brand platform combining original artwork, merchandise, NFTs, and stock-focused tools in one interactive experience.',
       link: 'https://www.intriguedmutts.com/',
       buttonText: 'View Project',
       buttonType: 'live',
-      color: 'from-amber-500/20 to-orange-600/20',
-      borderColor: 'border-amber-500/30'
-    },
-    {
-      title: 'I Computer Anything',
-      type: 'Business Website',
-      description: 'Business landing page showcasing IT services with responsive design, smooth animations, and modern UI/UX.',
-      link: 'https://redavi19-asu.github.io/icomputeranything-react-/',
-      buttonText: 'View Project',
-      buttonType: 'live',
-      color: 'from-cyan-500/20 to-blue-600/20',
-      borderColor: 'border-cyan-500/30'
+      card: 'from-amber-950/80 to-slate-950/90 border-amber-500/25',
+      badge: 'bg-amber-500/10 border-amber-400/25 text-amber-200',
+      button: 'from-amber-700 to-orange-500 hover:from-amber-600 hover:to-orange-400 shadow-amber-950/30'
     },
     {
       title: 'Portable Event Wi-Fi',
       type: 'Infrastructure Project',
-      description: 'Custom-built portable network infrastructure solution for events, conferences, and temporary deployments.',
+      description: 'Portable network infrastructure designed for events, conferences, temporary deployments, and remote connectivity.',
       buttonText: 'Coming Soon',
       buttonType: 'coming-soon',
-      color: 'from-cyan-500/20 to-blue-600/20',
-      borderColor: 'border-cyan-500/30'
+      card: 'from-violet-950/80 to-slate-950/90 border-violet-500/25',
+      badge: 'bg-violet-500/10 border-violet-400/25 text-violet-200',
+      button: 'from-violet-800 to-purple-600 shadow-violet-950/30'
     },
     {
       title: 'Payments + Fulfillment Pipeline',
       type: 'Backend Integration',
-      description: 'Integrated payment processing and order fulfillment system with API integrations and automated workflows.',
+      description: 'Integrated payment processing and fulfillment automation with protected APIs, webhooks, and order routing logic.',
       buttonText: 'Learn More',
       buttonType: 'overview',
-      color: 'from-blue-500/20 to-sky-600/20',
-      borderColor: 'border-blue-500/30'
+      card: 'from-orange-950/80 to-slate-950/90 border-orange-500/25',
+      badge: 'bg-orange-500/10 border-orange-400/25 text-orange-200',
+      button: 'from-orange-700 to-red-500 hover:from-orange-600 hover:to-red-400 shadow-orange-950/30'
     },
-  ];
-
-  const cardVariants = {
-    hidden: { opacity: 1, y: 30 },
-    visible: (i) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: i * 0.15,
-        duration: 0.5,
-      },
-    }),
-  };
+  ]
 
   const handleButtonClick = (project) => {
     if (project.buttonType === 'live' && project.link) {
-      window.open(project.link, '_blank', 'noopener,noreferrer');
-      return;
+      window.open(project.link, '_blank', 'noopener,noreferrer')
+      return
     }
-
-    if (project.buttonType === 'overview' && project.title === 'Payments + Fulfillment Pipeline') {
-      setIsOverviewOpen(true);
-    }
-  };
+    if (project.buttonType === 'overview') setIsOverviewOpen(true)
+  }
 
   return (
     <section id="ica-projects" className="py-24 px-6 relative">
       <div className="max-w-6xl mx-auto">
-        {/* Section header */}
         <motion.div
           ref={ref}
-          initial={{ opacity: 1, y: 20 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
           <h2 className="section-title mb-6">Projects / Portfolio</h2>
-          <p className="section-subtitle">
-            A selection of live demo builds and working project examples.
-          </p>
-          <p className="text-xs text-blue-300 mt-2">DispatchOS is a software product built and offered by I Computer Anything.</p>
+          <p className="section-subtitle">A selection of live builds, infrastructure work, and working project examples.</p>
         </motion.div>
 
-        {/* Projects grid */}
-        <motion.div
-          className="mobile-horizontal-scroll grid md:grid-cols-2 lg:grid-cols-3 gap-8"
-        >
+        <div className="mobile-horizontal-scroll grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {projects.map((project, index) => (
-            <motion.div
-              key={index}
-              custom={index}
-              variants={cardVariants}
-              initial="hidden"
-              animate={inView ? 'visible' : 'hidden'}
-              whileHover={{
-                y: project.featured ? -14 : -8,
-                boxShadow: project.featured
-                  ? '0 28px 60px rgba(59, 130, 246, 0.25)'
-                  : '0 20px 40px rgba(79, 172, 254, 0.15)',
-              }}
-              className={`group relative p-8 rounded-2xl border bg-gradient-to-br ${project.featured ? 'from-blue-800/80 to-blue-900/90 border-2 border-blue-400/80 shadow-xl shadow-blue-700/30 scale-[1.04]' : 'from-dark-800/80 to-dark-900/80'} backdrop-blur-sm overflow-hidden flex flex-col h-full transition-all duration-300`}
-              style={project.featured ? { zIndex: 2 } : {}}
+            <motion.article
+              key={project.title}
+              initial={{ opacity: 0, y: 24 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.45, delay: index * 0.07 }}
+              whileHover={{ y: -8 }}
+              className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br ${project.card} p-8 backdrop-blur-sm flex flex-col min-h-[330px] shadow-xl`}
             >
-              {/* Gradient overlay */}
-              <motion.div
-                className={`absolute inset-0 bg-gradient-to-br ${project.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
-              />
+              <span className={`w-fit px-3 py-1 text-xs font-medium rounded-full border ${project.badge}`}>{project.type}</span>
+              <h3 className="text-2xl font-bold mt-5 mb-4 text-white">{project.title}</h3>
+              <p className="text-gray-300 leading-relaxed flex-grow">{project.description}</p>
 
-              {/* Content */}
-              <div className="relative z-10 flex flex-col h-full">
-                {/* Type label */}
-                <div className="mb-4">
-                  <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${project.featured ? 'bg-blue-500/20 border border-blue-400/40 text-blue-200' : 'bg-blue-500/10 border border-blue-500/20 text-blue-300'}`}>
-                    {project.type}
-                  </span>
-                </div>
-
-                {/* Title */}
-                <h3 className={`text-2xl font-bold mb-4 flex-shrink-0 ${project.featured ? 'text-blue-100 drop-shadow' : ''}`}>{project.title}</h3>
-
-                {/* Description */}
-                <p className={`mb-6 leading-relaxed flex-grow ${project.featured ? 'text-blue-100/90 font-medium' : 'text-gray-400'}`}>{project.description}</p>
-
-                {/* Action button */}
-                <motion.button
-                  whileHover={project.buttonType === 'live' || project.buttonType === 'overview' ? { scale: 1.07 } : {}}
-                  whileTap={project.buttonType === 'live' || project.buttonType === 'overview' ? { scale: 0.96 } : {}}
-                  onClick={() => handleButtonClick(project)}
-                  disabled={project.buttonType === 'coming-soon'}
-                  className={`w-full px-6 py-3 rounded-lg font-semibold transition-all flex-shrink-0 ${
-                    project.featured
-                      ? 'bg-gradient-to-r from-blue-700 to-blue-500 hover:from-blue-600 hover:to-blue-400 text-white shadow-lg shadow-blue-700/40 cursor-pointer border-2 border-blue-400/60'
-                      : project.buttonType === 'live' || project.buttonType === 'overview'
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-600/30 cursor-pointer'
-                        : 'bg-gray-700/50 text-gray-400 border border-gray-600/30 cursor-default'
-                  }`}
-                >
-                  {project.buttonText}
-                  {(project.buttonType === 'live' || project.buttonType === 'overview') && (
-                    <span className="ml-2">→</span>
-                  )}
-                </motion.button>
-              </div>
-            </motion.div>
+              <motion.button
+                whileHover={project.buttonType !== 'coming-soon' ? { scale: 1.03 } : {}}
+                whileTap={project.buttonType !== 'coming-soon' ? { scale: 0.98 } : {}}
+                onClick={() => handleButtonClick(project)}
+                disabled={project.buttonType === 'coming-soon'}
+                className={`mt-7 w-full px-6 py-3 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${project.button} ${project.buttonType === 'coming-soon' ? 'opacity-45 cursor-default' : 'cursor-pointer shadow-lg'}`}
+              >
+                {project.buttonText}{project.buttonType !== 'coming-soon' ? ' →' : ''}
+              </motion.button>
+            </motion.article>
           ))}
-        </motion.div>
+        </div>
 
-        {/* Secondary CTA: Need custom software? */}
         <div className="flex justify-center mt-14">
           <motion.button
-            whileHover={{ scale: 1.07, backgroundColor: 'rgba(59,130,246,0.12)' }}
-            whileTap={{ scale: 0.96 }}
-            onClick={() => {
-              const el = document.getElementById('final-cta');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
-            className="px-8 py-3 rounded-lg bg-blue-700/80 text-blue-100 font-semibold shadow-md shadow-blue-700/20 hover:bg-blue-600/90 transition-all text-lg border border-blue-400/40"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => document.getElementById('final-cta')?.scrollIntoView({ behavior: 'smooth' })}
+            className="px-8 py-3 rounded-lg bg-gradient-to-r from-slate-700 to-slate-600 text-white font-semibold border border-white/10 shadow-lg"
           >
             Need custom software?
           </motion.button>
@@ -244,75 +155,31 @@ function ICAProjects() {
           {isOverviewOpen && (
             <>
               <motion.div
-                initial={{ opacity: 1 }}
+                initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsOverviewOpen(false)}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+                className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
               />
-
               <motion.div
-                initial={{ opacity: 1, scale: 0.95, y: 20 }}
+                initial={{ opacity: 0, scale: 0.96, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                exit={{ opacity: 0, scale: 0.96, y: 20 }}
                 className="fixed inset-0 z-50 flex items-center justify-center px-4"
               >
-                <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-blue-500/30 bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl shadow-2xl">
-                  <div className="sticky top-0 flex items-start justify-between p-8 bg-gradient-to-b from-slate-900/80 to-transparent border-b border-blue-500/20 z-10">
+                <div className="w-full max-w-2xl rounded-3xl border border-orange-400/20 bg-slate-950 p-8 shadow-2xl">
+                  <div className="flex justify-between gap-6">
                     <div>
-                      <h3 className="text-3xl font-bold text-white mb-1">Payments + Fulfillment Pipeline</h3>
+                      <p className="text-sm uppercase tracking-[0.2em] text-orange-300">Backend Integration</p>
+                      <h3 className="text-3xl font-bold text-white mt-2">Payments + Fulfillment Pipeline</h3>
                     </div>
-
-                    <button
-                      onClick={() => setIsOverviewOpen(false)}
-                      className="text-gray-400 hover:text-white transition-colors p-2 -mr-2 -mt-2"
-                      aria-label="Close overview modal"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+                    <button onClick={() => setIsOverviewOpen(false)} className="text-gray-400 hover:text-white text-2xl" aria-label="Close">×</button>
                   </div>
-
-                  <div className="p-8">
-                    <div className="mb-8">
-                      <h4 className="text-xl font-bold text-blue-200 mb-3">Overview</h4>
-                      <p className="text-gray-300 leading-relaxed text-lg">
-                        This is a secure end-to-end checkout and fulfillment workflow designed to handle online orders,
-                        backend validation, payment processing, and automated fulfillment.
-                      </p>
-                    </div>
-
-                    <div className="mb-8">
-                      <h4 className="text-xl font-bold text-blue-200 mb-3">What&apos;s Included</h4>
-                      <ul className="space-y-2">
-                        <li className="flex items-start gap-3 text-gray-300"><span className="text-blue-400 mt-1">✓</span><span>secure checkout flow</span></li>
-                        <li className="flex items-start gap-3 text-gray-300"><span className="text-blue-400 mt-1">✓</span><span>backend API handling</span></li>
-                        <li className="flex items-start gap-3 text-gray-300"><span className="text-blue-400 mt-1">✓</span><span>webhook automation</span></li>
-                        <li className="flex items-start gap-3 text-gray-300"><span className="text-blue-400 mt-1">✓</span><span>Cloudflare-based backend protection</span></li>
-                        <li className="flex items-start gap-3 text-gray-300"><span className="text-blue-400 mt-1">✓</span><span>order routing / fulfillment logic</span></li>
-                        <li className="flex items-start gap-3 text-gray-300"><span className="text-blue-400 mt-1">✓</span><span>scalable workflow design</span></li>
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h4 className="text-xl font-bold text-blue-200 mb-3">Why It Matters</h4>
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                          <span className="text-blue-400 font-semibold min-w-fit">→</span>
-                          <span className="text-gray-300">useful when a business needs custom checkout beyond basic plugins</span>
-                        </div>
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                          <span className="text-blue-400 font-semibold min-w-fit">→</span>
-                          <span className="text-gray-300">useful when orders need automated fulfillment steps</span>
-                        </div>
-                        <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                          <span className="text-blue-400 font-semibold min-w-fit">→</span>
-                          <span className="text-gray-300">useful when payment, backend, and delivery systems must work together reliably</span>
-                        </div>
-                      </div>
-                    </div>
+                  <p className="mt-6 text-gray-300 leading-7">Secure checkout, backend validation, protected API handling, webhooks, order routing, and automated fulfillment designed to work as one reliable pipeline.</p>
+                  <div className="mt-6 grid sm:grid-cols-2 gap-3 text-sm text-gray-200">
+                    {['Secure checkout flow', 'Backend API handling', 'Webhook automation', 'Cloudflare protection', 'Order routing', 'Scalable workflow design'].map(item => (
+                      <div key={item} className="rounded-xl border border-orange-400/15 bg-orange-500/5 px-4 py-3">✓ {item}</div>
+                    ))}
                   </div>
                 </div>
               </motion.div>
@@ -321,7 +188,7 @@ function ICAProjects() {
         </AnimatePresence>
       </div>
     </section>
-  );
+  )
 }
 
-export default ICAProjects;
+export default ICAProjects
