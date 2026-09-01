@@ -10,8 +10,54 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style>
+      html, body, #root { min-height: 100%; margin: 0; background: #050914; }
+      body { overflow-x: hidden; }
+      #pre-react-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(34,211,238,.12), transparent 30%),
+          radial-gradient(circle at 80% 28%, rgba(139,92,246,.10), transparent 34%),
+          radial-gradient(circle at 50% 80%, rgba(16,185,129,.09), transparent 34%),
+          #050914;
+        color: white;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      .pre-loader-core { position: relative; text-align: center; padding: 24px; }
+      .pre-loader-brand { font-size: 10px; letter-spacing: .5em; text-transform: uppercase; color: rgba(165,243,252,.72); margin-bottom: 18px; }
+      .pre-loader-title { font-size: clamp(1.5rem, 4vw, 2.25rem); font-weight: 700; letter-spacing: -.02em; }
+      .pre-loader-dots { display: flex; justify-content: center; gap: 11px; margin-top: 24px; }
+      .pre-loader-dot { width: 11px; height: 11px; border-radius: 999px; animation: prePulse 1.1s ease-in-out infinite; }
+      .pre-loader-dot:nth-child(1) { background:#22d3ee; box-shadow:0 0 18px rgba(34,211,238,.6); }
+      .pre-loader-dot:nth-child(2) { background:#10b981; box-shadow:0 0 18px rgba(16,185,129,.6); animation-delay:.12s; }
+      .pre-loader-dot:nth-child(3) { background:#f59e0b; box-shadow:0 0 18px rgba(245,158,11,.6); animation-delay:.24s; }
+      .pre-loader-dot:nth-child(4) { background:#b91c1c; box-shadow:0 0 18px rgba(185,28,28,.6); animation-delay:.36s; }
+      .pre-loader-dot:nth-child(5) { background:#8b5cf6; box-shadow:0 0 18px rgba(139,92,246,.6); animation-delay:.48s; }
+      @keyframes prePulse {
+        0%,100% { transform: scale(.72); opacity:.38; }
+        50% { transform: scale(1.22); opacity:1; }
+      }
+    </style>
   </head>
   <body>
+    <div id="pre-react-loader" aria-hidden="true">
+      <div class="pre-loader-core">
+        <div class="pre-loader-brand">I Computer Anything</div>
+        <div class="pre-loader-title">Loading Experience</div>
+        <div class="pre-loader-dots">
+          <span class="pre-loader-dot"></span>
+          <span class="pre-loader-dot"></span>
+          <span class="pre-loader-dot"></span>
+          <span class="pre-loader-dot"></span>
+          <span class="pre-loader-dot"></span>
+        </div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
