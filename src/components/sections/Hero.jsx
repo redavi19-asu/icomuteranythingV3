@@ -69,174 +69,59 @@ function Hero() {
         style={{ y: contentY, opacity: contentOpacity, scale: containerScale }}
       >
         {/* Centered 3D-style spinning ICA icon */}
-        <motion.div
-          variants={itemVariants}
-          className="mb-10 flex justify-center"
-        >
-          <div
-            className="relative"
-            style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}
-          >
+        <motion.div variants={itemVariants} className="mb-10 flex justify-center">
+          <div className="relative" style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}>
             <motion.div
               className="relative w-44 h-44 md:w-56 md:h-56 rounded-[36px] overflow-hidden"
-              style={{
-                transformStyle: 'preserve-3d',
-                boxShadow: '0 16px 45px rgba(59,130,246,0.28), 0 0 35px rgba(96,165,250,0.18)',
-                borderRadius: '36px',
-                WebkitBorderRadius: '36px',
-                clipPath: 'inset(0 round 36px)',
-                WebkitClipPath: 'inset(0 round 36px)',
-                overflow: 'hidden',
-                willChange: 'transform',
-                transform: 'translateZ(0)',
-                backfaceVisibility: 'visible',
-                WebkitBackfaceVisibility: 'visible',
-              }}
-              animate={{
-                rotateY: [0, 180, 360],
-                rotateX: [8, -8, 8],
-              }}
-              transition={{
-                duration: 14,
-                repeat: Infinity,
-                ease: 'linear',
-              }}
+              style={{ transformStyle: 'preserve-3d', boxShadow: '0 16px 45px rgba(59,130,246,0.28), 0 0 35px rgba(96,165,250,0.18)', borderRadius: '36px', WebkitBorderRadius: '36px', clipPath: 'inset(0 round 36px)', WebkitClipPath: 'inset(0 round 36px)', overflow: 'hidden', willChange: 'transform', transform: 'translateZ(0)', backfaceVisibility: 'visible', WebkitBackfaceVisibility: 'visible' }}
+              animate={{ rotateY: [0, 180, 360], rotateX: [8, -8, 8] }}
+              transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
             >
-              <img
-                src={iconSrc}
-                alt="ICA"
-                className="w-full h-full object-contain rounded-[36px]"
-                style={{
-                  imageRendering: 'crisp-edges',
-                  borderRadius: '36px',
-                  WebkitBorderRadius: '36px',
-                }}
-              />
-
-              {/* Subtle moving sheen for a premium finish */}
+              <img src={iconSrc} alt="ICA" className="w-full h-full object-contain rounded-[36px]" style={{ imageRendering: 'crisp-edges', borderRadius: '36px', WebkitBorderRadius: '36px' }} />
               <motion.div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 rounded-[36px] overflow-hidden"
-                style={{
-                  background:
-                    'linear-gradient(110deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.28) 48%, rgba(255,255,255,0) 74%)',
-                  mixBlendMode: 'screen',
-                  borderRadius: '36px',
-                  WebkitBorderRadius: '36px',
-                  clipPath: 'inset(0 round 36px)',
-                  WebkitClipPath: 'inset(0 round 36px)',
-                }}
+                style={{ background: 'linear-gradient(110deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.28) 48%, rgba(255,255,255,0) 74%)', mixBlendMode: 'screen', borderRadius: '36px', WebkitBorderRadius: '36px', clipPath: 'inset(0 round 36px)', WebkitClipPath: 'inset(0 round 36px)' }}
                 animate={{ x: ['-130%', '130%'] }}
-                transition={{
-                  duration: 3.8,
-                  repeat: Infinity,
-                  repeatDelay: 1.8,
-                  ease: 'easeInOut',
-                }}
+                transition={{ duration: 3.8, repeat: Infinity, repeatDelay: 1.8, ease: 'easeInOut' }}
               />
-
-              <div
-                className="pointer-events-none absolute inset-0 rounded-[36px] overflow-hidden bg-gradient-to-tr from-blue-400/10 via-transparent to-white/10"
-                style={{
-                  borderRadius: '36px',
-                  WebkitBorderRadius: '36px',
-                  clipPath: 'inset(0 round 36px)',
-                  WebkitClipPath: 'inset(0 round 36px)',
-                }}
-              />
+              <div className="pointer-events-none absolute inset-0 rounded-[36px] overflow-hidden bg-gradient-to-tr from-blue-400/10 via-transparent to-white/10" style={{ borderRadius: '36px', WebkitBorderRadius: '36px', clipPath: 'inset(0 round 36px)', WebkitClipPath: 'inset(0 round 36px)' }} />
             </motion.div>
           </div>
         </motion.div>
 
-        {/* Main Headline */}
-        <motion.h1
-          variants={itemVariants}
-          className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-[-0.02em] mb-5 leading-[0.95]"
-          style={{ fontFamily: '"DM Serif Display", serif', fontWeight: 400 }}
-        >
-          <span className="bg-gradient-to-r from-white via-blue-200 to-blue-400 bg-clip-text text-transparent">
-            I Computer Anything
-          </span>
+        <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-[-0.02em] mb-5 leading-[0.95]" style={{ fontFamily: '"DM Serif Display", serif', fontWeight: 400 }}>
+          <span className="bg-gradient-to-r from-white via-blue-200 to-blue-400 bg-clip-text text-transparent">I Computer Anything</span>
         </motion.h1>
 
-        {/* Compact tagline */}
-        <motion.p
-          variants={itemVariants}
-          className="text-xs md:text-sm text-gray-300/90 mb-12 tracking-[0.16em] uppercase font-medium"
-          style={{ fontFamily: 'Inter, sans-serif', fontVariant: 'all-small-caps', letterSpacing: '0.14em' }}
-        >
+        <motion.p variants={itemVariants} className="text-lg md:text-2xl text-gray-200 mb-10 tracking-[0.08em] uppercase font-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>
           Premium Tech Solutions for Everyone
         </motion.p>
 
-        {/* Branded Definition Block */}
-        <div className="flex flex-col items-center justify-center mb-8 -mt-8 px-4">
-          <span
-            className="text-base md:text-lg text-blue-100 text-center"
-            style={{ fontFamily: 'DM Serif Display, serif', fontStyle: 'italic', fontWeight: 500, letterSpacing: '0.01em' }}
-          >
+        <div className="flex flex-col items-center justify-center mb-10 -mt-4 px-4">
+          <span className="text-2xl md:text-4xl text-blue-100 text-center leading-tight" style={{ fontFamily: 'DM Serif Display, serif', fontStyle: 'italic', fontWeight: 500, letterSpacing: '0.01em' }}>
             Here, “computer” is used as a verb.
           </span>
-          <span
-            className="text-xs md:text-sm text-blue-100/80 mt-1 text-center max-w-[90vw] md:max-w-[520px] leading-snug"
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          >
+          <span className="text-lg md:text-2xl text-blue-100/90 mt-3 text-center max-w-[94vw] md:max-w-[760px] leading-relaxed font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
             To diagnose, repair, build, configure, and improve technology of all kinds.
           </span>
         </div>
 
-        {/* CTA Buttons */}
-        <motion.div
-          variants={itemVariants}
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
-        >
-          <motion.button
-            whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(59, 130, 246, 0.4)' }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => scrollToSection('what-we-do')}
-            className="btn-primary shadow-lg shadow-blue-600/20"
-          >
-            Get Started
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05, backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => scrollToSection('how-it-works')}
-            className="btn-secondary"
-          >
-            How It Works
-          </motion.button>
+        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+          <motion.button whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(59, 130, 246, 0.4)' }} whileTap={{ scale: 0.95 }} onClick={() => scrollToSection('what-we-do')} className="btn-primary shadow-lg shadow-blue-600/20">Get Started</motion.button>
+          <motion.button whileHover={{ scale: 1.05, backgroundColor: 'rgba(59, 130, 246, 0.1)' }} whileTap={{ scale: 0.95 }} onClick={() => scrollToSection('how-it-works')} className="btn-secondary">How It Works</motion.button>
         </motion.div>
 
-        {/* Stats/Trust */}
-        <motion.div
-          variants={itemVariants}
-          className="flex flex-col md:flex-row gap-12 justify-center text-gray-400 text-sm"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-blue-400 font-bold">→</span>
-            Fast & Reliable Service
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-blue-400 font-bold">→</span>
-            Expert Technicians
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-blue-400 font-bold">→</span>
-            Competitive Pricing
-          </div>
+        <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-12 justify-center text-gray-400 text-sm">
+          <div className="flex items-center gap-2"><span className="text-blue-400 font-bold">→</span>Fast & Reliable Service</div>
+          <div className="flex items-center gap-2"><span className="text-blue-400 font-bold">→</span>Expert Technicians</div>
+          <div className="flex items-center gap-2"><span className="text-blue-400 font-bold">→</span>Competitive Pricing</div>
         </motion.div>
       </motion.div>
 
-      {/* Scroll indicator */}
-      <motion.div
-        animate={{ y: [0, 10, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
-        className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 text-gray-500 text-center"
-      >
+      <motion.div animate={{ y: [0, 10, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 text-gray-500 text-center">
         <p className="text-xs">Scroll to explore</p>
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-        </svg>
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
       </motion.div>
       </section>
     </>
