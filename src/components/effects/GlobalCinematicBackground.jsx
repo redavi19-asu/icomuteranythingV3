@@ -13,121 +13,60 @@ const binaryPalette = [
 function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
   const { scrollYProgress } = useScroll()
 
-  const chapter = {
-    hero: {
-      level: 0.26,
-      gridTilt: -8,
-      gridShiftX: 0,
-      gridShiftY: -70,
-      binaryBoost: 1.2,
-      streakBoost: 0.8,
-      baseOpacity: 0.96,
-      orbScale: 1.0,
-    },
-    'what-we-do': {
-      level: 0.42,
-      gridTilt: -2,
-      gridShiftX: 35,
-      gridShiftY: -95,
-      binaryBoost: 1.15,
-      streakBoost: 1.0,
-      baseOpacity: 0.96,
-      orbScale: 1.06,
-    },
-    'how-it-works': {
-      level: 0.56,
-      gridTilt: 6,
-      gridShiftX: 85,
-      gridShiftY: -130,
-      binaryBoost: 1.08,
-      streakBoost: 1.2,
-      baseOpacity: 0.95,
-      orbScale: 1.1,
-    },
-    'why-choose-us': {
-      level: 0.7,
-      gridTilt: 14,
-      gridShiftX: 130,
-      gridShiftY: -165,
-      binaryBoost: 1.0,
-      streakBoost: 1.45,
-      baseOpacity: 0.94,
-      orbScale: 1.16,
-    },
-    'who-it-for': {
-      level: 0.88,
-      gridTilt: 20,
-      gridShiftX: 175,
-      gridShiftY: -220,
-      binaryBoost: 0.95,
-      streakBoost: 1.75,
-      baseOpacity: 0.93,
-      orbScale: 1.24,
-    },
-    'final-cta': {
-      level: 0.76,
-      gridTilt: 10,
-      gridShiftX: 105,
-      gridShiftY: -155,
-      binaryBoost: 0.98,
-      streakBoost: 1.25,
-      baseOpacity: 0.94,
-      orbScale: 1.12,
-    },
-  }[activeSection] ?? {
-    level: 0.45,
-    gridTilt: 0,
-    gridShiftX: 40,
-    gridShiftY: -90,
-    binaryBoost: 1.08,
-    streakBoost: 1,
-    baseOpacity: 0.95,
-    orbScale: 1.05,
+  const sectionLevels = {
+    hero: 0.26,
+    'what-we-do': 0.42,
+    'how-it-works': 0.56,
+    'why-choose-us': 0.7,
+    software: 0.76,
+    'ica-projects': 0.82,
+    'meet-the-lead-tech': 0.78,
+    'who-it-for': 0.88,
+    'final-cta': 0.76,
   }
 
-  const sectionLevel = chapter.level
+  const sectionLevel = sectionLevels[activeSection] ?? 0.45
+  const gradientShiftX = useTransform(scrollYProgress, [0, 1], ['0%', '120%'])
+  const gradientShiftY = useTransform(scrollYProgress, [0, 1], ['0%', '72%'])
+  const gridShiftX = useTransform(scrollYProgress, [0, 1], ['0px', '160px'])
+  const gridShiftY = useTransform(scrollYProgress, [0, 1], ['0px', '-210px'])
+  const gridRotate = useTransform(scrollYProgress, [0, 1], [-5, 8])
+  const binaryLayerOpacity = useTransform(scrollYProgress, [0, 0.45, 1], [0.98, 0.9, 0.78])
 
-  const gradientShiftX = useTransform(scrollYProgress, [0, 1], ['0%', '145%'])
-  const gradientShiftY = useTransform(scrollYProgress, [0, 1], ['0%', '80%'])
+  const binaryDigits = useMemo(() => Array.from({ length: 50 }, (_, index) => {
+    const palette = binaryPalette[index % binaryPalette.length]
+    return {
+      id: index,
+      value: Math.random() > 0.5 ? '1' : '0',
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      driftX: (Math.random() - 0.5) * 110,
+      delay: Math.random() * 6,
+      duration: 5.4 + Math.random() * 7.2,
+      travel: 90 + Math.random() * 190,
+      scale: 0.7 + Math.random() * 0.95,
+      opacity: 0.18 + Math.random() * 0.3,
+      fontSize: 10 + Math.floor(Math.random() * 6),
+      variant: Math.random() > 0.5 ? 'fall' : 'diagonal',
+      color: palette.color,
+      glow: palette.glow,
+    }
+  }), [])
 
-  const gridOpacity = reduceMotion ? 0.14 : 0.16 + sectionLevel * 0.16
-  const streakOpacity = reduceMotion ? 0.1 : 0.12 + sectionLevel * 0.1
-  const streakSpeedBoost = reduceMotion ? 0 : chapter.streakBoost
-  const binaryLayerOpacity = useTransform(scrollYProgress, [0, 0.45, 1], [0.98, 0.9, 0.76])
-
-  const binaryDigits = useMemo(() => {
-    return Array.from({ length: 50 }, (_, index) => {
-      const palette = binaryPalette[index % binaryPalette.length]
-      return {
-        id: index,
-        value: Math.random() > 0.5 ? '1' : '0',
-        left: `${Math.random() * 100}%`,
-        top: `${Math.random() * 100}%`,
-        driftX: (Math.random() - 0.5) * 110,
-        delay: Math.random() * 6,
-        duration: 5.4 + Math.random() * 7.2,
-        travel: 90 + Math.random() * 190,
-        scale: 0.7 + Math.random() * 0.95,
-        opacity: 0.18 + Math.random() * 0.3,
-        fontSize: 10 + Math.floor(Math.random() * 6),
-        variant: Math.random() > 0.5 ? 'fall' : 'diagonal',
-        color: palette.color,
-        glow: palette.glow,
-      }
-    })
-  }, [])
-
-  const streaks = useMemo(() => {
-    return Array.from({ length: 18 }, (_, index) => ({
+  const streaks = useMemo(() => Array.from({ length: 18 }, (_, index) => {
+    const palette = binaryPalette[index % binaryPalette.length]
+    return {
       id: index,
       left: `${Math.random() * 100}%`,
       rotate: -20 + Math.random() * 40,
       delay: Math.random() * 4,
-      duration: 1.8 + Math.random() * 3,
+      duration: 2 + Math.random() * 3.2,
       length: 70 + Math.random() * 200,
       driftX: (Math.random() - 0.5) * 14,
-    }))
-  }, [])
+      color: palette.color,
+      glow: palette.glow,
+    }
+  }), [])
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
@@ -136,44 +75,38 @@ function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(1200px circle at 12% 8%, rgba(72,146,228,.20), transparent 52%), radial-gradient(980px circle at 88% 14%, rgba(48,129,212,.14), transparent 60%), linear-gradient(165deg, #040a16 0%, #081122 44%, #0a1628 100%)',
+              'radial-gradient(1100px circle at 12% 8%, rgba(34,211,238,.13), transparent 50%), radial-gradient(900px circle at 88% 14%, rgba(139,92,246,.10), transparent 58%), radial-gradient(850px circle at 50% 90%, rgba(16,185,129,.08), transparent 58%), linear-gradient(165deg, #040a16 0%, #081122 44%, #0a1628 100%)',
             backgroundPositionX: gradientShiftX,
             backgroundPositionY: gradientShiftY,
-            opacity: chapter.baseOpacity,
+            opacity: 0.94,
           }}
         />
 
         <motion.div
-          className="absolute inset-0"
+          className="absolute -inset-[18%]"
           style={{
-            opacity: gridOpacity,
-            transform: `perspective(900px) rotateX(66deg) rotateZ(${chapter.gridTilt}deg)`,
+            opacity: reduceMotion ? 0.12 : 0.14 + sectionLevel * 0.12,
+            x: gridShiftX,
+            y: gridShiftY,
+            rotateZ: gridRotate,
+            transformPerspective: 1000,
+            rotateX: 64,
             transformOrigin: 'center center',
             backgroundImage:
-              'linear-gradient(rgba(132,184,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(132,184,255,0.95) 1px, transparent 1px)',
-            backgroundSize: '72px 72px',
-            backgroundPosition: 'center center',
+              'linear-gradient(rgba(34,211,238,.42) 1px, transparent 1px), linear-gradient(90deg, rgba(110,231,183,.30) 1px, transparent 1px), linear-gradient(135deg, rgba(245,158,11,.10), transparent 34%, rgba(185,28,28,.09) 64%, rgba(139,92,246,.12))',
+            backgroundSize: '74px 74px, 74px 74px, 100% 100%',
           }}
-          animate={
-            reduceMotion
-              ? undefined
-              : {
-                  backgroundPositionY: ['0px', `${chapter.gridShiftY}px`],
-                  backgroundPositionX: ['0px', `${chapter.gridShiftX}px`],
-                }
-          }
-          transition={{ duration: 5.4, repeat: Infinity, ease: 'linear' }}
         />
 
         <motion.div
           className="absolute inset-0"
           style={{
-            opacity: 0.02 + sectionLevel * 0.05,
+            opacity: 0.03 + sectionLevel * 0.045,
             background:
-              'radial-gradient(ellipse at center, transparent 16%, rgba(39,95,167,.12) 55%, rgba(16,34,64,.22) 100%)',
+              'radial-gradient(ellipse at center, transparent 16%, rgba(34,211,238,.08) 46%, rgba(139,92,246,.07) 68%, rgba(16,34,64,.18) 100%)',
           }}
-          animate={reduceMotion ? undefined : { scale: [1, 1.04, 1], opacity: [0.08, 0.16, 0.1] }}
-          transition={{ duration: 9.6, repeat: Infinity, ease: 'easeInOut' }}
+          animate={reduceMotion ? undefined : { scale: [1, 1.025, 1], opacity: [0.07, 0.12, 0.08] }}
+          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
         />
 
         {!reduceMotion && (
@@ -191,17 +124,12 @@ function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
                 }}
                 initial={{ opacity: 0, y: 0, scale: digit.scale }}
                 animate={{
-                  opacity: [0, Math.min(0.76, digit.opacity * chapter.binaryBoost), 0],
+                  opacity: [0, Math.min(0.72, digit.opacity * 1.05), 0],
                   y: [0, digit.variant === 'fall' ? digit.travel : digit.travel * 0.7],
                   x: [0, digit.variant === 'diagonal' ? digit.driftX : digit.driftX * 0.2],
-                  scale: [digit.scale * 0.88, digit.scale * 1.14, digit.scale * 0.92],
+                  scale: [digit.scale * 0.88, digit.scale * 1.12, digit.scale * 0.92],
                 }}
-                transition={{
-                  delay: digit.delay,
-                  duration: Math.max(2.8, digit.duration - chapter.binaryBoost * 0.55),
-                  repeat: Infinity,
-                  ease: 'easeIn',
-                }}
+                transition={{ delay: digit.delay, duration: digit.duration, repeat: Infinity, ease: 'easeIn' }}
               >
                 {digit.value}
               </motion.span>
@@ -210,31 +138,26 @@ function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
         )}
 
         {!reduceMotion && (
-          <div className="absolute inset-0" style={{ opacity: streakOpacity }}>
+          <div className="absolute inset-0" style={{ opacity: 0.11 + sectionLevel * 0.08 }}>
             {streaks.map((streak) => (
               <motion.div
                 key={streak.id}
-                className="absolute top-[-24%] h-[2px] border-t border-dashed border-blue-100/55"
+                className="absolute top-[-24%] h-[2px] border-t border-dashed"
                 style={{
                   left: streak.left,
                   width: `${streak.length}px`,
                   rotate: `${streak.rotate}deg`,
-                  boxShadow: '0 0 5px rgba(138,186,255,.28)',
+                  borderColor: streak.color,
+                  boxShadow: `0 0 6px ${streak.glow}`,
                 }}
                 initial={{ y: '-10vh', opacity: 0, scale: 0.35 }}
                 animate={{
                   y: ['-12vh', '126vh'],
                   x: ['0vw', `${streak.driftX}vw`],
-                  opacity: [0, 0.48, 0],
-                  scaleX: [0.35, 1.05, 1.25],
-                  scaleY: [0.8, 1.08, 1.24],
+                  opacity: [0, 0.42, 0],
+                  scaleX: [0.35, 1.02, 1.18],
                 }}
-                transition={{
-                  duration: Math.max(0.7, streak.duration - streakSpeedBoost * 0.24),
-                  delay: streak.delay,
-                  repeat: Infinity,
-                  ease: 'easeIn',
-                }}
+                transition={{ duration: streak.duration, delay: streak.delay, repeat: Infinity, ease: 'linear' }}
               />
             ))}
           </div>
