@@ -72,8 +72,10 @@ function Navigation({ activeSection, onRequestService }) {
           onClick={() => scrollToSection('hero')}
           aria-label="Go to home"
         >
-          <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
-            ICA
+          <div className="text-2xl font-bold tracking-tight flex items-center">
+            <span className="bg-gradient-to-b from-red-300 via-red-500 to-red-800 bg-clip-text text-transparent">I</span>
+            <span className="bg-gradient-to-b from-orange-200 via-orange-500 to-orange-700 bg-clip-text text-transparent">C</span>
+            <span className="bg-gradient-to-b from-gray-200 via-gray-400 to-gray-600 bg-clip-text text-transparent">A</span>
           </div>
         </motion.button>
 
