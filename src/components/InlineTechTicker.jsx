@@ -12,7 +12,7 @@ function renderIcon(icon, label) {
       <img
         src={icon}
         alt={label || ""}
-        style={{ width: "clamp(1.25rem, 1.9vw, 1.625rem)", height: "clamp(1.25rem, 1.9vw, 1.625rem)", display: "block" }}
+        style={{ width: 28, height: 28, display: "block", objectFit: "contain" }}
         onError={(e) => {
           e.currentTarget.style.display = "none";
         }}
@@ -37,7 +37,7 @@ export default function InlineTechTicker({ height = 120, speed = 60 }) {
       { label: "Apple", href: "https://apple.com", icon: "fa-brands fa-apple", color: "#FFFFFF" },
       { label: "Linux", href: "https://www.kernel.org", icon: "fa-brands fa-linux", color: "#FCC624" },
       { label: "Windows", href: "https://www.microsoft.com/windows", icon: "fa-brands fa-windows", color: "#00A4EF" },
-      { label: "IBM", href: "https://www.ibm.com", icon: "fa-solid fa-microchip", color: "#0F62FE" },
+      { label: "IBM", href: "https://www.ibm.com", icon: "/logos/ibm.svg", color: "#0F62FE" },
       { label: "Spotify", href: "https://spotify.com", icon: "fa-brands fa-spotify", color: "#1DB954" },
       { label: "YouTube", href: "https://youtube.com", icon: "fa-brands fa-youtube", color: "#FF0000" },
       { label: "Instagram", href: "https://instagram.com", icon: "fa-brands fa-instagram", color: "#E1306C" },
@@ -54,11 +54,11 @@ export default function InlineTechTicker({ height = 120, speed = 60 }) {
       { label: "Slack", href: "https://slack.com", icon: "fa-brands fa-slack", color: "#36C5F0" },
       { label: "Zoom", href: "https://zoom.us", icon: "fa-solid fa-video", color: "#2D8CFF" },
       { label: "Yahoo", href: "https://www.yahoo.com", icon: "fa-brands fa-yahoo", color: "#5F01D1" },
-      { label: "Tumblr", href: "https://www.tumblr.com", icon: "fa-brands fa-tumblr", color: "#5B7C99" },
+      { label: "Tumblr", href: "https://www.tumblr.com", icon: "fa-brands fa-tumblr", color: "#36465D" },
       { label: "Medium", href: "https://medium.com", icon: "fa-brands fa-medium", color: "#FFFFFF" },
       { label: "Quora", href: "https://www.quora.com", icon: "fa-brands fa-quora", color: "#B92B27" },
       { label: "WordPress", href: "https://wordpress.com", icon: "fa-brands fa-wordpress", color: "#21759B" },
-      { label: "Joomla", href: "https://www.joomla.org", icon: "fa-brands fa-joomla", color: "#F9A541" },
+      { label: "Joomla", href: "https://www.joomla.org", icon: "fa-brands fa-joomla", color: "#5091CD" },
       { label: "Drupal", href: "https://www.drupal.org", icon: "fa-brands fa-drupal", color: "#0678BE" },
       { label: "Magento", href: "https://business.adobe.com/products/magento/magento-commerce.html", icon: "fa-brands fa-magento", color: "#EE672F" },
       { label: "PrestaShop", href: "https://www.prestashop.com", icon: "fa-solid fa-bag-shopping", color: "#DF0067" },
@@ -70,15 +70,15 @@ export default function InlineTechTicker({ height = 120, speed = 60 }) {
       { label: "Venmo", href: "https://venmo.com", icon: "fa-solid fa-money-bill-wave", color: "#3D95CE" },
       { label: "Creative Commons", href: "https://creativecommons.org", icon: "fa-brands fa-creative-commons", color: "#FFFFFF" },
       { label: "OSI", href: "https://opensource.org", icon: "fa-solid fa-code-branch", color: "#3CC24A" },
-      { label: "freeCodeCamp", href: "https://www.freecodecamp.org", icon: "fa-brands fa-free-code-camp", color: "#A3E635" },
+      { label: "freeCodeCamp", href: "https://www.freecodecamp.org", icon: "fa-brands fa-free-code-camp", color: "#0A0A23" },
       { label: "HackerRank", href: "https://www.hackerrank.com", icon: "fa-brands fa-hackerrank", color: "#2EC866" },
       { label: "CodePen", href: "https://codepen.io", icon: "fa-brands fa-codepen", color: "#FFFFFF" },
       { label: "JavaScript", href: "https://developer.mozilla.org/docs/Web/JavaScript", icon: "fa-brands fa-js", color: "#F7DF1E" },
-      { label: "Python", href: "https://www.python.org", icon: "fa-brands fa-python", color: "#4B8BBE" },
+      { label: "Python", href: "https://www.python.org", icon: "fa-brands fa-python", color: "#3776AB" },
       { label: "Java", href: "https://www.oracle.com/java", icon: "fa-brands fa-java", color: "#EA2D2E" },
       { label: "Uber", href: "https://uber.com", icon: "fa-brands fa-uber", color: "#FFFFFF" },
       { label: "Steam", href: "https://store.steampowered.com", icon: "fa-brands fa-steam", color: "#00ADEF" },
-      { label: "Swank", href: "https://www.swank.com", icon: "fa-solid fa-film", color: "#F59E0B" },
+      { label: "Swank", href: "https://www.swank.com", icon: "fa-solid fa-film", color: "#FFFFFF" },
     ],
     []
   );
@@ -112,47 +112,22 @@ export default function InlineTechTicker({ height = 120, speed = 60 }) {
             href={it.href}
             target="_blank"
             rel="noreferrer"
-            style={{
-              ...s.pill,
-              borderColor: `${it.color}55`,
-              background: `linear-gradient(135deg, ${it.color}1f, rgba(255,255,255,0.035) 58%, rgba(255,255,255,0.02))`,
-              boxShadow: `0 8px 28px ${it.color}18, inset 0 0 0 1px ${it.color}12`,
-            }}
+            style={s.pill}
             title={it.label}
           >
-            <span
-              style={{
-                ...s.icoBox,
-                background: `${it.color}20`,
-                border: `1px solid ${it.color}66`,
-                boxShadow: `0 0 18px ${it.color}28`,
-              }}
-            >
+            <span style={s.icoBox}>
               <span
                 style={{
                   display: "block",
                   color: it.color,
                   lineHeight: 1,
-                  filter: `drop-shadow(0 0 6px ${it.color}88)`,
-                  fontSize: "clamp(1.25rem, 1.9vw, 1.625rem)",
+                  fontSize: "clamp(1.45rem, 2.2vw, 1.9rem)",
                 }}
               >
                 {renderIcon(it.icon, it.label)}
               </span>
             </span>
             <span style={s.txt}>{it.label}</span>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: 999,
-                background: it.color,
-                boxShadow: `0 0 10px ${it.color}`,
-                opacity: 0.9,
-                flex: "0 0 auto",
-              }}
-            />
           </a>
         ))}
       </div>
@@ -167,43 +142,47 @@ const s = {
     display: "flex",
     alignItems: "center",
     overflow: "hidden",
-    background: "transparent",
-    border: "0",
-    borderRadius: 22,
+    background: "rgba(0,0,0,0.22)",
+    borderTop: "1px solid rgba(255,255,255,0.05)",
+    borderBottom: "1px solid rgba(255,255,255,0.08)",
+    backdropFilter: "blur(8px)",
   },
   track: {
     display: "flex",
-    gap: 24,
-    padding: "14px 10px",
+    gap: 18,
+    padding: "14px 18px",
     width: "max-content",
     willChange: "transform",
   },
   pill: {
     display: "inline-flex",
     alignItems: "center",
-    gap: 14,
-    padding: "14px 20px",
+    gap: 12,
+    padding: "10px 16px",
     borderRadius: 999,
+    background: "rgba(255,255,255,0.06)",
     border: "1px solid rgba(255,255,255,0.12)",
     color: "rgba(255,255,255,0.94)",
     textDecoration: "none",
     fontWeight: 800,
+    boxShadow: "0 1px 8px rgba(0,0,0,0.20)",
     userSelect: "none",
     whiteSpace: "nowrap",
     flex: "0 0 auto",
-    backdropFilter: "blur(10px)",
   },
   icoBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.10)",
     flex: "0 0 auto",
   },
   txt: {
-    fontSize: "clamp(1.125rem, 1.9vw, 1.375rem)",
+    fontSize: "clamp(1rem, 1.6vw, 1.2rem)",
     opacity: 0.96,
     lineHeight: 1.2,
   },
