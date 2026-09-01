@@ -70,6 +70,17 @@ function ICAProjects() {
       button: 'from-amber-700 to-orange-500 hover:from-amber-600 hover:to-orange-400 shadow-amber-950/30'
     },
     {
+      title: 'Ghost Money Millionaire',
+      type: 'Streetwear & E-Commerce Brand',
+      description: 'A premium fashion storefront built around original Ghost Money Millionaire collections, custom apparel concepts, branded product presentation, and a connected commerce workflow.',
+      link: 'https://redavi19-asu.github.io/GhostMoneyMillionaire/',
+      buttonText: 'View Project',
+      buttonType: 'live',
+      card: 'from-lime-950/80 to-slate-950/90 border-lime-500/25',
+      badge: 'bg-lime-500/10 border-lime-400/25 text-lime-200',
+      button: 'from-lime-700 to-emerald-500 hover:from-lime-600 hover:to-emerald-400 shadow-lime-950/30'
+    },
+    {
       title: 'Starlink Event Connectivity',
       type: 'Mobile Internet & Streaming',
       description: 'Reliable high-speed internet and Wi-Fi for outdoor and indoor events, live streamers, productions, pop-ups, remote locations, and temporary sites where dependable connectivity is limited or unavailable. Built around portable network equipment with Starlink service capability.',
