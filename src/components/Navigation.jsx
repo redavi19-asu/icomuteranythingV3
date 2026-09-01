@@ -6,10 +6,7 @@ function Navigation({ activeSection, onRequestService }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50)
-    }
-
+    const handleScroll = () => setIsScrolled(window.scrollY > 50)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
@@ -18,11 +15,9 @@ function Navigation({ activeSection, onRequestService }) {
     { id: 'hero', label: 'Home' },
     { id: 'what-we-do', label: 'Services' },
     { id: 'how-it-works', label: 'How It Works' },
-    { id: 'why-choose-us', label: 'Why Us' },
-    // Insert Software/SaaS nav item before Projects
-    { id: 'ica-projects', label: 'Software' },
-    { id: 'ica-projects', label: 'Projects / Portfolio' },
-    { id: 'who-it-for', label: 'Who It\'s For' },
+    { id: 'software', label: 'Software' },
+    { id: 'ica-projects', label: 'Projects' },
+    { id: 'meet-the-lead-tech', label: 'About' },
   ]
 
   const scrollToSection = (sectionId) => {
@@ -43,19 +38,18 @@ function Navigation({ activeSection, onRequestService }) {
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        {/* Logo */}
-        <motion.div
+        <motion.button
           whileHover={{ scale: 1.05 }}
-          className="cursor-pointer"
+          className="cursor-pointer text-left"
           onClick={() => scrollToSection('hero')}
+          aria-label="Go to home"
         >
           <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
             ICA
           </div>
-        </motion.div>
+        </motion.button>
 
-        {/* Nav Links */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-7">
           {navLinks.map(link => (
             <motion.button
               key={link.id}
@@ -69,7 +63,7 @@ function Navigation({ activeSection, onRequestService }) {
               {activeSection === link.id && (
                 <motion.div
                   layoutId="underline"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"
+                  className="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-500"
                   transition={{ duration: 0.3 }}
                 />
               )}
@@ -77,7 +71,6 @@ function Navigation({ activeSection, onRequestService }) {
           ))}
         </div>
 
-        {/* CTA Button */}
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -87,43 +80,29 @@ function Navigation({ activeSection, onRequestService }) {
           Request Service
         </motion.button>
 
-        {/* Mobile hamburger menu button */}
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="md:hidden flex flex-col gap-1.5 focus:outline-none"
           aria-label="Toggle mobile menu"
         >
-          <motion.span
-            animate={isMobileMenuOpen ? { rotate: 45, y: 10 } : { rotate: 0, y: 0 }}
-            className="w-6 h-0.5 bg-gray-300 block rounded-full"
-          />
-          <motion.span
-            animate={isMobileMenuOpen ? { opacity: 0 } : { opacity: 1 }}
-            className="w-6 h-0.5 bg-gray-300 block rounded-full"
-          />
-          <motion.span
-            animate={isMobileMenuOpen ? { rotate: -45, y: -10 } : { rotate: 0, y: 0 }}
-            className="w-6 h-0.5 bg-gray-300 block rounded-full"
-          />
+          <motion.span animate={isMobileMenuOpen ? { rotate: 45, y: 8 } : { rotate: 0, y: 0 }} className="w-6 h-0.5 bg-gray-300 block rounded-full" />
+          <motion.span animate={isMobileMenuOpen ? { opacity: 0 } : { opacity: 1 }} className="w-6 h-0.5 bg-gray-300 block rounded-full" />
+          <motion.span animate={isMobileMenuOpen ? { rotate: -45, y: -8 } : { rotate: 0, y: 0 }} className="w-6 h-0.5 bg-gray-300 block rounded-full" />
         </motion.button>
       </div>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
               onClick={() => setIsMobileMenuOpen(false)}
               className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
             />
 
-            {/* Mobile Menu Content */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -131,7 +110,7 @@ function Navigation({ activeSection, onRequestService }) {
               transition={{ duration: 0.3 }}
               className="absolute top-full left-0 right-0 bg-dark-950/95 backdrop-blur-md border-b border-blue-500/10 md:hidden z-40"
             >
-              <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-4">
+              <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-3">
                 {navLinks.map(link => (
                   <motion.button
                     key={link.id}
@@ -147,7 +126,6 @@ function Navigation({ activeSection, onRequestService }) {
                   </motion.button>
                 ))}
 
-                {/* Mobile CTA Button */}
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
