@@ -11,6 +11,7 @@ import MeetTheLeadTech from './components/sections/MeetTheLeadTech'
 import WhoItFor from './components/sections/WhoItFor'
 import FinalCTA from './components/sections/FinalCTA'
 import Footer from './components/Footer'
+import CookieBanner from './components/CookieBanner'
 import GlobalCinematicBackground from './components/effects/GlobalCinematicBackground'
 import IntroLoaderOverlay from './components/effects/IntroLoaderOverlay'
 import RequestServiceOverlay from './components/RequestServiceOverlay'
@@ -28,24 +29,18 @@ function App() {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     const setMotionPreference = () => setReduceMotion(mediaQuery.matches)
     setMotionPreference()
-
     mediaQuery.addEventListener('change', setMotionPreference)
 
     const loaderDuration = mediaQuery.matches ? 1200 : 4500
-    const timer = window.setTimeout(() => {
-      setIntroVisible(false)
-    }, loaderDuration)
+    const timer = window.setTimeout(() => setIntroVisible(false), loaderDuration)
 
     const handleScroll = () => {
       const sections = ['hero', 'what-we-do', 'how-it-works', 'why-choose-us', 'software', 'ica-projects', 'meet-the-lead-tech', 'who-it-for', 'final-cta']
-
       for (let section of sections) {
         const element = document.getElementById(section)
         if (element) {
           const rect = element.getBoundingClientRect()
-          if (rect.top <= window.innerHeight / 2) {
-            setActiveSection(section)
-          }
+          if (rect.top <= window.innerHeight / 2) setActiveSection(section)
         }
       }
     }
@@ -61,14 +56,9 @@ function App() {
   return (
     <div className="bg-dark-950 text-white overflow-x-hidden relative">
       <GlobalCinematicBackground activeSection={activeSection} reduceMotion={reduceMotion} />
-
       <div className={`relative z-10 ${introVisible ? 'invisible pointer-events-none' : 'visible'}`}>
         <Navigation activeSection={activeSection} onRequestService={() => setIsRequestServiceOpen(true)} />
-
-        <motion.div style={{ opacity: heroOpacity }}>
-          <Hero />
-        </motion.div>
-
+        <motion.div style={{ opacity: heroOpacity }}><Hero /></motion.div>
         <WhatWeDo onRequestService={() => setIsRequestServiceOpen(true)} />
         <HowItWorks onRequestService={() => setIsRequestServiceOpen(true)} />
         <WhyChooseUs />
@@ -79,8 +69,8 @@ function App() {
         <FinalCTA onRequestService={() => setIsRequestServiceOpen(true)} />
         <Footer />
       </div>
-
       <IntroLoaderOverlay visible={introVisible} reduceMotion={reduceMotion} />
+      {!introVisible && <CookieBanner />}
       <RequestServiceOverlay isOpen={isRequestServiceOpen} onClose={() => setIsRequestServiceOpen(false)} />
     </div>
   )
