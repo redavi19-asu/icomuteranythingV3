@@ -1,6 +1,15 @@
 import React, { useMemo } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 
+const binaryPalette = [
+  { color: 'rgba(103, 232, 249, 0.95)', glow: 'rgba(34, 211, 238, 0.48)' },
+  { color: 'rgba(110, 231, 183, 0.95)', glow: 'rgba(16, 185, 129, 0.46)' },
+  { color: 'rgba(251, 191, 36, 0.95)', glow: 'rgba(245, 158, 11, 0.44)' },
+  { color: 'rgba(248, 113, 113, 0.92)', glow: 'rgba(185, 28, 28, 0.46)' },
+  { color: 'rgba(196, 181, 253, 0.94)', glow: 'rgba(139, 92, 246, 0.45)' },
+  { color: 'rgba(147, 197, 253, 0.95)', glow: 'rgba(59, 130, 246, 0.44)' },
+]
+
 function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
   const { scrollYProgress } = useScroll()
 
@@ -87,20 +96,25 @@ function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
   const binaryLayerOpacity = useTransform(scrollYProgress, [0, 0.45, 1], [0.98, 0.9, 0.76])
 
   const binaryDigits = useMemo(() => {
-    return Array.from({ length: 50 }, (_, index) => ({
-      id: index,
-      value: Math.random() > 0.5 ? '1' : '0',
-      left: `${Math.random() * 100}%`,
-      top: `${Math.random() * 100}%`,
-      driftX: (Math.random() - 0.5) * 110,
-      delay: Math.random() * 6,
-      duration: 5.4 + Math.random() * 7.2,
-      travel: 90 + Math.random() * 190,
-      scale: 0.7 + Math.random() * 0.95,
-      opacity: 0.18 + Math.random() * 0.3,
-      fontSize: 10 + Math.floor(Math.random() * 6),
-      variant: Math.random() > 0.5 ? 'fall' : 'diagonal',
-    }))
+    return Array.from({ length: 50 }, (_, index) => {
+      const palette = binaryPalette[index % binaryPalette.length]
+      return {
+        id: index,
+        value: Math.random() > 0.5 ? '1' : '0',
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        driftX: (Math.random() - 0.5) * 110,
+        delay: Math.random() * 6,
+        duration: 5.4 + Math.random() * 7.2,
+        travel: 90 + Math.random() * 190,
+        scale: 0.7 + Math.random() * 0.95,
+        opacity: 0.18 + Math.random() * 0.3,
+        fontSize: 10 + Math.floor(Math.random() * 6),
+        variant: Math.random() > 0.5 ? 'fall' : 'diagonal',
+        color: palette.color,
+        glow: palette.glow,
+      }
+    })
   }, [])
 
   const streaks = useMemo(() => {
@@ -167,12 +181,13 @@ function GlobalCinematicBackground({ activeSection, reduceMotion = false }) {
             {binaryDigits.map((digit) => (
               <motion.span
                 key={digit.id}
-                className="absolute font-semibold text-blue-200/90 select-none"
+                className="absolute font-semibold select-none"
                 style={{
                   left: digit.left,
                   top: digit.top,
                   fontSize: `${digit.fontSize}px`,
-                  textShadow: '0 0 5px rgba(126,180,255,.44)',
+                  color: digit.color,
+                  textShadow: `0 0 6px ${digit.glow}, 0 0 12px ${digit.glow}`,
                 }}
                 initial={{ opacity: 0, y: 0, scale: digit.scale }}
                 animate={{
