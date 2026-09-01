@@ -10,13 +10,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 )
 
 requestAnimationFrame(() => {
-  const preloader = document.getElementById('pre-react-loader')
-  if (!preloader) return
-
-  preloader.style.opacity = '0'
-  preloader.style.transition = 'opacity 180ms ease-out'
-
-  window.setTimeout(() => {
-    preloader.remove()
-  }, 200)
+  requestAnimationFrame(() => {
+    const preloader = document.getElementById('pre-react-loader')
+    if (preloader) preloader.remove()
+  })
 })
