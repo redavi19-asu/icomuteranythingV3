@@ -63,6 +63,8 @@ function ICAProjects() {
       type: 'Digital Brand Platform',
       description: 'A multi-feature digital brand platform combining original artwork, merchandise, NFTs, and stock-focused tools in one interactive experience.',
       link: 'https://www.intriguedmutts.com/',
+      mascot: 'https://raw.githubusercontent.com/redavi19-asu/intriguedmutts-react/main/intriguedmutts-react/public/intrigued-mutts-society-transparent.png',
+      mascotAlt: 'Intrigued Mutts Society artwork',
       buttonText: 'View Project',
       buttonType: 'live',
       card: 'from-amber-950/80 to-slate-950/90 border-amber-500/25',
@@ -75,6 +77,7 @@ function ICAProjects() {
       description: 'A premium fashion storefront built around original Ghost Money Millionaire collections, custom apparel concepts, branded product presentation, and a connected commerce workflow.',
       link: 'https://redavi19-asu.github.io/GhostMoneyMillionaire/',
       mascot: `${import.meta.env.BASE_URL}ghost-money-mark.svg`,
+      mascotAlt: 'Ghost Money Millionaire crowned ghost mascot',
       buttonText: 'View Project',
       buttonType: 'live',
       card: 'from-lime-950/80 to-slate-950/90 border-lime-500/25',
@@ -138,11 +141,11 @@ function ICAProjects() {
               {project.mascot && (
                 <motion.img
                   src={project.mascot}
-                  alt="Ghost Money Millionaire crowned ghost mascot"
+                  alt={project.mascotAlt || `${project.title} artwork`}
                   initial={{ opacity: 0, rotate: -8, scale: 0.88 }}
                   animate={inView ? { opacity: 0.95, rotate: 0, scale: 1 } : {}}
                   transition={{ duration: 0.5, delay: index * 0.07 + 0.15 }}
-                  className="absolute right-5 top-5 h-20 w-auto drop-shadow-[0_0_18px_rgba(163,230,53,0.28)] pointer-events-none select-none"
+                  className="absolute right-5 top-5 h-20 w-auto max-w-[88px] object-contain drop-shadow-[0_0_18px_rgba(255,255,255,0.16)] pointer-events-none select-none"
                 />
               )}
               <span className={`w-fit max-w-[72%] px-3 py-1 text-xs font-medium rounded-full border ${project.badge}`}>{project.type}</span>
