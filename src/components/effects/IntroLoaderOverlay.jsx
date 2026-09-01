@@ -25,7 +25,7 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
     { id: 5, left: '-8px', top: '-84px', size: 'w-3 h-3', delay: 0.54 },
   ], [])
 
-  const sequenceDuration = reduceMotion ? 1.2 : 3.5
+  const sequenceDuration = reduceMotion ? 1.2 : 4.5
 
   return (
     <AnimatePresence initial={false}>
@@ -77,7 +77,7 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
                     className="absolute inset-x-0 text-2xl md:text-4xl font-semibold text-white/95"
                     initial={{ opacity: 0, y: 22 }}
                     animate={{ opacity: [0, 1, 1, 0], y: [22, 0, 0, -10] }}
-                    transition={{ duration: 0.82, delay: 0.18 + index * 0.72, ease: 'easeInOut' }}
+                    transition={{ duration: 1.0, delay: 0.22 + index * 0.88, ease: 'easeInOut' }}
                   >
                     {word}
                   </motion.div>
@@ -128,7 +128,7 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
                   className="bg-[#050914]"
                   initial={{ opacity: 1 }}
                   animate={{ opacity: [1, 1, 0] }}
-                  transition={{ duration: 0.42, delay: 2.75 + tile.delay, ease: 'easeOut' }}
+                  transition={{ duration: 0.45, delay: 3.7 + tile.delay, ease: 'easeOut' }}
                 />
               ))}
             </div>
