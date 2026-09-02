@@ -85,6 +85,18 @@ function ICAProjects() {
       button: 'from-lime-700 to-emerald-500 hover:from-lime-600 hover:to-emerald-400 shadow-lime-950/30'
     },
     {
+      title: 'Charge Next',
+      type: 'EV Service + Dispatch Platform',
+      description: 'A live mobile-first EV roadside charging platform connected with Dispatch OS for service requests, secure customer flow, driver coordination, job status, and dispatch operations.',
+      link: 'https://redavi19-asu.github.io/chargenext/',
+      brandMark: 'chargenext',
+      buttonText: 'View Charge Next',
+      buttonType: 'live',
+      card: 'from-sky-950/90 via-blue-950/85 to-slate-950/95 border-sky-400/30',
+      badge: 'bg-sky-400/10 border-sky-300/30 text-sky-100',
+      button: 'from-sky-700 via-blue-600 to-indigo-600 hover:from-sky-600 hover:via-blue-500 hover:to-indigo-500 shadow-sky-950/40'
+    },
+    {
       title: 'Starlink Event Connectivity',
       type: 'Mobile Internet & Streaming',
       description: 'Reliable high-speed internet and Wi-Fi for outdoor and indoor events, live streamers, productions, pop-ups, remote locations, and temporary sites where dependable connectivity is limited or unavailable. Built around portable network equipment with Starlink service capability.',
@@ -148,6 +160,59 @@ function ICAProjects() {
                   className="absolute right-5 top-5 h-20 w-auto max-w-[88px] object-contain drop-shadow-[0_0_18px_rgba(255,255,255,0.16)] pointer-events-none select-none"
                 />
               )}
+
+              {project.brandMark === 'chargenext' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.82, y: -6 }}
+                  animate={inView ? { opacity: 1, scale: 1, y: 0 } : {}}
+                  transition={{ duration: 0.5, delay: index * 0.07 + 0.12 }}
+                  className="absolute right-4 top-4 w-[104px] pointer-events-none select-none"
+                  aria-hidden="true"
+                >
+                  <div className="relative mx-auto h-12 w-12">
+                    <motion.div
+                      className="absolute inset-0 rounded-full border border-sky-300/60 bg-sky-400/10"
+                      animate={{
+                        scale: [1, 1.12, 1],
+                        opacity: [0.65, 1, 0.65],
+                        boxShadow: [
+                          '0 0 8px rgba(56,189,248,0.25)',
+                          '0 0 26px rgba(56,189,248,0.82)',
+                          '0 0 8px rgba(56,189,248,0.25)'
+                        ]
+                      }}
+                      transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    <motion.div
+                      className="absolute inset-[5px] rounded-full border-t-2 border-r border-sky-200/90"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 3.6, repeat: Infinity, ease: 'linear' }}
+                    />
+                    <motion.div
+                      className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-200"
+                      animate={{ scale: [0.75, 1.3, 0.75], opacity: [0.55, 1, 0.55] }}
+                      transition={{ duration: 1.25, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    <motion.div
+                      className="absolute left-[8px] right-[8px] top-1/2 h-px origin-center bg-gradient-to-r from-transparent via-cyan-100 to-transparent"
+                      animate={{ rotate: [0, 180, 360] }}
+                      transition={{ duration: 4.8, repeat: Infinity, ease: 'linear' }}
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-[0.11em] text-white drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]">
+                    <span>Charge</span>
+                    <motion.span
+                      className="text-cyan-300"
+                      animate={{ opacity: [0.4, 1, 0.4], scale: [0.9, 1.3, 0.9] }}
+                      transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+                    >
+                      •
+                    </motion.span>
+                    <span>Next</span>
+                  </div>
+                </motion.div>
+              )}
+
               <span className={`w-fit max-w-[72%] px-3 py-1 text-xs font-medium rounded-full border ${project.badge}`}>{project.type}</span>
               <h3 className="text-2xl font-bold mt-5 mb-4 text-white pr-2">{project.title}</h3>
               <p className="text-gray-300 leading-relaxed flex-grow">{project.description}</p>
