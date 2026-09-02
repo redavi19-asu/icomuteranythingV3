@@ -9,10 +9,13 @@ function SoftwareShowcase() {
       <div className="max-w-6xl mx-auto">
         <div className="text-center max-w-3xl mx-auto mb-14">
           <p className="text-xs uppercase tracking-[0.3em] text-blue-300 mb-4">Software by I Computer Anything</p>
-          <h2 className="section-title mb-6">DispatchOS</h2>
+          <h2 className="section-title mb-3">DispatchOS</h2>
+          <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-cyan-300 mb-6">
+            Business • Driver • Customer Logistics Software
+          </p>
           <p className="section-subtitle">
-            A field-service dispatch platform that connects customer booking, dispatcher operations,
-            driver workflows, customer updates, and company controls in one system.
+            One connected logistics platform that links the business, the people in the field,
+            and the customer from booking through completion.
           </p>
         </div>
 
@@ -28,16 +31,17 @@ function SoftwareShowcase() {
           <div className="relative z-10 grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
             <div>
               <div className="inline-flex px-3 py-1 rounded-full border border-blue-400/30 bg-blue-500/10 text-xs font-semibold text-blue-200 mb-5">
-                Flagship Software Product
+                Flagship Logistics Software
               </div>
-              <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-5">Run field operations from one command system.</h3>
+              <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">Run the whole job from one command system.</h3>
+              <p className="text-cyan-300 font-semibold tracking-wide mb-5">Business → Driver → Customer</p>
               <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
-                DispatchOS is designed for service companies that need a cleaner way to receive jobs,
-                assign work, manage drivers, and keep customers informed without stitching together a pile of disconnected tools.
+                DispatchOS acts as the middle layer between your company, your drivers or field team,
+                and your customers — receiving jobs, assigning work, managing field progress, and keeping the customer informed in one connected system.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                {['Booking', 'Dispatch', 'Driver App', 'Customer Updates', 'Company Workspace', 'Billing'].map((item) => (
+                {['Business Workspace', 'Booking', 'Dispatch', 'Driver App', 'Customer Updates', 'Billing'].map((item) => (
                   <span key={item} className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-200">
                     {item}
                   </span>
@@ -66,8 +70,8 @@ function SoftwareShowcase() {
 
             <div className="grid grid-cols-2 gap-4">
               {[
-                ['01', 'Customer books'],
-                ['02', 'Dispatcher assigns'],
+                ['01', 'Customer requests'],
+                ['02', 'Business dispatches'],
                 ['03', 'Driver completes'],
                 ['04', 'Customer stays updated'],
               ].map(([number, label]) => (
