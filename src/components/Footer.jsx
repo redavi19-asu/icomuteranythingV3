@@ -67,8 +67,8 @@ function Footer() {
             transition={{ duration: 0.5 }}
             viewport={{ once: true }}
           >
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent mb-4">
-              ICA
+            <div className="text-2xl font-bold tracking-tight flex items-center mb-4">
+              <span className="bg-gradient-to-b from-red-300 via-red-500 to-red-800 bg-clip-text text-transparent">I</span><span className="bg-gradient-to-b from-orange-200 via-orange-500 to-orange-700 bg-clip-text text-transparent">C</span><span className="bg-gradient-to-b from-gray-200 via-gray-400 to-gray-600 bg-clip-text text-transparent">A</span>
             </div>
             <p className="text-gray-500 text-sm leading-relaxed">
               Premium tech solutions for everyone.
