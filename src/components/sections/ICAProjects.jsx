@@ -20,33 +20,62 @@ function useInViewHook(options) {
   return { ref, inView }
 }
 
+function PortfolioIcon({ name }) {
+  const common = {
+    width: 30,
+    height: 30,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': true,
+  }
+
+  if (name === 'shopping') {
+    return <svg {...common}><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/><path d="M9 13h6"/></svg>
+  }
+  if (name === 'energy') {
+    return <svg {...common}><path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z"/></svg>
+  }
+  if (name === 'legal') {
+    return <svg {...common}><path d="M12 3v18"/><path d="M5 7h14"/><path d="m7 7-4 7h8L7 7Z"/><path d="m17 7-4 7h8l-4-7Z"/><path d="M8 21h8"/></svg>
+  }
+  if (name === 'satellite') {
+    return <svg {...common}><path d="M13 5 9 9l6 6 4-4-6-6Z"/><path d="m5 13-2 2 6 6 2-2"/><path d="M15 3a6 6 0 0 1 6 6"/><path d="M15 6a3 3 0 0 1 3 3"/></svg>
+  }
+  return <svg {...common}><path d="M7 7h10v10H7z"/><path d="M3 12h4M17 12h4M12 3v4M12 17v4"/><circle cx="12" cy="12" r="2.2"/></svg>
+}
+
 function ICAProjects() {
   const [isOverviewOpen, setIsOverviewOpen] = useState(false)
   const { ref, inView } = useInViewHook({ triggerOnce: true, threshold: 0.1 })
 
   const projects = [
     {
-      title: 'Land of Shopping', type: 'Retail Demo', icon: '🛍️',
+      title: 'Land of Shopping', type: 'Retail Demo', iconKey: 'shopping',
       description: 'A storefront-style concept showcasing product presentation, layout structure, and consumer-facing design.',
       link: 'https://redavi19-asu.github.io/Land-of-shopping/', buttonText: 'View Project', buttonType: 'live',
       card: 'from-emerald-950/80 to-slate-950/90 border-emerald-500/25', badge: 'bg-emerald-500/10 border-emerald-400/25 text-emerald-200', button: 'from-emerald-700 to-green-500 hover:from-emerald-600 hover:to-green-400 shadow-emerald-900/30'
     },
     {
-      title: 'Energy Website Example', type: 'Business Demo', icon: '⚡',
+      title: 'Energy Website Example', type: 'Business Demo', iconKey: 'energy',
       description: 'A clean modern business-style site focused on service presentation, trust-building layout, and responsive design.',
       link: 'https://redavi19-asu.github.io/energy-website-example/', buttonText: 'View Project', buttonType: 'live',
       card: 'from-cyan-950/80 to-slate-950/90 border-cyan-500/25', badge: 'bg-cyan-500/10 border-cyan-400/25 text-cyan-200', button: 'from-cyan-700 to-sky-500 hover:from-cyan-600 hover:to-sky-400 shadow-cyan-900/30'
     },
     {
-      title: 'Paralegal Services Demo', type: 'Legal Services Demo', icon: '⚖️',
+      title: 'Paralegal Services Demo', type: 'Legal Services Demo', iconKey: 'legal',
       description: 'A professional demo site built around trust, clarity, and structured service communication for legal support.',
       link: 'https://redavi19-asu.github.io/paralegal-services-demo/', buttonText: 'View Project', buttonType: 'live',
       card: 'from-rose-950/80 to-slate-950/90 border-rose-500/25', badge: 'bg-rose-500/10 border-rose-400/25 text-rose-200', button: 'from-rose-800 to-red-600 hover:from-rose-700 hover:to-red-500 shadow-rose-950/30'
     },
     {
-      title: 'Grand Motor Gallery', type: 'Luxury Dealership Experience', icon: '🏎️',
+      title: 'Grand Motor Gallery', type: 'Luxury Dealership Experience',
       description: 'A premium automotive retail concept using real vehicle photography, curated inventory presentation, concierge appointments, service, detailing, trade-ins, financing, and customer-care workflows.',
       link: 'https://redavi19-asu.github.io/ICA-Motors/', buttonText: 'View Motor Gallery', buttonType: 'live',
+      photo: 'https://unsplash.com/photos/JTHKP2SlSRU/download?force=true&w=480', photoAlt: 'White luxury Mercedes-Benz sedan',
       card: 'from-stone-900/95 via-neutral-900/95 to-stone-950/95 border-amber-200/25', badge: 'bg-amber-100/10 border-amber-200/25 text-amber-100', button: 'from-amber-100 via-stone-200 to-amber-200 text-stone-950 hover:from-white hover:via-amber-100 hover:to-stone-200 shadow-black/40'
     },
     {
@@ -68,13 +97,13 @@ function ICAProjects() {
       card: 'from-sky-950/90 via-blue-950/85 to-slate-950/95 border-sky-400/30', badge: 'bg-sky-400/10 border-sky-300/30 text-sky-100', button: 'from-sky-700 via-blue-600 to-indigo-600 hover:from-sky-600 hover:via-blue-500 hover:to-indigo-500 shadow-sky-950/40'
     },
     {
-      title: 'Starlink Event Connectivity', type: 'Mobile Internet & Streaming', icon: '🛰️',
+      title: 'Starlink Event Connectivity', type: 'Mobile Internet & Streaming', iconKey: 'satellite',
       description: 'Reliable high-speed internet and Wi-Fi for events, live streamers, productions, pop-ups, remote locations, and temporary sites where dependable connectivity is limited or unavailable.',
       buttonText: 'Coming Soon', buttonType: 'coming-soon',
       card: 'from-violet-950/80 to-slate-950/90 border-violet-500/25', badge: 'bg-violet-500/10 border-violet-400/25 text-violet-200', button: 'from-violet-800 to-purple-600 shadow-violet-950/30'
     },
     {
-      title: 'Payments + Fulfillment Pipeline', type: 'Backend Integration', icon: '🔗',
+      title: 'Payments + Fulfillment Pipeline', type: 'Backend Integration', iconKey: 'workflow',
       description: 'Integrated payment processing and fulfillment automation with protected APIs, webhooks, and order routing logic.',
       buttonText: 'Learn More', buttonType: 'overview',
       card: 'from-orange-950/80 to-slate-950/90 border-orange-500/25', badge: 'bg-orange-500/10 border-orange-400/25 text-orange-200', button: 'from-orange-700 to-red-500 hover:from-orange-600 hover:to-red-400 shadow-orange-950/30'
@@ -104,9 +133,17 @@ function ICAProjects() {
                 <motion.img src={project.mascot} alt={project.mascotAlt || `${project.title} artwork`} initial={{ opacity: 0, rotate: -8, scale: 0.88 }} animate={inView ? { opacity: 0.95, rotate: 0, scale: 1 } : {}} transition={{ duration: 0.5, delay: index * 0.07 + 0.15 }} className="absolute right-5 top-5 h-20 w-auto max-w-[112px] object-contain drop-shadow-[0_0_18px_rgba(255,255,255,0.16)] pointer-events-none select-none" />
               )}
 
-              {project.icon && !project.mascot && !project.brandMark && (
-                <motion.div initial={{ opacity: 0, scale: 0.8, rotate: -8 }} animate={inView ? { opacity: 1, scale: 1, rotate: 0 } : {}} transition={{ duration: 0.4, delay: index * 0.07 + 0.1 }} className="absolute right-5 top-5 h-16 w-16 rounded-2xl border border-white/15 bg-white/10 backdrop-blur-md grid place-items-center text-4xl shadow-lg pointer-events-none select-none" aria-hidden="true">
-                  {project.icon}
+              {project.photo && (
+                <motion.div initial={{ opacity: 0, scale: 0.9, y: -4 }} animate={inView ? { opacity: 1, scale: 1, y: 0 } : {}} transition={{ duration: 0.45, delay: index * 0.07 + 0.12 }} className="absolute right-4 top-4 h-[76px] w-[118px] overflow-hidden rounded-2xl border border-amber-100/30 bg-stone-800 shadow-2xl ring-1 ring-white/10 pointer-events-none select-none">
+                  <img src={project.photo} alt={project.photoAlt || ''} className="h-full w-full object-cover object-center" loading="lazy" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/5" />
+                </motion.div>
+              )}
+
+              {project.iconKey && !project.mascot && !project.brandMark && !project.photo && (
+                <motion.div initial={{ opacity: 0, scale: 0.82, rotate: -6 }} animate={inView ? { opacity: 1, scale: 1, rotate: 0 } : {}} transition={{ duration: 0.4, delay: index * 0.07 + 0.1 }} className="absolute right-5 top-5 h-16 w-16 rounded-2xl border border-white/15 bg-gradient-to-br from-white/16 to-white/5 backdrop-blur-md grid place-items-center text-white shadow-[0_14px_34px_rgba(0,0,0,0.32)] ring-1 ring-white/5 pointer-events-none select-none" aria-hidden="true">
+                  <div className="absolute inset-1 rounded-xl bg-black/10" />
+                  <div className="relative"><PortfolioIcon name={project.iconKey} /></div>
                 </motion.div>
               )}
 
