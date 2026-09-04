@@ -4,189 +4,50 @@ import { motion, AnimatePresence } from 'framer-motion'
 function useInViewHook(options) {
   const ref = React.useRef(null)
   const [inView, setInView] = React.useState(false)
-
   React.useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setInView(true)
-        if (options.triggerOnce) observer.unobserve(entry.target)
-      }
+      if (entry.isIntersecting) { setInView(true); if (options.triggerOnce) observer.unobserve(entry.target) }
     }, { threshold: options.threshold || 0.1 })
-
     if (ref.current) observer.observe(ref.current)
     return () => observer.disconnect()
   }, [options.triggerOnce, options.threshold])
-
   return { ref, inView }
-}
-
-function PortfolioIcon({ name }) {
-  const common = {
-    width: 30,
-    height: 30,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.8,
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-    'aria-hidden': true,
-  }
-
-  if (name === 'shopping') {
-    return <svg {...common}><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/><path d="M9 13h6"/></svg>
-  }
-  if (name === 'energy') {
-    return <svg {...common}><path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z"/></svg>
-  }
-  if (name === 'legal') {
-    return <svg {...common}><path d="M12 3v18"/><path d="M5 7h14"/><path d="m7 7-4 7h8L7 7Z"/><path d="m17 7-4 7h8l-4-7Z"/><path d="M8 21h8"/></svg>
-  }
-  if (name === 'satellite') {
-    return <svg {...common}><path d="M13 5 9 9l6 6 4-4-6-6Z"/><path d="m5 13-2 2 6 6 2-2"/><path d="M15 3a6 6 0 0 1 6 6"/><path d="M15 6a3 3 0 0 1 3 3"/></svg>
-  }
-  return <svg {...common}><path d="M7 7h10v10H7z"/><path d="M3 12h4M17 12h4M12 3v4M12 17v4"/><circle cx="12" cy="12" r="2.2"/></svg>
 }
 
 function ICAProjects() {
   const [isOverviewOpen, setIsOverviewOpen] = useState(false)
   const { ref, inView } = useInViewHook({ triggerOnce: true, threshold: 0.1 })
-
   const projects = [
-    {
-      title: 'Land of Shopping', type: 'Retail Demo', iconKey: 'shopping',
-      description: 'A storefront-style concept showcasing product presentation, layout structure, and consumer-facing design.',
-      link: 'https://redavi19-asu.github.io/Land-of-shopping/', buttonText: 'View Project', buttonType: 'live',
-      card: 'from-emerald-950/80 to-slate-950/90 border-emerald-500/25', badge: 'bg-emerald-500/10 border-emerald-400/25 text-emerald-200', button: 'from-emerald-700 to-green-500 hover:from-emerald-600 hover:to-green-400 shadow-emerald-900/30'
-    },
-    {
-      title: 'Energy Website Example', type: 'Business Demo', iconKey: 'energy',
-      description: 'A clean modern business-style site focused on service presentation, trust-building layout, and responsive design.',
-      link: 'https://redavi19-asu.github.io/energy-website-example/', buttonText: 'View Project', buttonType: 'live',
-      card: 'from-cyan-950/80 to-slate-950/90 border-cyan-500/25', badge: 'bg-cyan-500/10 border-cyan-400/25 text-cyan-200', button: 'from-cyan-700 to-sky-500 hover:from-cyan-600 hover:to-sky-400 shadow-cyan-900/30'
-    },
-    {
-      title: 'Paralegal Services Demo', type: 'Legal Services Demo', iconKey: 'legal',
-      description: 'A professional demo site built around trust, clarity, and structured service communication for legal support.',
-      link: 'https://redavi19-asu.github.io/paralegal-services-demo/', buttonText: 'View Project', buttonType: 'live',
-      card: 'from-rose-950/80 to-slate-950/90 border-rose-500/25', badge: 'bg-rose-500/10 border-rose-400/25 text-rose-200', button: 'from-rose-800 to-red-600 hover:from-rose-700 hover:to-red-500 shadow-rose-950/30'
-    },
-    {
-      title: 'Grand Motor Gallery', type: 'Luxury Dealership Experience',
-      description: 'A premium automotive retail concept using real vehicle photography, curated inventory presentation, concierge appointments, service, detailing, trade-ins, financing, and customer-care workflows.',
-      link: 'https://redavi19-asu.github.io/ICA-Motors/', buttonText: 'View Motor Gallery', buttonType: 'live',
-      photo: 'https://unsplash.com/photos/JTHKP2SlSRU/download?force=true&w=480', photoAlt: 'White luxury Mercedes-Benz sedan',
-      card: 'from-stone-900/95 via-neutral-900/95 to-stone-950/95 border-amber-200/25', badge: 'bg-amber-100/10 border-amber-200/25 text-amber-100', button: 'from-amber-100 via-stone-200 to-amber-200 text-stone-950 hover:from-white hover:via-amber-100 hover:to-stone-200 shadow-black/40'
-    },
-    {
-      title: 'IntriguedMutts.com', type: 'Digital Brand Platform',
-      description: 'A multi-feature digital brand platform combining original artwork, merchandise, NFTs, and stock-focused tools in one interactive experience.',
-      link: 'https://www.intriguedmutts.com/', mascot: 'https://raw.githubusercontent.com/redavi19-asu/intriguedmutts-react/main/intriguedmutts-react/public/intrigued-mutts-society-transparent.png', mascotAlt: 'Intrigued Mutts Society artwork', buttonText: 'View Project', buttonType: 'live',
-      card: 'from-amber-950/80 to-slate-950/90 border-amber-500/25', badge: 'bg-amber-500/10 border-amber-400/25 text-amber-200', button: 'from-amber-700 to-orange-500 hover:from-amber-600 hover:to-orange-400 shadow-amber-950/30'
-    },
-    {
-      title: 'Ghost Money Millionaire', type: 'Streetwear & E-Commerce Brand',
-      description: 'A premium fashion storefront built around original Ghost Money Millionaire collections, custom apparel concepts, branded product presentation, and a connected commerce workflow.',
-      link: 'https://redavi19-asu.github.io/GhostMoneyMillionaire/', mascot: `${import.meta.env.BASE_URL}ghost-money-mark.svg`, mascotAlt: 'Ghost Money Millionaire crowned ghost mascot', buttonText: 'View Project', buttonType: 'live',
-      card: 'from-lime-950/80 to-slate-950/90 border-lime-500/25', badge: 'bg-lime-500/10 border-lime-400/25 text-lime-200', button: 'from-lime-700 to-emerald-500 hover:from-lime-600 hover:to-emerald-400 shadow-lime-950/30'
-    },
-    {
-      title: 'Charge Next', type: 'EV Service + Dispatch Platform',
-      description: 'A live mobile-first EV roadside charging platform connected with Dispatch OS for service requests, secure customer flow, driver coordination, job status, and dispatch operations.',
-      link: 'https://redavi19-asu.github.io/chargenext/', brandMark: 'chargenext', buttonText: 'View Charge Next', buttonType: 'live',
-      card: 'from-sky-950/90 via-blue-950/85 to-slate-950/95 border-sky-400/30', badge: 'bg-sky-400/10 border-sky-300/30 text-sky-100', button: 'from-sky-700 via-blue-600 to-indigo-600 hover:from-sky-600 hover:via-blue-500 hover:to-indigo-500 shadow-sky-950/40'
-    },
-    {
-      title: 'Starlink Event Connectivity', type: 'Mobile Internet & Streaming', iconKey: 'satellite',
-      description: 'Reliable high-speed internet and Wi-Fi for events, live streamers, productions, pop-ups, remote locations, and temporary sites where dependable connectivity is limited or unavailable.',
-      buttonText: 'Coming Soon', buttonType: 'coming-soon',
-      card: 'from-violet-950/80 to-slate-950/90 border-violet-500/25', badge: 'bg-violet-500/10 border-violet-400/25 text-violet-200', button: 'from-violet-800 to-purple-600 shadow-violet-950/30'
-    },
-    {
-      title: 'Payments + Fulfillment Pipeline', type: 'Backend Integration', iconKey: 'workflow',
-      description: 'Integrated payment processing and fulfillment automation with protected APIs, webhooks, and order routing logic.',
-      buttonText: 'Learn More', buttonType: 'overview',
-      card: 'from-orange-950/80 to-slate-950/90 border-orange-500/25', badge: 'bg-orange-500/10 border-orange-400/25 text-orange-200', button: 'from-orange-700 to-red-500 hover:from-orange-600 hover:to-red-400 shadow-orange-950/30'
-    },
+    { title:'Land of Shopping', type:'Retail Demo', visual:'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=320&q=85', visualAlt:'Premium retail shopping checkout', description:'A storefront-style concept showcasing product presentation, layout structure, and consumer-facing design.', link:'https://redavi19-asu.github.io/Land-of-shopping/', buttonText:'View Project', buttonType:'live', card:'from-emerald-950/80 to-slate-950/90 border-emerald-500/25', badge:'bg-emerald-500/10 border-emerald-400/25 text-emerald-200', button:'from-emerald-700 to-green-500 hover:from-emerald-600 hover:to-green-400 shadow-emerald-900/30' },
+    { title:'Energy Website Example', type:'Business Demo', visual:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&w=320&q=85', visualAlt:'Electric energy infrastructure', description:'A clean modern business-style site focused on service presentation, trust-building layout, and responsive design.', link:'https://redavi19-asu.github.io/energy-website-example/', buttonText:'View Project', buttonType:'live', card:'from-cyan-950/80 to-slate-950/90 border-cyan-500/25', badge:'bg-cyan-500/10 border-cyan-400/25 text-cyan-200', button:'from-cyan-700 to-sky-500 hover:from-cyan-600 hover:to-sky-400 shadow-cyan-900/30' },
+    { title:'Paralegal Services Demo', type:'Legal Services Demo', visual:'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=320&q=85', visualAlt:'Professional scales of justice', description:'A professional demo site built around trust, clarity, and structured service communication for legal support.', link:'https://redavi19-asu.github.io/paralegal-services-demo/', buttonText:'View Project', buttonType:'live', card:'from-rose-950/80 to-slate-950/90 border-rose-500/25', badge:'bg-rose-500/10 border-rose-400/25 text-rose-200', button:'from-rose-800 to-red-600 hover:from-rose-700 hover:to-red-500 shadow-rose-950/30' },
+    { title:'Grand Motor Gallery', type:'Luxury Dealership Experience', description:'A premium automotive retail concept using real vehicle photography, curated inventory presentation, concierge appointments, service, detailing, trade-ins, financing, and customer-care workflows.', link:'https://redavi19-asu.github.io/ICA-Motors/', buttonText:'View Motor Gallery', buttonType:'live', photo:'https://unsplash.com/photos/JTHKP2SlSRU/download?force=true&w=480', photoAlt:'White luxury Mercedes-Benz sedan', card:'from-stone-900/95 via-neutral-900/95 to-stone-950/95 border-amber-200/25', badge:'bg-amber-100/10 border-amber-200/25 text-amber-100', button:'from-amber-100 via-stone-200 to-amber-200 text-stone-950 hover:from-white hover:via-amber-100 hover:to-stone-200 shadow-black/40' },
+    { title:'IntriguedMutts.com', type:'Digital Brand Platform', description:'A multi-feature digital brand platform combining original artwork, merchandise, NFTs, and stock-focused tools in one interactive experience.', link:'https://www.intriguedmutts.com/', mascot:'https://raw.githubusercontent.com/redavi19-asu/intriguedmutts-react/main/intriguedmutts-react/public/intrigued-mutts-society-transparent.png', mascotAlt:'Intrigued Mutts Society artwork', buttonText:'View Project', buttonType:'live', card:'from-amber-950/80 to-slate-950/90 border-amber-500/25', badge:'bg-amber-500/10 border-amber-400/25 text-amber-200', button:'from-amber-700 to-orange-500 hover:from-amber-600 hover:to-orange-400 shadow-amber-950/30' },
+    { title:'Ghost Money Millionaire', type:'Streetwear & E-Commerce Brand', description:'A premium fashion storefront built around original Ghost Money Millionaire collections, custom apparel concepts, branded product presentation, and a connected commerce workflow.', link:'https://redavi19-asu.github.io/GhostMoneyMillionaire/', mascot:`${import.meta.env.BASE_URL}ghost-money-mark.svg`, mascotAlt:'Ghost Money Millionaire crowned ghost mascot', buttonText:'View Project', buttonType:'live', card:'from-lime-950/80 to-slate-950/90 border-lime-500/25', badge:'bg-lime-500/10 border-lime-400/25 text-lime-200', button:'from-lime-700 to-emerald-500 hover:from-lime-600 hover:to-emerald-400 shadow-lime-950/30' },
+    { title:'Charge Next', type:'EV Service + Dispatch Platform', description:'A live mobile-first EV roadside charging platform connected with Dispatch OS for service requests, secure customer flow, driver coordination, job status, and dispatch operations.', link:'https://redavi19-asu.github.io/chargenext/', brandMark:'chargenext', buttonText:'View Charge Next', buttonType:'live', card:'from-sky-950/90 via-blue-950/85 to-slate-950/95 border-sky-400/30', badge:'bg-sky-400/10 border-sky-300/30 text-sky-100', button:'from-sky-700 via-blue-600 to-indigo-600 hover:from-sky-600 hover:via-blue-500 hover:to-indigo-500 shadow-sky-950/40' },
+    { title:'Starlink Event Connectivity', type:'Mobile Internet & Streaming', visual:'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=320&q=85', visualAlt:'Satellite connectivity technology', description:'Reliable high-speed internet and Wi-Fi for events, live streamers, productions, pop-ups, remote locations, and temporary sites where dependable connectivity is limited or unavailable.', buttonText:'Coming Soon', buttonType:'coming-soon', card:'from-violet-950/80 to-slate-950/90 border-violet-500/25', badge:'bg-violet-500/10 border-violet-400/25 text-violet-200', button:'from-violet-800 to-purple-600 shadow-violet-950/30' },
+    { title:'Payments + Fulfillment Pipeline', type:'Backend Integration', visual:'https://images.unsplash.com/photo-1556742044-3c52d6e88c62?auto=format&fit=crop&w=320&q=85', visualAlt:'Modern payment terminal and checkout', description:'Integrated payment processing and fulfillment automation with protected APIs, webhooks, and order routing logic.', buttonText:'Learn More', buttonType:'overview', card:'from-orange-950/80 to-slate-950/90 border-orange-500/25', badge:'bg-orange-500/10 border-orange-400/25 text-orange-200', button:'from-orange-700 to-red-500 hover:from-orange-600 hover:to-red-400 shadow-orange-950/30' },
   ]
 
   const handleButtonClick = (project) => {
-    if (project.buttonType === 'live' && project.link) {
-      window.open(project.link, '_blank', 'noopener,noreferrer')
-      return
-    }
+    if (project.buttonType === 'live' && project.link) { window.open(project.link, '_blank', 'noopener,noreferrer'); return }
     if (project.buttonType === 'overview') setIsOverviewOpen(true)
   }
 
   return (
-    <section id="ica-projects" className="py-24 px-6 relative">
-      <div className="max-w-6xl mx-auto">
-        <motion.div ref={ref} initial={{ opacity: 0, y: 18 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.5 }} className="text-center mb-16">
-          <h2 className="section-title mb-6">Projects / Portfolio</h2>
-          <p className="section-subtitle">A selection of live builds, infrastructure work, and working project examples.</p>
-        </motion.div>
-
-        <div className="mobile-horizontal-scroll grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {projects.map((project, index) => (
-            <motion.article key={project.title} initial={{ opacity: 0, y: 24 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.45, delay: index * 0.07 }} whileHover={{ y: -8 }} className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br ${project.card} p-8 backdrop-blur-sm flex flex-col min-h-[330px] shadow-xl`}>
-              {project.mascot && (
-                <motion.img src={project.mascot} alt={project.mascotAlt || `${project.title} artwork`} initial={{ opacity: 0, rotate: -8, scale: 0.88 }} animate={inView ? { opacity: 0.95, rotate: 0, scale: 1 } : {}} transition={{ duration: 0.5, delay: index * 0.07 + 0.15 }} className="absolute right-5 top-5 h-20 w-auto max-w-[112px] object-contain drop-shadow-[0_0_18px_rgba(255,255,255,0.16)] pointer-events-none select-none" />
-              )}
-
-              {project.photo && (
-                <motion.div initial={{ opacity: 0, scale: 0.9, y: -4 }} animate={inView ? { opacity: 1, scale: 1, y: 0 } : {}} transition={{ duration: 0.45, delay: index * 0.07 + 0.12 }} className="absolute right-4 top-4 h-[76px] w-[118px] overflow-hidden rounded-2xl border border-amber-100/30 bg-stone-800 shadow-2xl ring-1 ring-white/10 pointer-events-none select-none">
-                  <img src={project.photo} alt={project.photoAlt || ''} className="h-full w-full object-cover object-center" loading="lazy" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/5" />
-                </motion.div>
-              )}
-
-              {project.iconKey && !project.mascot && !project.brandMark && !project.photo && (
-                <motion.div initial={{ opacity: 0, scale: 0.82, rotate: -6 }} animate={inView ? { opacity: 1, scale: 1, rotate: 0 } : {}} transition={{ duration: 0.4, delay: index * 0.07 + 0.1 }} className="absolute right-5 top-5 h-16 w-16 rounded-2xl border border-white/15 bg-gradient-to-br from-white/16 to-white/5 backdrop-blur-md grid place-items-center text-white shadow-[0_14px_34px_rgba(0,0,0,0.32)] ring-1 ring-white/5 pointer-events-none select-none" aria-hidden="true">
-                  <div className="absolute inset-1 rounded-xl bg-black/10" />
-                  <div className="relative"><PortfolioIcon name={project.iconKey} /></div>
-                </motion.div>
-              )}
-
-              {project.brandMark === 'chargenext' && (
-                <motion.div initial={{ opacity: 0, scale: 0.82, y: -6 }} animate={inView ? { opacity: 1, scale: 1, y: 0 } : {}} transition={{ duration: 0.5, delay: index * 0.07 + 0.12 }} className="absolute right-4 top-4 w-[104px] pointer-events-none select-none" aria-hidden="true">
-                  <div className="relative mx-auto h-12 w-12">
-                    <motion.div className="absolute inset-0 rounded-full border border-sky-300/60 bg-sky-400/10" animate={{ scale: [1, 1.12, 1], opacity: [0.65, 1, 0.65], boxShadow: ['0 0 8px rgba(56,189,248,0.25)','0 0 26px rgba(56,189,248,0.82)','0 0 8px rgba(56,189,248,0.25)'] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }} />
-                    <motion.div className="absolute inset-[5px] rounded-full border-t-2 border-r border-sky-200/90" animate={{ rotate: 360 }} transition={{ duration: 3.6, repeat: Infinity, ease: 'linear' }} />
-                    <motion.div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-200" animate={{ scale: [0.75, 1.3, 0.75], opacity: [0.55, 1, 0.55] }} transition={{ duration: 1.25, repeat: Infinity, ease: 'easeInOut' }} />
-                  </div>
-                  <div className="mt-2 flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-[0.11em] text-white drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]"><span>Charge</span><motion.span className="text-cyan-300" animate={{ opacity: [0.4, 1, 0.4], scale: [0.9, 1.3, 0.9] }} transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}>•</motion.span><span>Next</span></div>
-                </motion.div>
-              )}
-
-              <span className={`w-fit max-w-[72%] px-3 py-1 text-xs font-medium rounded-full border ${project.badge}`}>{project.type}</span>
-              <h3 className="text-2xl font-bold mt-5 mb-4 text-white pr-2">{project.title}</h3>
-              <p className="text-gray-300 leading-relaxed flex-grow">{project.description}</p>
-              <motion.button whileHover={project.buttonType !== 'coming-soon' ? { scale: 1.03 } : {}} whileTap={project.buttonType !== 'coming-soon' ? { scale: 0.98 } : {}} onClick={() => handleButtonClick(project)} disabled={project.buttonType === 'coming-soon'} className={`mt-7 w-full px-6 py-3 rounded-lg font-semibold transition-all bg-gradient-to-r ${project.button} ${project.buttonType === 'coming-soon' ? 'opacity-45 cursor-default text-white' : 'cursor-pointer shadow-lg'}`}>
-                {project.buttonText}{project.buttonType !== 'coming-soon' ? ' →' : ''}
-              </motion.button>
-            </motion.article>
-          ))}
-        </div>
-
-        <div className="flex justify-center mt-14"><motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }} onClick={() => document.getElementById('final-cta')?.scrollIntoView({ behavior: 'smooth' })} className="px-8 py-3 rounded-lg bg-gradient-to-r from-slate-700 to-slate-600 text-white font-semibold border border-white/10 shadow-lg">Need custom software?</motion.button></div>
-
-        <AnimatePresence>
-          {isOverviewOpen && (
-            <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsOverviewOpen(false)} className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" />
-              <motion.div initial={{ opacity: 0, scale: 0.96, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 20 }} className="fixed inset-0 z-50 flex items-center justify-center px-4">
-                <div className="w-full max-w-2xl rounded-3xl border border-orange-400/20 bg-slate-950 p-8 shadow-2xl">
-                  <div className="flex justify-between gap-6"><div><p className="text-sm uppercase tracking-[0.2em] text-orange-300">Backend Integration</p><h3 className="text-3xl font-bold text-white mt-2">Payments + Fulfillment Pipeline</h3></div><button onClick={() => setIsOverviewOpen(false)} className="text-gray-400 hover:text-white text-2xl" aria-label="Close">×</button></div>
-                  <p className="mt-6 text-gray-300 leading-7">Secure checkout, backend validation, protected API handling, webhooks, order routing, and automated fulfillment designed to work as one reliable pipeline.</p>
-                  <div className="mt-6 grid sm:grid-cols-2 gap-3 text-sm text-gray-200">{['Secure checkout flow', 'Backend API handling', 'Webhook automation', 'Cloudflare protection', 'Order routing', 'Scalable workflow design'].map(item => (<div key={item} className="rounded-xl border border-orange-400/15 bg-orange-500/5 px-4 py-3">✓ {item}</div>))}</div>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </div>
-    </section>
+    <section id="ica-projects" className="py-24 px-6 relative"><div className="max-w-6xl mx-auto">
+      <motion.div ref={ref} initial={{opacity:0,y:18}} animate={inView?{opacity:1,y:0}:{}} transition={{duration:.5}} className="text-center mb-16"><h2 className="section-title mb-6">Projects / Portfolio</h2><p className="section-subtitle">A selection of live builds, infrastructure work, and working project examples.</p></motion.div>
+      <div className="mobile-horizontal-scroll grid md:grid-cols-2 lg:grid-cols-3 gap-8">{projects.map((project,index)=>(
+        <motion.article key={project.title} initial={{opacity:0,y:24}} animate={inView?{opacity:1,y:0}:{}} transition={{duration:.45,delay:index*.07}} whileHover={{y:-8}} className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br ${project.card} p-8 backdrop-blur-sm flex flex-col min-h-[330px] shadow-xl`}>
+          {project.mascot&&<motion.img src={project.mascot} alt={project.mascotAlt||`${project.title} artwork`} initial={{opacity:0,rotate:-8,scale:.88}} animate={inView?{opacity:.95,rotate:0,scale:1}:{}} transition={{duration:.5,delay:index*.07+.15}} className="absolute right-5 top-5 h-20 w-auto max-w-[112px] object-contain drop-shadow-[0_0_18px_rgba(255,255,255,0.16)] pointer-events-none select-none"/>}
+          {project.photo&&<motion.div initial={{opacity:0,scale:.9,y:-4}} animate={inView?{opacity:1,scale:1,y:0}:{}} transition={{duration:.45,delay:index*.07+.12}} className="absolute right-4 top-4 h-[76px] w-[118px] overflow-hidden rounded-2xl border border-amber-100/30 bg-stone-800 shadow-2xl ring-1 ring-white/10 pointer-events-none select-none"><img src={project.photo} alt={project.photoAlt||''} className="h-full w-full object-cover object-center" loading="lazy"/><div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-white/5"/></motion.div>}
+          {project.visual&&!project.mascot&&!project.brandMark&&!project.photo&&<motion.div initial={{opacity:0,scale:.9,y:-4}} animate={inView?{opacity:1,scale:1,y:0}:{}} transition={{duration:.45,delay:index*.07+.12}} className="absolute right-4 top-4 h-[76px] w-[104px] overflow-hidden rounded-2xl border border-white/20 bg-black/25 shadow-2xl ring-1 ring-white/10 pointer-events-none select-none"><img src={project.visual} alt={project.visualAlt||''} className="h-full w-full object-cover object-center" loading="lazy"/><div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-white/5"/></motion.div>}
+          {project.brandMark==='chargenext'&&<motion.div initial={{opacity:0,scale:.82,y:-6}} animate={inView?{opacity:1,scale:1,y:0}:{}} transition={{duration:.5,delay:index*.07+.12}} className="absolute right-4 top-4 w-[104px] pointer-events-none select-none" aria-hidden="true"><div className="relative mx-auto h-12 w-12"><motion.div className="absolute inset-0 rounded-full border border-sky-300/60 bg-sky-400/10" animate={{scale:[1,1.12,1],opacity:[.65,1,.65],boxShadow:['0 0 8px rgba(56,189,248,.25)','0 0 26px rgba(56,189,248,.82)','0 0 8px rgba(56,189,248,.25)']}} transition={{duration:2.2,repeat:Infinity,ease:'easeInOut'}}/><motion.div className="absolute inset-[5px] rounded-full border-t-2 border-r border-sky-200/90" animate={{rotate:360}} transition={{duration:3.6,repeat:Infinity,ease:'linear'}}/><motion.div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-200" animate={{scale:[.75,1.3,.75],opacity:[.55,1,.55]}} transition={{duration:1.25,repeat:Infinity,ease:'easeInOut'}}/></div><div className="mt-2 flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-[.11em] text-white drop-shadow-[0_0_8px_rgba(56,189,248,.5)]"><span>Charge</span><motion.span className="text-cyan-300" animate={{opacity:[.4,1,.4],scale:[.9,1.3,.9]}} transition={{duration:1.1,repeat:Infinity,ease:'easeInOut'}}>•</motion.span><span>Next</span></div></motion.div>}
+          <span className={`w-fit max-w-[72%] px-3 py-1 text-xs font-medium rounded-full border ${project.badge}`}>{project.type}</span><h3 className="text-2xl font-bold mt-5 mb-4 text-white pr-2">{project.title}</h3><p className="text-gray-300 leading-relaxed flex-grow">{project.description}</p><motion.button whileHover={project.buttonType!=='coming-soon'?{scale:1.03}:{}} whileTap={project.buttonType!=='coming-soon'?{scale:.98}:{}} onClick={()=>handleButtonClick(project)} disabled={project.buttonType==='coming-soon'} className={`mt-7 w-full px-6 py-3 rounded-lg font-semibold transition-all bg-gradient-to-r ${project.button} ${project.buttonType==='coming-soon'?'opacity-45 cursor-default text-white':'cursor-pointer shadow-lg'}`}>{project.buttonText}{project.buttonType!=='coming-soon'?' →':''}</motion.button>
+        </motion.article>))}</div>
+      <div className="flex justify-center mt-14"><motion.button whileHover={{scale:1.04}} whileTap={{scale:.98}} onClick={()=>document.getElementById('final-cta')?.scrollIntoView({behavior:'smooth'})} className="px-8 py-3 rounded-lg bg-gradient-to-r from-slate-700 to-slate-600 text-white font-semibold border border-white/10 shadow-lg">Need custom software?</motion.button></div>
+      <AnimatePresence>{isOverviewOpen&&<><motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={()=>setIsOverviewOpen(false)} className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"/><motion.div initial={{opacity:0,scale:.96,y:20}} animate={{opacity:1,scale:1,y:0}} exit={{opacity:0,scale:.96,y:20}} className="fixed inset-0 z-50 flex items-center justify-center px-4"><div className="w-full max-w-2xl rounded-3xl border border-orange-400/20 bg-slate-950 p-8 shadow-2xl"><div className="flex justify-between gap-6"><div><p className="text-sm uppercase tracking-[.2em] text-orange-300">Backend Integration</p><h3 className="text-3xl font-bold text-white mt-2">Payments + Fulfillment Pipeline</h3></div><button onClick={()=>setIsOverviewOpen(false)} className="text-gray-400 hover:text-white text-2xl" aria-label="Close">×</button></div><p className="mt-6 text-gray-300 leading-7">Secure checkout, backend validation, protected API handling, webhooks, order routing, and automated fulfillment designed to work as one reliable pipeline.</p><div className="mt-6 grid sm:grid-cols-2 gap-3 text-sm text-gray-200">{['Secure checkout flow','Backend API handling','Webhook automation','Cloudflare protection','Order routing','Scalable workflow design'].map(item=><div key={item} className="rounded-xl border border-orange-400/15 bg-orange-500/5 px-4 py-3">✓ {item}</div>)}</div></div></motion.div></>}</AnimatePresence>
+    </div></section>
   )
 }
-
 export default ICAProjects
