@@ -1,10 +1,12 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 
 const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform/'
-const ICA_UNIFIED_URL = 'https://github.com/redavi19-asu/ICA-unified-'
+const ICA_UNIFIED_PREVIEW = '/images/ica-unified-dashboard-preview.jpg'
 
 function SoftwareShowcase() {
+  const [showUnifiedPreview, setShowUnifiedPreview] = useState(false)
+
   return (
     <section id="software" className="py-24 px-6 relative">
       <div className="max-w-6xl mx-auto">
@@ -105,7 +107,7 @@ function SoftwareShowcase() {
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.15),transparent_34%),radial-gradient(circle_at_85%_80%,rgba(34,211,238,0.09),transparent_32%)] pointer-events-none" />
 
-          <div className="relative z-10 grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
+          <div className="relative z-10 grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:items-center">
             <div>
               <div className="inline-flex px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-xs font-semibold text-emerald-200 mb-5">
                 Unified Learning + Business Operations
@@ -125,53 +127,61 @@ function SoftwareShowcase() {
               </div>
 
               <div className="mt-9 flex flex-col sm:flex-row gap-3">
-                <a
-                  href={ICA_UNIFIED_URL}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={() => setShowUnifiedPreview(true)}
                   className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-950/30"
                 >
                   View ICA Unified
-                </a>
+                </button>
                 <span className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-emerald-400/20 bg-emerald-500/5 text-emerald-100 font-semibold">
-                  Server Preview Coming Next
+                  Coming Soon
                 </span>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/35 p-4 md:p-5 shadow-inner">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.24em] text-emerald-300">ICA Unified</p>
-                  <p className="text-white font-bold text-lg">Company Workspace</p>
-                </div>
-                <span className="text-[10px] px-2 py-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-emerald-300">ACTIVE</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  ['Learning', 'Courses + progress'],
-                  ['People', 'Roles + onboarding'],
-                  ['Credentials', 'Issue + verify'],
-                  ['Documents', 'Acknowledge + track'],
-                  ['Reports', 'Compliance snapshot'],
-                  ['Platform', 'Super Admin control'],
-                ].map(([title, label]) => (
-                  <div key={title} className="min-h-24 rounded-xl border border-white/10 bg-white/[0.035] p-4">
-                    <span className="block text-emerald-300 text-xs font-mono mb-3">{title}</span>
-                    <span className="block text-white text-sm font-semibold">{label}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-500/[0.06] px-4 py-3 flex items-center justify-between gap-4">
-                <span className="text-xs text-gray-300">Multi-company tenant isolation</span>
-                <span className="text-xs text-emerald-300">SYSTEM READY</span>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowUnifiedPreview(true)}
+              className="group block w-full overflow-hidden rounded-2xl border border-white/10 bg-black/35 p-2 md:p-3 shadow-inner text-left"
+              aria-label="Open larger ICA Unified dashboard preview"
+            >
+              <img
+                src={ICA_UNIFIED_PREVIEW}
+                alt="ICA Unified dashboard preview"
+                className="w-full h-auto rounded-xl border border-white/10 transition-transform duration-300 group-hover:scale-[1.01]"
+              />
+              <span className="block px-2 pt-3 text-xs text-emerald-300">Dashboard preview • click to enlarge</span>
+            </button>
           </div>
         </motion.div>
       </div>
+
+      {showUnifiedPreview && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm p-4 md:p-8 flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="ICA Unified dashboard preview"
+          onClick={() => setShowUnifiedPreview(false)}
+        >
+          <div className="relative w-full max-w-7xl" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setShowUnifiedPreview(false)}
+              className="absolute -top-12 right-0 px-4 py-2 rounded-lg border border-white/20 bg-black/60 text-white hover:bg-white/10"
+            >
+              Close
+            </button>
+            <img
+              src={ICA_UNIFIED_PREVIEW}
+              alt="Large ICA Unified dashboard preview"
+              className="w-full max-h-[85vh] object-contain rounded-2xl border border-white/10 shadow-2xl"
+            />
+            <p className="mt-3 text-center text-sm text-gray-300">ICA Unified • LMS + AMS Business Management Platform • Coming Soon</p>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
