@@ -102,6 +102,14 @@ function WhatWeDo({ onRequestService }) {
       useCases: ['You want to reduce expensive IT emergencies','You don\'t have an in-house IT department','You want a consistent technical contact','You need regular maintenance and patching','You\'re scaling and need flexible IT support']
     },
     {
+      title: 'Website Maintenance & Management', category: 'Advanced Service',
+      description: 'Ongoing website updates, troubleshooting, hosting support, migrations, security, backups, and deployment management.',
+      icon: '🖥️', color: 'from-violet-500/20 to-blue-600/20', borderColor: 'border-violet-400/30',
+      overview: 'I can take over the day-to-day technical care of an existing website, whether it is hosted on a cloud platform, traditional web host, VPS, or private server. I handle updates, fixes, deployments, migrations, and the technical work needed to keep the site reliable and current.',
+      includes: ['Content and design updates','Bug fixes and troubleshooting','Hosting and deployment support','Website migrations and server moves','Domain, DNS, SSL, and Cloudflare support','Backups, security updates, and performance checks','API, form, payment, and third-party integration maintenance','Ongoing site improvements and feature updates'],
+      useCases: ['You already have a website but need someone to maintain it','Your developer is no longer available','You want to move your site to a new host, cloud platform, or server','Your website needs regular updates without rebuilding it','You need help fixing deployment, domain, SSL, or integration problems','You want an ongoing technical partner who can keep the site moving']
+    },
+    {
       title: 'Event Tech Deployment', category: 'Advanced Service',
       description: 'Technology setup and hands-on support for conferences, presentations, pop-ups, and events.',
       icon: '🎥', color: 'from-cyan-500/20 to-blue-600/20', borderColor: 'border-cyan-500/30',
