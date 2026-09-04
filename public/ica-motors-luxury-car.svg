@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 140" role="img" aria-labelledby="title desc">
+  <title id="title">ICA Motors luxury sedan mark</title>
+  <desc id="desc">A stylized premium long-wheelbase luxury sedan silhouette in polished silver tones.</desc>
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="0.35" stop-color="#cbd5e1"/>
+      <stop offset="0.7" stop-color="#94a3b8"/>
+      <stop offset="1" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#334155"/>
+    </linearGradient>
+    <radialGradient id="wheel" cx="50%" cy="45%" r="58%">
+      <stop offset="0" stop-color="#cbd5e1"/>
+      <stop offset="0.25" stop-color="#475569"/>
+      <stop offset="0.56" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#020617"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <ellipse cx="160" cy="117" rx="132" ry="10" fill="#020617" opacity=".65"/>
+  <path d="M40 92c9-22 27-34 54-39l31-7c16-18 39-27 70-27h22c18 0 33 8 47 23l18 20c13 3 23 8 30 16 5 5 8 12 8 21v7H27v-5c0-4 3-8 13-9Z" fill="url(#body)" stroke="#f8fafc" stroke-opacity=".55" stroke-width="2" filter="url(#glow)"/>
+  <path d="M133 48c13-14 31-20 57-20h23c12 0 23 5 34 16l13 14-127-10Z" fill="url(#glass)" stroke="#94a3b8" stroke-width="1.6"/>
+  <path d="M96 59 62 68c-9 3-15 9-19 18h56l11-27H96Z" fill="#94a3b8" opacity=".35"/>
+  <path d="M270 67h17c10 1 17 5 23 11l-42 1 2-12Z" fill="#f8fafc" opacity=".75"/>
+  <rect x="48" y="84" width="227" height="3" rx="1.5" fill="#f8fafc" opacity=".55"/>
+  <path d="M118 58h3v40h-3zM214 57h3v42h-3z" fill="#64748b" opacity=".8"/>
+  <rect x="226" y="69" width="19" height="3" rx="1.5" fill="#e2e8f0" opacity=".9"/>
+  <circle cx="88" cy="101" r="23" fill="url(#wheel)" stroke="#cbd5e1" stroke-width="2"/>
+  <circle cx="88" cy="101" r="10" fill="#94a3b8" stroke="#e2e8f0" stroke-width="2"/>
+  <circle cx="245" cy="101" r="23" fill="url(#wheel)" stroke="#cbd5e1" stroke-width="2"/>
+  <circle cx="245" cy="101" r="10" fill="#94a3b8" stroke="#e2e8f0" stroke-width="2"/>
+  <path d="M298 82h12v7h-16z" fill="#f8fafc"/>
+  <path d="M38 83h16v7H33z" fill="#fef3c7" opacity=".9"/>
+</svg>
