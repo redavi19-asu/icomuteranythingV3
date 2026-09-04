@@ -59,6 +59,19 @@ function ICAProjects() {
       button: 'from-rose-800 to-red-600 hover:from-rose-700 hover:to-red-500 shadow-rose-950/30'
     },
     {
+      title: 'ICA Motors',
+      type: 'Automotive Dealership Platform',
+      description: 'A premium dealership experience with new and used inventory, service scheduling, detailing, car wash, financing, trade-in, fleet sales, customer portal concepts, home delivery, and appointment booking.',
+      link: 'https://redavi19-asu.github.io/ICA-Motors/',
+      mascot: `${import.meta.env.BASE_URL}ica-motors-luxury-car.svg`,
+      mascotAlt: 'ICA Motors premium luxury sedan mark',
+      buttonText: 'View ICA Motors',
+      buttonType: 'live',
+      card: 'from-zinc-950/95 via-slate-950/95 to-neutral-900/95 border-slate-300/25',
+      badge: 'bg-slate-200/10 border-slate-200/25 text-slate-100',
+      button: 'from-slate-200 via-zinc-300 to-slate-400 text-slate-950 hover:from-white hover:via-slate-200 hover:to-zinc-300 shadow-black/40'
+    },
+    {
       title: 'IntriguedMutts.com',
       type: 'Digital Brand Platform',
       description: 'A multi-feature digital brand platform combining original artwork, merchandise, NFTs, and stock-focused tools in one interactive experience.',
@@ -157,7 +170,7 @@ function ICAProjects() {
                   initial={{ opacity: 0, rotate: -8, scale: 0.88 }}
                   animate={inView ? { opacity: 0.95, rotate: 0, scale: 1 } : {}}
                   transition={{ duration: 0.5, delay: index * 0.07 + 0.15 }}
-                  className="absolute right-5 top-5 h-20 w-auto max-w-[88px] object-contain drop-shadow-[0_0_18px_rgba(255,255,255,0.16)] pointer-events-none select-none"
+                  className="absolute right-5 top-5 h-20 w-auto max-w-[112px] object-contain drop-shadow-[0_0_18px_rgba(255,255,255,0.16)] pointer-events-none select-none"
                 />
               )}
 
@@ -222,7 +235,7 @@ function ICAProjects() {
                 whileTap={project.buttonType !== 'coming-soon' ? { scale: 0.98 } : {}}
                 onClick={() => handleButtonClick(project)}
                 disabled={project.buttonType === 'coming-soon'}
-                className={`mt-7 w-full px-6 py-3 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${project.button} ${project.buttonType === 'coming-soon' ? 'opacity-45 cursor-default' : 'cursor-pointer shadow-lg'}`}
+                className={`mt-7 w-full px-6 py-3 rounded-lg font-semibold transition-all bg-gradient-to-r ${project.button} ${project.buttonType === 'coming-soon' ? 'opacity-45 cursor-default text-white' : 'cursor-pointer shadow-lg'}`}
               >
                 {project.buttonText}{project.buttonType !== 'coming-soon' ? ' →' : ''}
               </motion.button>
