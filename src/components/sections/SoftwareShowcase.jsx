@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 
 const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform/'
-const ICA_PREVIEW_URL = 'https://redavi19-asu.github.io/icomuteranythingV3/images/ica-unified-dashboard-preview.jpg'
+const ICA_PREVIEW_URL = 'https://icomputeranything.com/images/ica-unified-dashboard-preview.jpg'
 
 function SoftwareShowcase() {
   const [showUnifiedPreview, setShowUnifiedPreview] = useState(false)
