@@ -70,30 +70,33 @@ function CookieBanner() {
   return (
     <>
       <div
-        className="fixed bottom-0 left-0 w-full z-50 bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-white shadow-lg px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4"
+        className="fixed bottom-0 left-0 w-full z-50 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-300 text-zinc-950 border-t-2 border-amber-500 shadow-[0_-8px_30px_rgba(0,0,0,0.22)] px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4"
         role="dialog"
         aria-live="polite"
       >
-        <div className="flex-1 text-sm md:text-base">
-          We use essential cookies to keep this site working and optional cookies to understand site usage and improve the experience. You can accept all, reject non-essential cookies, or manage your preferences.
+        <div className="flex-1 text-sm md:text-base font-medium flex items-start gap-3">
+          <span className="text-xl leading-none" aria-hidden="true">⚠️</span>
+          <span>
+            This site uses essential cookies to keep things working properly. Optional cookies may also be used to understand site usage and improve your experience. You can accept all, reject non-essential cookies, or manage your preferences.
+          </span>
         </div>
-        <div className="flex gap-2 mt-2 md:mt-0">
+        <div className="flex flex-wrap justify-center gap-2 mt-2 md:mt-0">
           <button
-            className="btn-primary px-4 py-2 text-sm rounded-lg"
+            className="px-4 py-2 text-sm font-semibold rounded-lg bg-zinc-950 text-white hover:bg-zinc-800 transition-colors"
             onClick={handleAcceptAll}
             aria-label="Accept all cookies"
           >
             Accept All
           </button>
           <button
-            className="btn-secondary px-4 py-2 text-sm rounded-lg"
+            className="px-4 py-2 text-sm font-semibold rounded-lg bg-white/80 text-zinc-950 border border-zinc-800 hover:bg-white transition-colors"
             onClick={handleReject}
             aria-label="Reject non-essential cookies"
           >
             Reject Non-Essential
           </button>
           <button
-            className="btn-secondary px-4 py-2 text-sm rounded-lg border-blue-400"
+            className="px-4 py-2 text-sm font-semibold rounded-lg bg-transparent text-zinc-950 border border-zinc-800 hover:bg-amber-200 transition-colors"
             onClick={handleManage}
             aria-label="Manage cookie preferences"
           >
