@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 
 const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform/'
+const ICA_UNIFIED_URL = 'https://ica-unified.ryanedavis.workers.dev/'
 const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview.svg'
 
 function SoftwareShowcase() {
@@ -145,16 +146,16 @@ function SoftwareShowcase() {
           <div className="relative z-10 grid gap-10 lg:grid-cols-[.92fr_1.08fr] lg:items-center">
             <div>
               <div className="inline-flex px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-xs font-semibold text-emerald-200 mb-5">
-                Multi-Tenant Cloud SaaS • Coming Soon
+                Multi-Tenant Cloud SaaS
               </div>
               <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">One workspace for learning and business operations.</h3>
-              <p className="text-emerald-300 font-semibold tracking-wide mb-5">Learning → People → Credentials → Documents → Reports</p>
+              <p className="text-emerald-300 font-semibold tracking-wide mb-5">One company → One database → One login → One member record</p>
               <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
-                ICA Unified gives each company its own secure cloud workspace, then gives employees, managers, administrators, and platform staff the right view for the work they need to do. Its architecture is designed around connected front-end experiences, backend services, APIs, authentication, and database-driven business workflows.
+                ICA Unified connects AMS and LMS workflows inside the same cloud platform. A company can use ICA Unified as its portal or connect its existing website to the ICA Unified backend, keeping people, learning, credentials, documents, compliance, and reporting tied to the same organization data.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                {['Learning', 'People', 'Credentials', 'Documents', 'Compliance', 'Reports', 'Super Admin', 'Cloud Backend'].map((item) => (
+                {['Learning', 'People', 'Credentials', 'Documents', 'Compliance', 'Reports', 'Website Integration', 'Cloud Backend'].map((item) => (
                   <span key={item} className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-200">
                     {item}
                   </span>
@@ -162,15 +163,16 @@ function SoftwareShowcase() {
               </div>
 
               <div className="mt-9 flex flex-col sm:flex-row gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowUnifiedPreview(true)}
+                <a
+                  href={ICA_UNIFIED_URL}
+                  target="_blank"
+                  rel="noreferrer"
                   className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-950/30"
                 >
                   View ICA Unified
-                </button>
+                </a>
                 <span className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-emerald-400/20 bg-emerald-500/5 text-emerald-100 font-semibold">
-                  Full Platform Coming Soon
+                  14-Day Trial Available
                 </span>
               </div>
             </div>
