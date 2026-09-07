@@ -692,3 +692,92 @@
     grid-template-columns: 1fr;
   }
 }
+
+.master-product-actions button {
+  border: 0;
+  background: #5b5f52;
+  color: #fffaf0;
+  padding: 10px;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .09em;
+  cursor: pointer;
+}
+
+.master-product-admin-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
+  gap: 24px;
+  align-items: end;
+}
+
+.master-product-admin-head h2 {
+  margin: 7px 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 42px;
+  font-weight: 500;
+}
+
+.master-product-admin-copy {
+  max-width: 700px;
+  color: #686a61;
+  line-height: 1.6;
+  font-size: 12px;
+}
+
+.master-back-button {
+  margin-bottom: 18px;
+  border: 1px solid #b8b2a5;
+  background: transparent;
+  color: #4c4f46;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.master-add-user {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.master-add-user input {
+  min-width: 0;
+  border: 1px solid #aaa598;
+  background: #fffdf7;
+  color: #24251f;
+  padding: 11px 12px;
+  font: inherit;
+}
+
+.master-add-user button {
+  border: 0;
+  background: #20221d;
+  color: #f5f1e7;
+  padding: 11px 13px;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.master-add-user button:disabled,
+.master-table-action:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .master-product-admin-head {
+    grid-template-columns: 1fr;
+  }
+
+  .master-add-user {
+    grid-template-columns: 1fr;
+  }
+}
