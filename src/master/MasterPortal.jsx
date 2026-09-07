@@ -235,7 +235,7 @@ function MasterLogin({ onAuthenticated }) {
   )
 }
 
-function ProductCard({ product, health }) {
+function ProductCard({ product, health, onManageUsers }) {
   const slug = product.slug
   const publicUrl = PRODUCT_LINKS[slug]
   const adminUrl = PRODUCT_ADMIN_LINKS[slug]
@@ -269,6 +269,9 @@ function ProductCard({ product, health }) {
       </div>
 
       <div className="master-product-actions">
+        <button type="button" onClick={() => onManageUsers(product)}>
+          MANAGE USERS
+        </button>
         {publicUrl && (
           <a href={publicUrl} target="_blank" rel="noreferrer">
             OPEN PRODUCT
@@ -288,6 +291,10 @@ function MasterDashboard({ user, onLogout }) {
   const [summary, setSummary] = useState(null)
   const [users, setUsers] = useState([])
   const [view, setView] = useState('overview')
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [productUsers, setProductUsers] = useState([])
+  const [productEmail, setProductEmail] = useState('')
+  const [productBusy, setProductBusy] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -322,6 +329,61 @@ function MasterDashboard({ user, onLogout }) {
     () => summary?.products || [],
     [summary]
   )
+
+
+  async function openProductUsers(product) {
+    setSelectedProduct(product)
+    setView('product-users')
+    setError('')
+    setProductBusy(true)
+    try {
+      const data = await api(`/platform/products/${encodeURIComponent(product.slug)}/users`)
+      setProductUsers(data.users || [])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setProductBusy(false)
+    }
+  }
+
+  async function addProductUser(event) {
+    event.preventDefault()
+    if (!selectedProduct || !productEmail.trim()) return
+    setProductBusy(true)
+    setError('')
+    try {
+      await api(`/platform/products/${encodeURIComponent(selectedProduct.slug)}/users`, {
+        method: 'POST',
+        body: JSON.stringify({ email: productEmail.trim(), plan: 'comp' }),
+      })
+      setProductEmail('')
+      await openProductUsers(selectedProduct)
+      await load()
+    } catch (err) {
+      setError(err.message)
+      setProductBusy(false)
+    }
+  }
+
+  async function changeProductAccess(target, accessStatus) {
+    if (!selectedProduct) return
+    setProductBusy(true)
+    setError('')
+    try {
+      await api(
+        `/platform/products/${encodeURIComponent(selectedProduct.slug)}/users/${encodeURIComponent(target.id)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ accessStatus }),
+        }
+      )
+      await openProductUsers(selectedProduct)
+      await load()
+    } catch (err) {
+      setError(err.message)
+      setProductBusy(false)
+    }
+  }
 
   async function changeUserStatus(target, status) {
     try {
@@ -382,6 +444,7 @@ function MasterDashboard({ user, onLogout }) {
               {view === 'users' && 'Users & Access'}
               {view === 'sales' && 'Sales & Billing'}
               {view === 'health' && 'Platform Health'}
+              {view === 'product-users' && `${selectedProduct?.name || 'Product'} Users`}
             </h1>
           </div>
           <button onClick={load}>REFRESH DATA</button>
@@ -411,6 +474,7 @@ function MasterDashboard({ user, onLogout }) {
                   key={product.id}
                   product={product}
                   health={summary?.health?.[product.slug]}
+                  onManageUsers={openProductUsers}
                 />
               ))}
             </div>
@@ -544,6 +608,88 @@ function MasterDashboard({ user, onLogout }) {
               subscriptions, monthly recurring revenue, failed payments, comped accounts
               and product-by-product sales will land here.
             </p>
+          </section>
+        )}
+
+
+        {view === 'product-users' && selectedProduct && (
+          <section className="master-table-card">
+            <div className="master-product-admin-head">
+              <div>
+                <button className="master-back-button" onClick={() => setView('overview')}>
+                  ← BACK TO PRODUCTS
+                </button>
+                <p className="master-eyebrow">PRODUCT ACCESS CONTROL</p>
+                <h2>{selectedProduct.name} Users</h2>
+                <p className="master-product-admin-copy">
+                  Add an existing ICA account to this product, or kick/reactivate product access without disabling the person's entire ICA account.
+                </p>
+              </div>
+              <form className="master-add-user" onSubmit={addProductUser}>
+                <input
+                  type="email"
+                  placeholder="user@email.com"
+                  value={productEmail}
+                  onChange={(event) => setProductEmail(event.target.value)}
+                  required
+                />
+                <button disabled={productBusy}>ADD USER BY EMAIL</button>
+              </form>
+            </div>
+
+            {productBusy && !productUsers.length ? (
+              <p className="master-empty">Loading product users…</p>
+            ) : (
+              <div className="master-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>USER</th>
+                      <th>ACCOUNT</th>
+                      <th>PLAN</th>
+                      <th>PRODUCT ACCESS</th>
+                      <th>LAST LOGIN</th>
+                      <th>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {productUsers.map((target) => (
+                      <tr key={target.id}>
+                        <td>
+                          <strong>{target.display_name || '—'}</strong>
+                          <small>{target.email}</small>
+                        </td>
+                        <td>{String(target.account_status || 'active').toUpperCase()}</td>
+                        <td>{String(target.plan || '—').toUpperCase()}</td>
+                        <td>{String(target.access_status || 'active').toUpperCase()}</td>
+                        <td>{target.last_login_at ? new Date(Number(target.last_login_at)).toLocaleString() : '—'}</td>
+                        <td>
+                          {target.role === 'owner' ? (
+                            <span className="master-owner-tag">MASTER</span>
+                          ) : (
+                            <button
+                              className="master-table-action"
+                              disabled={productBusy}
+                              onClick={() => changeProductAccess(
+                                target,
+                                target.access_status === 'active' ? 'suspended' : 'active'
+                              )}
+                            >
+                              {target.access_status === 'active' ? 'KICK' : 'REACTIVATE'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {!productUsers.length && (
+                      <tr>
+                        <td colSpan="6">No users have access to this product yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         )}
 
