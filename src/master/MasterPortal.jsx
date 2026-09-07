@@ -6,7 +6,7 @@ const API_URL =
 
 const TURNSTILE_SITE_KEY =
   import.meta.env.VITE_ICA_MASTER_TURNSTILE_SITE_KEY ||
-  '0x4AAAAAAErtQB79-x1-UTHQ'
+  '0x4AAAAAAErtQB79-xi-UTHQ'
 
 const PRODUCT_LINKS = {
   scenepilot: 'https://scenepilot.ryanedavis.workers.dev/',
