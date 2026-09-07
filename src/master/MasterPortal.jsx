@@ -707,11 +707,43 @@ function MasterDashboard({ user, onLogout }) {
             <div className="master-health-grid">
               {products.map((product) => {
                 const serviceHealth = summary?.health?.[product.slug]
+                const checks = [
+                  ['FRONTEND', serviceHealth?.frontend],
+                  ['API', serviceHealth?.api],
+                  ['DATABASE', serviceHealth?.database],
+                ]
+
                 return (
-                  <article key={product.id}>
-                    <i className={serviceHealth?.online ? 'good' : ''} />
-                    <strong>{product.name}</strong>
-                    <span>{serviceHealth?.online ? 'ONLINE' : 'OFFLINE / CHECK'}</span>
+                  <article key={product.id} className="master-health-card">
+                    <div className="master-health-card-head">
+                      <div>
+                        <i className={serviceHealth?.online ? 'good' : serviceHealth ? 'bad' : ''} />
+                        <strong>{product.name}</strong>
+                      </div>
+                      <span>{serviceHealth?.online ? 'HEALTHY' : serviceHealth ? 'CHECK REQUIRED' : 'CHECKING'}</span>
+                    </div>
+
+                    <div className="master-health-checks">
+                      {checks.map(([label, check]) => (
+                        <div key={label}>
+                          <span className="master-health-check-name">{label}</span>
+                          <span className={`master-health-light ${check?.ok ? 'good' : check ? 'bad' : ''}`} />
+                          <strong>{check?.ok ? 'ONLINE' : check ? 'DOWN' : 'WAITING'}</strong>
+                          <small>
+                            {check?.status ? `HTTP ${check.status}` : 'NO RESPONSE'}
+                            {Number.isFinite(check?.latencyMs) ? ` • ${check.latencyMs}ms` : ''}
+                          </small>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="master-health-footer">
+                      <span>
+                        LAST CHECK {serviceHealth?.checkedAt
+                          ? new Date(Number(serviceHealth.checkedAt)).toLocaleTimeString()
+                          : '—'}
+                      </span>
+                    </div>
                   </article>
                 )
               })}
