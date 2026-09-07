@@ -3,6 +3,9 @@
   "name": "ica-master-platform",
   "main": "index.js",
   "compatibility_date": "2026-09-07",
+  "compatibility_flags": [
+    "global_fetch_strictly_public"
+  ],
   "vars": {
     "ALLOWED_ORIGINS": "https://icomputeranything.com,https://www.icomputeranything.com,https://redavi19-asu.github.io"
   },
