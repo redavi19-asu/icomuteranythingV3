@@ -15,8 +15,12 @@ import CookieBanner from './components/CookieBanner'
 import GlobalCinematicBackground from './components/effects/GlobalCinematicBackground'
 import IntroLoaderOverlay from './components/effects/IntroLoaderOverlay'
 import RequestServiceOverlay from './components/RequestServiceOverlay'
+import MasterPortal from './master/MasterPortal'
+import './master/master.css'
 
 function App() {
+  const isMasterRoute = window.location.pathname.startsWith('/master')
+
   const [activeSection, setActiveSection] = useState('hero')
   const [introVisible, setIntroVisible] = useState(true)
   const [reduceMotion, setReduceMotion] = useState(false)
@@ -52,6 +56,10 @@ function App() {
       window.removeEventListener('scroll', handleScroll)
     }
   }, [])
+
+  if (isMasterRoute) {
+    return <MasterPortal />
+  }
 
   return (
     <div className="bg-dark-950 text-white overflow-x-hidden relative">
