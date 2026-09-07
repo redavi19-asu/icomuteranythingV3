@@ -9,6 +9,12 @@
   "vars": {
     "ALLOWED_ORIGINS": "https://icomputeranything.com,https://www.icomputeranything.com,https://redavi19-asu.github.io"
   },
+  "services": [
+    {
+      "binding": "SCENEPILOT",
+      "service": "scenepilot"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
