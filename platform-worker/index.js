@@ -326,6 +326,7 @@ async function checkEndpoint(url, { expectJson = false } = {}) {
 
     return {
       ok: response.ok,
+      reachable: response.status > 0 && response.status < 500,
       status: response.status,
       latencyMs: Date.now() - started,
       data,
@@ -343,7 +344,7 @@ async function checkEndpoint(url, { expectJson = false } = {}) {
 async function productHealth(env) {
   const services = {
     scenepilot: {
-      frontend: "https://scenepilot.ryanedavis.workers.dev/",
+      frontend: "https://scenepilot.ryanedavis.workers.dev/app",
       api: "https://scenepilot.ryanedavis.workers.dev/api/health",
     },
     dispatchos: {
@@ -351,7 +352,7 @@ async function productHealth(env) {
       api: "https://dispatchos-auth-api.ryanedavis.workers.dev/health",
     },
     "ica-unified": {
-      frontend: "https://ica-unified.ryanedavis.workers.dev/",
+      frontend: "https://ica-unified.ryanedavis.workers.dev/platform",
       api: "https://ica-unified.ryanedavis.workers.dev/api/health",
     },
   };
