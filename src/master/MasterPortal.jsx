@@ -232,7 +232,7 @@ function MasterLogin({ onAuthenticated }) {
   )
 }
 
-function ProductCard({ product }) {
+function ProductCard({ product, health }) {
   const slug = product.slug
   const publicUrl = PRODUCT_LINKS[slug]
   const adminUrl = PRODUCT_ADMIN_LINKS[slug]
@@ -241,8 +241,8 @@ function ProductCard({ product }) {
     <article className="master-product-card">
       <div className="master-product-topline">
         <span className="master-product-status">
-          <i className={product.status === 'active' ? 'good' : ''} />
-          {String(product.status || 'unknown').toUpperCase()}
+          <i className={health?.online ? 'good' : ''} />
+          {health?.online ? 'ONLINE' : 'OFFLINE / CHECK'}
         </span>
         <span>{Number(product.user_count || 0)} USERS</span>
       </div>
@@ -404,7 +404,11 @@ function MasterDashboard({ user, onLogout }) {
 
             <div className="master-product-grid">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  health={summary?.health?.[product.slug]}
+                />
               ))}
             </div>
 
@@ -552,13 +556,16 @@ function MasterDashboard({ user, onLogout }) {
             </p>
 
             <div className="master-health-grid">
-              {products.map((product) => (
-                <article key={product.id}>
-                  <i className={product.status === 'active' ? 'good' : ''} />
-                  <strong>{product.name}</strong>
-                  <span>{String(product.status || 'unknown').toUpperCase()}</span>
-                </article>
-              ))}
+              {products.map((product) => {
+                const serviceHealth = summary?.health?.[product.slug]
+                return (
+                  <article key={product.id}>
+                    <i className={serviceHealth?.online ? 'good' : ''} />
+                    <strong>{product.name}</strong>
+                    <span>{serviceHealth?.online ? 'ONLINE' : 'OFFLINE / CHECK'}</span>
+                  </article>
+                )
+              })}
             </div>
           </section>
         )}
