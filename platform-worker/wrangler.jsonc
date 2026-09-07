@@ -13,6 +13,14 @@
     {
       "binding": "SCENEPILOT",
       "service": "scenepilot"
+    },
+    {
+      "binding": "DISPATCHOS",
+      "service": "dispatchos-auth-api"
+    },
+    {
+      "binding": "ICA_UNIFIED",
+      "service": "ica-unified"
     }
   ],
   "d1_databases": [
