@@ -302,49 +302,98 @@ async function handleLogout(request, env) {
   return json({ ok: true });
 }
 
-async function productHealth() {
+async function checkEndpoint(url, { expectJson = false } = {}) {
+  const started = Date.now();
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(url, {
+      headers: { Accept: expectJson ? "application/json" : "*/*" },
+      redirect: "follow",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    let data = null;
+    if (expectJson) {
+      try {
+        data = await response.json();
+      } catch (_) {}
+    }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      latencyMs: Date.now() - started,
+      data,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      latencyMs: Date.now() - started,
+      error: String(error?.message || error),
+    };
+  }
+}
+
+async function productHealth(env) {
   const services = {
-    scenepilot: "https://scenepilot.ryanedavis.workers.dev/api/health",
-    dispatchos: "https://dispatchos-auth-api.ryanedavis.workers.dev/health",
-    "ica-unified": "https://ica-unified.ryanedavis.workers.dev/api/health",
+    scenepilot: {
+      frontend: "https://scenepilot.ryanedavis.workers.dev/",
+      api: "https://scenepilot.ryanedavis.workers.dev/api/health",
+    },
+    dispatchos: {
+      frontend: "https://redavi19-asu.github.io/icomputer-dispatch-platform/",
+      api: "https://dispatchos-auth-api.ryanedavis.workers.dev/health",
+    },
+    "ica-unified": {
+      frontend: "https://ica-unified.ryanedavis.workers.dev/",
+      api: "https://ica-unified.ryanedavis.workers.dev/api/health",
+    },
   };
 
   const entries = await Promise.all(
-    Object.entries(services).map(async ([slug, url]) => {
+    Object.entries(services).map(async ([slug, endpoints]) => {
+      const [frontend, api] = await Promise.all([
+        checkEndpoint(endpoints.frontend),
+        checkEndpoint(endpoints.api, { expectJson: true }),
+      ]);
+
+      const database = {
+        ok: false,
+        status: 0,
+        latencyMs: null,
+        detail: "Shared ICA D1",
+      };
+
+      const dbStarted = Date.now();
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-
-        const response = await fetch(url, {
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeout);
-
-        let data = {};
-        try {
-          data = await response.json();
-        } catch (_) {}
-
-        return [
-          slug,
-          {
-            online: response.ok,
-            status: response.status,
-            data,
-          },
-        ];
+        const row = await env.DB.prepare("SELECT 1 AS ok").first();
+        database.ok = Number(row?.ok || 0) === 1;
+        database.status = database.ok ? 200 : 503;
+        database.latencyMs = Date.now() - dbStarted;
       } catch (error) {
-        return [
-          slug,
-          {
-            online: false,
-            status: 0,
-            error: String(error?.message || error),
-          },
-        ];
+        database.error = String(error?.message || error);
+        database.latencyMs = Date.now() - dbStarted;
       }
+
+      const online = Boolean(frontend.ok && api.ok && database.ok);
+
+      return [
+        slug,
+        {
+          online,
+          checkedAt: Date.now(),
+          frontend,
+          api,
+          database,
+          serviceData: api.data || null,
+        },
+      ];
     })
   );
 
@@ -410,7 +459,7 @@ async function dashboardSummary(request, env) {
       ORDER BY created_at DESC
       LIMIT 30`
     ).all(),
-    productHealth(),
+    productHealth(env),
   ]);
 
   return json({
