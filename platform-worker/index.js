@@ -1,6 +1,6 @@
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const PASSWORD_ITERATIONS = 210000;
+const PASSWORD_ITERATIONS = 100000;
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -572,7 +572,10 @@ export default {
       }
     } catch (error) {
       console.error("ICA_MASTER_API_ERROR", error);
-      response = json({ error: "ICA master platform service error." }, 500);
+      response = json({
+        error: "ICA master platform service error.",
+        detail: error instanceof Error ? error.message : String(error)
+      }, 500);
     }
 
     const headers = new Headers(response.headers);
