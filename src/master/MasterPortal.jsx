@@ -9,9 +9,9 @@ const TURNSTILE_SITE_KEY =
   '0x4AAAAAAErtQB79-xi-UTHQ'
 
 const PRODUCT_LINKS = {
-  scenepilot: 'https://scenepilot.ryanedavis.workers.dev/',
+  scenepilot: 'https://scenepilot.ryanedavis.workers.dev/app',
   dispatchos: 'https://redavi19-asu.github.io/icomputer-dispatch-platform/',
-  'ica-unified': 'https://ica-unified.ryanedavis.workers.dev/',
+  'ica-unified': 'https://ica-unified.ryanedavis.workers.dev/platform',
 }
 
 const PRODUCT_ADMIN_LINKS = {
@@ -244,10 +244,24 @@ function ProductCard({ product, health, onManageUsers }) {
     <article className="master-product-card">
       <div className="master-product-topline">
         <span className="master-product-status">
-          <i className={health?.online ? 'good' : ''} />
-          {health?.online ? 'ONLINE' : 'OFFLINE / CHECK'}
+          <i className={health?.online ? 'good' : health ? 'bad' : ''} />
+          {health?.online ? 'HEALTHY' : health ? 'CHECK REQUIRED' : 'CHECKING'}
         </span>
         <span>{Number(product.user_count || 0)} USERS</span>
+      </div>
+
+      <div className="master-product-health-strip">
+        {[
+          ['WEB', health?.frontend],
+          ['API', health?.api],
+          ['DB', health?.database],
+        ].map(([label, check]) => (
+          <span key={label} title={check?.error || ''}>
+            <i className={check?.ok ? 'good' : check ? 'bad' : ''} />
+            <b>{label}</b>
+            <small>{check?.ok ? 'UP' : check ? 'DOWN' : 'WAIT'}</small>
+          </span>
+        ))}
       </div>
 
       <h3>{product.name}</h3>
@@ -447,7 +461,9 @@ function MasterDashboard({ user, onLogout }) {
               {view === 'product-users' && `${selectedProduct?.name || 'Product'} Users`}
             </h1>
           </div>
-          <button onClick={load}>REFRESH DATA</button>
+          <button onClick={load} disabled={loading} title="Re-run all platform health checks and refresh users, companies and access data">
+            {loading ? 'CHECKING…' : 'REFRESH DATA'}
+          </button>
         </header>
 
         {error && <div className="master-error wide">{error}</div>}
