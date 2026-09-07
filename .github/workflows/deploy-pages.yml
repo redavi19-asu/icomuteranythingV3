@@ -34,7 +34,7 @@ jobs:
       - name: Build
         env:
           VITE_ICA_MASTER_API_URL: https://ica-master-platform.ryanedavis.workers.dev
-          VITE_ICA_MASTER_TURNSTILE_SITE_KEY: ${{ vars.VITE_ICA_MASTER_TURNSTILE_SITE_KEY }}
+          VITE_ICA_MASTER_TURNSTILE_SITE_KEY: 0x4AAAAAAErtQB79-x1-UTHQ
         run: npm run build
 
       - name: Add SPA fallback
