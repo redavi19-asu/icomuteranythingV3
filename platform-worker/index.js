@@ -302,6 +302,55 @@ async function handleLogout(request, env) {
   return json({ ok: true });
 }
 
+async function productHealth() {
+  const services = {
+    scenepilot: "https://scenepilot.ryanedavis.workers.dev/api/health",
+    dispatchos: "https://dispatchos-auth-api.ryanedavis.workers.dev/health",
+    "ica-unified": "https://ica-unified.ryanedavis.workers.dev/api/health",
+  };
+
+  const entries = await Promise.all(
+    Object.entries(services).map(async ([slug, url]) => {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(url, {
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeout);
+
+        let data = {};
+        try {
+          data = await response.json();
+        } catch (_) {}
+
+        return [
+          slug,
+          {
+            online: response.ok,
+            status: response.status,
+            data,
+          },
+        ];
+      } catch (error) {
+        return [
+          slug,
+          {
+            online: false,
+            status: 0,
+            error: String(error?.message || error),
+          },
+        ];
+      }
+    })
+  );
+
+  return Object.fromEntries(entries);
+}
+
 async function dashboardSummary(request, env) {
   const auth = await requireOwner(request, env);
   if (auth.response) return auth.response;
@@ -314,6 +363,7 @@ async function dashboardSummary(request, env) {
     productsResult,
     organizationsResult,
     recentEventsResult,
+    health,
   ] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS count FROM users").first(),
     env.DB.prepare("SELECT COUNT(*) AS count FROM users WHERE status = 'active'").first(),
@@ -360,6 +410,7 @@ async function dashboardSummary(request, env) {
       ORDER BY created_at DESC
       LIMIT 30`
     ).all(),
+    productHealth(),
   ]);
 
   return json({
@@ -373,6 +424,7 @@ async function dashboardSummary(request, env) {
     products: productsResult.results || [],
     organizations: organizationsResult.results || [],
     recentEvents: recentEventsResult.results || [],
+    health,
   });
 }
 
