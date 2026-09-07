@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform/'
 const ICA_UNIFIED_URL = 'https://ica-unified.ryanedavis.workers.dev/'
 const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview.svg'
+const SCENEPILOT_URL = 'https://scenepilot.ryanedavis.workers.dev/'
 
 function SoftwareShowcase() {
   const [showUnifiedPreview, setShowUnifiedPreview] = useState(false)
@@ -192,6 +193,92 @@ function SoftwareShowcase() {
                 Tap to enlarge
               </span>
             </button>
+          </div>
+        </motion.div>
+
+        <div className="text-center max-w-3xl mx-auto mt-24 mb-14">
+          <p className="text-xs uppercase tracking-[0.3em] text-amber-300 mb-4">Live Production SaaS</p>
+          <h2 className="section-title mb-3">ScenePilot</h2>
+          <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-amber-300 mb-6">
+            Director • Camera Operator • Live Production Software
+          </p>
+          <p className="section-subtitle">
+            A browser-based production switcher that connects phones, tablets, computers, and camera sources into one coordinated live production room.
+          </p>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.55 }}
+          className="relative overflow-hidden rounded-3xl border border-amber-300/25 bg-gradient-to-br from-stone-950 via-zinc-950 to-amber-950/25 p-8 md:p-12 shadow-2xl shadow-black/30"
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(245,158,11,0.13),transparent_34%),radial-gradient(circle_at_82%_82%,rgba(255,255,255,0.06),transparent_34%)] pointer-events-none" />
+
+          <div className="relative z-10 grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
+            <div>
+              <div className="inline-flex px-3 py-1 rounded-full border border-amber-300/25 bg-amber-300/10 text-xs font-semibold text-amber-100 mb-5">
+                ICA SaaS • Beta
+              </div>
+              <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">
+                Put the production room on the devices you already have.
+              </h3>
+              <p className="text-amber-200 font-semibold tracking-wide mb-5">
+                One Director → Wireless Cameras → Preview → Program
+              </p>
+              <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
+                ScenePilot lets one authorized Director control the production while camera operators join by QR code from their phones. Live operator messaging, multiview, replay, editing, and broadcast controls are being built into the same system.
+              </p>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                {['Director Console', 'Phone Cameras', 'QR Camera Join', 'Operator Messaging', 'Multiview', 'Instant Replay', 'Cloud Signaling', 'Account Login'].map((item) => (
+                  <span key={item} className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-200">
+                    {item}
+                  </span>
+                ))}
+              </div>
+
+              <div className="mt-9 flex flex-col sm:flex-row gap-3">
+                <a
+                  href={SCENEPILOT_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold transition-all shadow-lg shadow-amber-950/20"
+                >
+                  View ScenePilot
+                </a>
+                <span className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-white/10 bg-white/5 text-gray-300 font-semibold">
+                  Download & Stripe Coming Soon
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/45 p-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+                <span>ScenePilot Director</span>
+                <span className="text-amber-200">Room Online</span>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="aspect-video rounded-xl border border-white/10 bg-gradient-to-br from-zinc-800 to-black flex flex-col items-center justify-center">
+                  <span className="text-[10px] tracking-[0.18em] text-gray-500">PREVIEW</span>
+                  <strong className="mt-2 text-lg">CAM 07</strong>
+                </div>
+                <div className="aspect-video rounded-xl border border-amber-300/20 bg-gradient-to-br from-amber-950/40 to-black flex flex-col items-center justify-center">
+                  <span className="text-[10px] tracking-[0.18em] text-amber-300">PROGRAM</span>
+                  <strong className="mt-2 text-lg">LIVE</strong>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {[1, 2, 3, 4, 5, 6].map((camera) => (
+                  <div key={camera} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-4 text-center text-[10px] font-semibold tracking-[0.12em] text-gray-400">
+                    CAM {String(camera).padStart(2, '0')}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>
