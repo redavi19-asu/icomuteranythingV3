@@ -356,7 +356,7 @@ async function checkServiceBinding(binding, path, { expectJson = false } = {}) {
 
   try {
     const response = await binding.fetch(
-      new Request(`https://scenepilot.internal${path}`, {
+      new Request(`https://ica-service.internal${path}`, {
         method: "GET",
         headers: {
           Accept: expectJson ? "application/json" : "*/*"
@@ -392,31 +392,33 @@ async function checkServiceBinding(binding, path, { expectJson = false } = {}) {
 async function productHealth(env) {
   const services = {
     scenepilot: {
-      frontend: "https://scenepilot.ryanedavis.workers.dev/app",
-      api: "https://scenepilot.ryanedavis.workers.dev/api/health",
+      binding: env.SCENEPILOT,
+      frontendPath: "/app",
+      apiPath: "/api/health",
     },
     dispatchos: {
-      frontend: "https://redavi19-asu.github.io/icomputer-dispatch-platform/",
-      api: "https://dispatchos-auth-api.ryanedavis.workers.dev/health",
+      binding: env.DISPATCHOS,
+      frontendUrl: "https://redavi19-asu.github.io/icomputer-dispatch-platform/",
+      apiPath: "/health",
     },
     "ica-unified": {
-      frontend: "https://ica-unified.ryanedavis.workers.dev/platform",
-      api: "https://ica-unified.ryanedavis.workers.dev/api/health",
+      binding: env.ICA_UNIFIED,
+      frontendPath: "/platform",
+      apiPath: "/api/health",
     },
   };
 
   const entries = await Promise.all(
-    Object.entries(services).map(async ([slug, endpoints]) => {
-      const [frontend, api] =
-        slug === "scenepilot"
-          ? await Promise.all([
-              checkServiceBinding(env.SCENEPILOT, "/app"),
-              checkServiceBinding(env.SCENEPILOT, "/api/health", { expectJson: true }),
-            ])
-          : await Promise.all([
-              checkEndpoint(endpoints.frontend),
-              checkEndpoint(endpoints.api, { expectJson: true }),
-            ]);
+    Object.entries(services).map(async ([slug, service]) => {
+      const frontend = service.frontendUrl
+        ? await checkEndpoint(service.frontendUrl)
+        : await checkServiceBinding(service.binding, service.frontendPath);
+
+      const api = await checkServiceBinding(
+        service.binding,
+        service.apiPath,
+        { expectJson: true }
+      );
 
       const database = {
         ok: false,
