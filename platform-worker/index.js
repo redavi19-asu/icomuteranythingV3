@@ -341,6 +341,54 @@ async function checkEndpoint(url, { expectJson = false } = {}) {
   }
 }
 
+async function checkServiceBinding(binding, path, { expectJson = false } = {}) {
+  const started = Date.now();
+
+  if (!binding || typeof binding.fetch !== "function") {
+    return {
+      ok: false,
+      reachable: false,
+      status: 0,
+      latencyMs: 0,
+      error: "Service binding unavailable"
+    };
+  }
+
+  try {
+    const response = await binding.fetch(
+      new Request(`https://scenepilot.internal${path}`, {
+        method: "GET",
+        headers: {
+          Accept: expectJson ? "application/json" : "*/*"
+        }
+      })
+    );
+
+    let data = null;
+    if (expectJson) {
+      try {
+        data = await response.json();
+      } catch (_) {}
+    }
+
+    return {
+      ok: response.ok,
+      reachable: response.status > 0 && response.status < 500,
+      status: response.status,
+      latencyMs: Date.now() - started,
+      data
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      reachable: false,
+      status: 0,
+      latencyMs: Date.now() - started,
+      error: String(error?.message || error)
+    };
+  }
+}
+
 async function productHealth(env) {
   const services = {
     scenepilot: {
@@ -359,10 +407,16 @@ async function productHealth(env) {
 
   const entries = await Promise.all(
     Object.entries(services).map(async ([slug, endpoints]) => {
-      const [frontend, api] = await Promise.all([
-        checkEndpoint(endpoints.frontend),
-        checkEndpoint(endpoints.api, { expectJson: true }),
-      ]);
+      const [frontend, api] =
+        slug === "scenepilot"
+          ? await Promise.all([
+              checkServiceBinding(env.SCENEPILOT, "/app"),
+              checkServiceBinding(env.SCENEPILOT, "/api/health", { expectJson: true }),
+            ])
+          : await Promise.all([
+              checkEndpoint(endpoints.frontend),
+              checkEndpoint(endpoints.api, { expectJson: true }),
+            ]);
 
       const database = {
         ok: false,
