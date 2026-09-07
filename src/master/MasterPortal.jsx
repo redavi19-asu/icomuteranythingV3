@@ -51,7 +51,7 @@ async function api(path, options = {}) {
   return data
 }
 
-function Turnstile({ onToken, resetKey }) {
+function Turnstile({ onToken, onError, resetKey }) {
   const ref = useRef(null)
   const widgetRef = useRef(null)
 
@@ -76,7 +76,7 @@ function Turnstile({ onToken, resetKey }) {
         action: 'ica_master_login',
         callback: (token) => onToken(token),
         'expired-callback': () => onToken(''),
-        'error-callback': () => onToken(''),
+        'error-callback': (code) => { onToken(''); if (onError) onError(String(code || 'unknown')); },
       })
     }
 
@@ -124,6 +124,7 @@ function MasterLogin({ onAuthenticated }) {
   const [token, setToken] = useState('')
   const [resetKey, setResetKey] = useState(0)
   const [error, setError] = useState('')
+  const [turnstileError, setTurnstileError] = useState('')
   const [busy, setBusy] = useState(false)
 
   const handleToken = useCallback((value) => {
@@ -219,7 +220,9 @@ function MasterLogin({ onAuthenticated }) {
             />
           </label>
 
-          <Turnstile onToken={handleToken} resetKey={resetKey} />
+          <Turnstile onToken={handleToken} onError={setTurnstileError} resetKey={resetKey} />
+
+          {turnstileError && <div className="master-error">Cloudflare Turnstile error {turnstileError}</div>}
 
           {error && <div className="master-error">{error}</div>}
 
