@@ -861,3 +861,42 @@
     grid-template-columns:1fr
   }
 }
+
+.master-product-health-strip{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  margin-top:14px
+}
+.master-product-health-strip>span{
+  min-height:31px;
+  display:grid;
+  grid-template-columns:8px auto 1fr;
+  align-items:center;
+  gap:5px;
+  padding:6px 7px;
+  border:1px solid #d7d2c6;
+  background:#f3efe5
+}
+.master-product-health-strip i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#9a9b94
+}
+.master-product-health-strip i.good{background:#5d8f59}
+.master-product-health-strip i.bad{background:#a64b43}
+.master-product-health-strip b{
+  font-size:7px;
+  letter-spacing:.08em
+}
+.master-product-health-strip small{
+  text-align:right;
+  color:#777a71;
+  font-size:6px;
+  font-weight:900
+}
+.master-main-header>button:disabled{
+  opacity:.6;
+  cursor:wait
+}
