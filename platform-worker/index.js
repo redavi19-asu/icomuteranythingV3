@@ -505,6 +505,143 @@ async function updateUser(request, env, userId) {
   return json({ ok: true });
 }
 
+
+async function getProductBySlug(env, slug) {
+  return env.DB.prepare(
+    "SELECT id, slug, name, status FROM products WHERE slug = ? LIMIT 1"
+  ).bind(slug).first();
+}
+
+async function listProductUsers(request, env, slug) {
+  const auth = await requireOwner(request, env);
+  if (auth.response) return auth.response;
+
+  const product = await getProductBySlug(env, slug);
+  if (!product) return json({ error: "Product not found." }, 404);
+
+  const result = await env.DB.prepare(
+    `SELECT
+      u.id,
+      u.email,
+      u.display_name,
+      u.role,
+      u.status AS account_status,
+      u.last_login_at,
+      up.plan,
+      up.access_status,
+      up.source,
+      up.created_at
+    FROM user_products up
+    JOIN users u ON u.id = up.user_id
+    WHERE up.product_id = ?
+    ORDER BY up.created_at DESC`
+  ).bind(product.id).all();
+
+  return json({ product, users: result.results || [] });
+}
+
+async function addProductUser(request, env, slug) {
+  const auth = await requireOwner(request, env);
+  if (auth.response) return auth.response;
+
+  const product = await getProductBySlug(env, slug);
+  if (!product) return json({ error: "Product not found." }, 404);
+
+  const body = await request.json().catch(() => ({}));
+  const email = normalizeEmail(body.email);
+  const plan = String(body.plan || "comp").trim().slice(0, 40) || "comp";
+
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    return json({ error: "Enter a valid email address." }, 400);
+  }
+
+  const user = await env.DB.prepare(
+    "SELECT id, email, display_name, status FROM users WHERE email = ? LIMIT 1"
+  ).bind(email).first();
+
+  if (!user) {
+    return json({
+      error: "No ICA account exists for that email yet. The user must first have an ICA account."
+    }, 404);
+  }
+
+  const now = Date.now();
+
+  await env.DB.prepare(
+    `INSERT INTO user_products (
+      user_id, product_id, plan, access_status, source, created_at
+    ) VALUES (?, ?, ?, 'active', 'master-manual', ?)
+    ON CONFLICT(user_id, product_id) DO UPDATE SET
+      plan = excluded.plan,
+      access_status = 'active',
+      source = 'master-manual'`
+  ).bind(user.id, product.id, plan, now).run();
+
+  await env.DB.prepare(
+    `INSERT INTO platform_events (
+      id, event_type, product_id, user_id, message, severity, created_at
+    ) VALUES (?, 'product_access_added', ?, ?, ?, 'info', ?)`
+  ).bind(
+    crypto.randomUUID(),
+    product.id,
+    user.id,
+    `${email} granted access to ${product.name}`,
+    now
+  ).run();
+
+  return json({ ok: true, user, product });
+}
+
+async function updateProductUser(request, env, slug, userId) {
+  const auth = await requireOwner(request, env);
+  if (auth.response) return auth.response;
+
+  const product = await getProductBySlug(env, slug);
+  if (!product) return json({ error: "Product not found." }, 404);
+
+  const body = await request.json().catch(() => ({}));
+  const accessStatus = ["active", "suspended"].includes(body.accessStatus)
+    ? body.accessStatus
+    : null;
+
+  if (!accessStatus) {
+    return json({ error: "Invalid product access status." }, 400);
+  }
+
+  const target = await env.DB.prepare(
+    `SELECT u.email, u.role
+     FROM users u
+     JOIN user_products up ON up.user_id = u.id
+     WHERE u.id = ? AND up.product_id = ?
+     LIMIT 1`
+  ).bind(userId, product.id).first();
+
+  if (!target) return json({ error: "Product user not found." }, 404);
+
+  if (target.role === "owner" && accessStatus !== "active") {
+    return json({ error: "The ICA master owner cannot be kicked from a product." }, 400);
+  }
+
+  await env.DB.prepare(
+    "UPDATE user_products SET access_status = ? WHERE user_id = ? AND product_id = ?"
+  ).bind(accessStatus, userId, product.id).run();
+
+  const now = Date.now();
+  await env.DB.prepare(
+    `INSERT INTO platform_events (
+      id, event_type, product_id, user_id, message, severity, created_at
+    ) VALUES (?, 'product_access_updated', ?, ?, ?, 'info', ?)`
+  ).bind(
+    crypto.randomUUID(),
+    product.id,
+    userId,
+    `${target.email} ${accessStatus === "active" ? "restored on" : "kicked from"} ${product.name}`,
+    now
+  ).run();
+
+  return json({ ok: true });
+}
+
 async function platformHealth(request, env) {
   try {
     const count = await env.DB.prepare("SELECT COUNT(*) AS count FROM users").first();
@@ -559,12 +696,33 @@ export default {
         response = await listUsers(request, env);
       } else {
         const userMatch = url.pathname.match(/^\/platform\/users\/([^/]+)$/);
+        const productUsersMatch = url.pathname.match(/^\/platform\/products\/([^/]+)\/users$/);
+        const productUserMatch = url.pathname.match(/^\/platform\/products\/([^/]+)\/users\/([^/]+)$/);
 
         if (userMatch && request.method === "PATCH") {
           response = await updateUser(
             request,
             env,
             decodeURIComponent(userMatch[1])
+          );
+        } else if (productUsersMatch && request.method === "GET") {
+          response = await listProductUsers(
+            request,
+            env,
+            decodeURIComponent(productUsersMatch[1])
+          );
+        } else if (productUsersMatch && request.method === "POST") {
+          response = await addProductUser(
+            request,
+            env,
+            decodeURIComponent(productUsersMatch[1])
+          );
+        } else if (productUserMatch && request.method === "PATCH") {
+          response = await updateProductUser(
+            request,
+            env,
+            decodeURIComponent(productUserMatch[1]),
+            decodeURIComponent(productUserMatch[2])
           );
         } else {
           response = json({ error: "Not found." }, 404);
