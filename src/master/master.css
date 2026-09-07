@@ -781,3 +781,83 @@
     grid-template-columns: 1fr;
   }
 }
+
+.master-product-status i.bad,
+.master-health-grid i.bad,
+.master-health-light.bad{
+  background:#a64b43
+}
+.master-health-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr))
+}
+.master-health-card{
+  display:block!important;
+  padding:18px!important
+}
+.master-health-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding-bottom:12px;
+  border-bottom:1px solid #d7d2c6
+}
+.master-health-card-head>div{
+  display:flex;
+  align-items:center;
+  gap:8px
+}
+.master-health-card-head>span{
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.1em;
+  color:#70736a
+}
+.master-health-checks{
+  display:grid;
+  gap:7px;
+  margin-top:12px
+}
+.master-health-checks>div{
+  display:grid;
+  grid-template-columns:72px 10px 70px 1fr;
+  align-items:center;
+  gap:7px;
+  min-height:34px;
+  padding:7px 8px;
+  border:1px solid #d7d2c6;
+  background:#f4f0e6
+}
+.master-health-check-name{
+  font-size:7px!important;
+  font-weight:900;
+  letter-spacing:.1em
+}
+.master-health-light{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#9b9b93
+}
+.master-health-light.good{
+  background:#5d8f59
+}
+.master-health-checks strong{
+  font-size:8px
+}
+.master-health-checks small{
+  color:#81837a;
+  font-size:7px;
+  text-align:right
+}
+.master-health-footer{
+  margin-top:10px;
+  color:#84867c;
+  font-size:7px;
+  letter-spacing:.08em
+}
+@media(max-width:1100px){
+  .master-health-grid{
+    grid-template-columns:1fr
+  }
+}
