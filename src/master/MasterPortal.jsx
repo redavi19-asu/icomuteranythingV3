@@ -344,6 +344,18 @@ function MasterDashboard({ user, onLogout }) {
     [summary]
   )
 
+  const scenePilotHealth = summary?.health?.scenepilot || null
+  const streamTelemetry =
+    scenePilotHealth?.serviceData?.streaming ||
+    scenePilotHealth?.serviceData?.stream ||
+    null
+
+  const viewerTiers = [
+    { viewers: 25, mbps: 150 },
+    { viewers: 50, mbps: 300 },
+    { viewers: 100, mbps: 600 },
+    { viewers: 250, mbps: 1500 },
+  ]
 
   async function openProductUsers(product) {
     setSelectedProduct(product)
@@ -719,6 +731,58 @@ function MasterDashboard({ user, onLogout }) {
               D1 layer; Dispatch OS and ICA Unified will feed this view as their super-admin
               layers are centralized.
             </p>
+
+            <section className="master-stream-capacity">
+              <div className="master-section-heading">
+                <div>
+                  <p className="master-eyebrow">STREAM ANGLEZ / SCENEPILOT</p>
+                  <h2>Streaming capacity & load readiness</h2>
+                </div>
+              </div>
+
+              <div className="master-stream-metrics">
+                <article>
+                  <span>STREAM ORIGIN</span>
+                  <strong>{streamTelemetry?.originOnline ? 'ONLINE' : 'SERVER AGENT PENDING'}</strong>
+                  <small>Debian RTMP / RTMPS origin</small>
+                </article>
+                <article>
+                  <span>ACTIVE BROADCASTS</span>
+                  <strong>{Number(streamTelemetry?.activeBroadcasts || 0)}</strong>
+                  <small>Will update from the streaming server</small>
+                </article>
+                <article>
+                  <span>LIVE VIEWERS</span>
+                  <strong>{Number(streamTelemetry?.viewers || 0)}</strong>
+                  <small>Viewer/CDN telemetry hook ready</small>
+                </article>
+                <article>
+                  <span>OUTBOUND LOAD</span>
+                  <strong>{Number(streamTelemetry?.outboundMbps || 0)} Mbps</strong>
+                  <small>Origin network usage</small>
+                </article>
+              </div>
+
+              <div className="master-capacity-table">
+                <div className="master-capacity-head">
+                  <span>LOAD TEST TARGETS</span>
+                  <small>Planning estimate at ~6 Mbps per 1080p viewer if viewers hit the origin directly.</small>
+                </div>
+                {viewerTiers.map((tier) => (
+                  <div className="master-capacity-row" key={tier.viewers}>
+                    <strong>{tier.viewers} VIEWERS</strong>
+                    <span>≈ {tier.mbps} Mbps outbound direct-origin load</span>
+                    <b>{tier.viewers <= 50 ? 'EARLY TEST' : tier.viewers === 100 ? 'TARGET TEST' : 'CDN RECOMMENDED'}</b>
+                  </div>
+                ))}
+              </div>
+
+              <div className="master-capacity-note">
+                ICA Master is now ready to display real stream-server telemetry. When the Debian RTMP/RTMPS server is installed,
+                its health/metrics feed can populate these cards so you can watch viewers, bandwidth, active broadcasts and capacity
+                before customers feel a problem.
+              </div>
+            </section>
 
             <div className="master-health-grid">
               {products.map((product) => {
