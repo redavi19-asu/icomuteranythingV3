@@ -304,6 +304,10 @@ function ProductCard({ product, health, onManageUsers }) {
 function MasterDashboard({ user, onLogout }) {
   const [summary, setSummary] = useState(null)
   const [users, setUsers] = useState([])
+  const [liveSessions, setLiveSessions] = useState([])
+  const [selectedLiveUser, setSelectedLiveUser] = useState(null)
+  const [selectedLiveDetail, setSelectedLiveDetail] = useState(null)
+  const [liveBusy, setLiveBusy] = useState(false)
   const [view, setView] = useState('overview')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [productUsers, setProductUsers] = useState([])
@@ -317,13 +321,15 @@ function MasterDashboard({ user, onLogout }) {
     setError('')
 
     try {
-      const [summaryData, usersData] = await Promise.all([
+      const [summaryData, usersData, liveData] = await Promise.all([
         api('/platform/summary'),
         api('/platform/users'),
+        api('/platform/live-sessions'),
       ])
 
       setSummary(summaryData)
       setUsers(usersData.users || [])
+      setLiveSessions(liveData.sessions || [])
     } catch (err) {
       setError(err.message)
       if (err.status === 401 || err.status === 403) {
@@ -356,6 +362,32 @@ function MasterDashboard({ user, onLogout }) {
     { viewers: 100, mbps: 600 },
     { viewers: 250, mbps: 1500 },
   ]
+
+
+  const liveByUser = useMemo(() => {
+    const map = new Map()
+    for (const session of liveSessions) {
+      if (!session.user_id || map.has(session.user_id)) continue
+      map.set(session.user_id, session)
+    }
+    return map
+  }, [liveSessions])
+
+  async function openUserLive(target) {
+    setSelectedLiveUser(target)
+    setSelectedLiveDetail(null)
+    setView('user-live')
+    setLiveBusy(true)
+    setError('')
+    try {
+      const data = await api(`/platform/users/${encodeURIComponent(target.id)}/live`)
+      setSelectedLiveDetail(data)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLiveBusy(false)
+    }
+  }
 
   async function openProductUsers(product) {
     setSelectedProduct(product)
@@ -471,6 +503,7 @@ function MasterDashboard({ user, onLogout }) {
               {view === 'sales' && 'Sales & Billing'}
               {view === 'health' && 'Platform Health'}
               {view === 'product-users' && `${selectedProduct?.name || 'Product'} Users`}
+              {view === 'user-live' && 'Live Broadcast Monitor'}
             </h1>
           </div>
           <button onClick={load} disabled={loading} title="Re-run all platform health checks and refresh users, companies and access data">
@@ -578,7 +611,7 @@ function MasterDashboard({ user, onLogout }) {
           <section className="master-table-card">
             <div className="master-section-heading">
               <div>
-                <p className="master-eyebrow">CENTRAL IDENTITY</p>
+                <p className="master-eyebrow">CENTRAL IDENTITY / LIVE OPS</p>
                 <h2>Users</h2>
               </div>
             </div>
@@ -589,41 +622,136 @@ function MasterDashboard({ user, onLogout }) {
                   <tr>
                     <th>USER</th>
                     <th>ROLE</th>
-                    <th>STATUS</th>
+                    <th>ACCOUNT</th>
+                    <th>LIVE</th>
+                    <th>VIEWERS</th>
                     <th>PRODUCT ACCESS</th>
                     <th>ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((target) => (
-                    <tr key={target.id}>
-                      <td>
-                        <strong>{target.display_name || '—'}</strong>
-                        <small>{target.email}</small>
-                      </td>
-                      <td>{String(target.role || 'user').toUpperCase()}</td>
-                      <td>{String(target.status || 'active').toUpperCase()}</td>
-                      <td>{target.products || '—'}</td>
-                      <td>
-                        {target.role === 'owner' ? (
-                          <span className="master-owner-tag">MASTER</span>
-                        ) : (
-                          <button
-                            className="master-table-action"
-                            onClick={() => changeUserStatus(
-                              target,
-                              target.status === 'active' ? 'suspended' : 'active'
-                            )}
-                          >
-                            {target.status === 'active' ? 'SUSPEND' : 'ACTIVATE'}
+                  {users.map((target) => {
+                    const live = liveByUser.get(target.id)
+                    const isLive = live?.status === 'live'
+                    return (
+                      <tr key={target.id} className={isLive ? 'master-user-live-row' : ''}>
+                        <td>
+                          <button className="master-user-open" onClick={() => openUserLive(target)}>
+                            <strong>{target.display_name || '—'}</strong>
+                            <small>{target.email}</small>
                           </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>{String(target.role || 'user').toUpperCase()}</td>
+                        <td>{String(target.status || 'active').toUpperCase()}</td>
+                        <td>
+                          <button className={`master-live-pill ${isLive ? 'live' : ''}`} onClick={() => openUserLive(target)}>
+                            <i/>{isLive ? 'LIVE' : 'OFFLINE'}
+                          </button>
+                        </td>
+                        <td>{isLive ? Number(live.viewers || 0) : '—'}</td>
+                        <td>{target.products || '—'}</td>
+                        <td>
+                          {target.role === 'owner' ? (
+                            <span className="master-owner-tag">MASTER</span>
+                          ) : (
+                            <button
+                              className="master-table-action"
+                              onClick={() => changeUserStatus(
+                                target,
+                                target.status === 'active' ? 'suspended' : 'active'
+                              )}
+                            >
+                              {target.status === 'active' ? 'SUSPEND' : 'ACTIVATE'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
+          </section>
+        )}
+
+
+        {view === 'user-live' && selectedLiveUser && (
+          <section className="master-live-detail">
+            <div className="master-live-detail-head">
+              <div>
+                <button className="master-back-button" onClick={() => setView('users')}>← BACK TO USERS</button>
+                <p className="master-eyebrow">SCENEPILOT / LIVE BROADCAST OPERATIONS</p>
+                <h2>{selectedLiveUser.display_name || selectedLiveUser.email}</h2>
+                <p>{selectedLiveUser.email}</p>
+              </div>
+              <div className={`master-live-state ${selectedLiveDetail?.stream?.status === 'live' ? 'live' : ''}`}>
+                <i/>
+                {selectedLiveDetail?.stream?.status === 'live' ? 'LIVE NOW' : 'NOT LIVE'}
+              </div>
+            </div>
+
+            {liveBusy ? (
+              <div className="master-live-empty">CHECKING LIVE SESSION…</div>
+            ) : selectedLiveDetail?.stream ? (
+              <>
+                <div className="master-live-metrics">
+                  <article><span>ROOM</span><strong>{selectedLiveDetail.stream.room_code || '—'}</strong></article>
+                  <article><span>VIEWERS</span><strong>{Number(selectedLiveDetail.stream.viewers || 0)}</strong></article>
+                  <article><span>BITRATE</span><strong>{Number(selectedLiveDetail.stream.bitrate_kbps || 0)} kbps</strong></article>
+                  <article><span>OUTBOUND</span><strong>{Number(selectedLiveDetail.stream.outbound_mbps || 0)} Mbps</strong></article>
+                  <article><span>HEALTH</span><strong>{String(selectedLiveDetail.stream.stream_health || 'unknown').toUpperCase()}</strong></article>
+                  <article><span>SERVER</span><strong>{selectedLiveDetail.stream.server_name || 'PENDING'}</strong></article>
+                </div>
+
+                <div className="master-live-preview-card">
+                  <div className="master-live-preview-head">
+                    <div>
+                      <span className="master-eyebrow">PROTECTED PROGRAM PREVIEW</span>
+                      <strong>What this user is broadcasting</strong>
+                    </div>
+                    {selectedLiveDetail.stream.watch_url && (
+                      <a href={selectedLiveDetail.stream.watch_url} target="_blank" rel="noreferrer">OPEN PUBLIC STREAM</a>
+                    )}
+                  </div>
+
+                  <div className="master-live-preview">
+                    {selectedLiveDetail.stream.preview_url ? (
+                      <video
+                        key={selectedLiveDetail.stream.preview_url}
+                        src={selectedLiveDetail.stream.preview_url}
+                        controls
+                        autoPlay
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <div>
+                        <strong>PROGRAM PREVIEW WAITING</strong>
+                        <span>The RTMP/HLS server will place the protected preview here as soon as live streaming is connected.</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="master-live-preview-footer">
+                    <span>
+                      STARTED {selectedLiveDetail.stream.started_at
+                        ? new Date(Number(selectedLiveDetail.stream.started_at)).toLocaleString()
+                        : '—'}
+                    </span>
+                    <span>
+                      LAST SIGNAL {selectedLiveDetail.stream.last_seen_at
+                        ? new Date(Number(selectedLiveDetail.stream.last_seen_at)).toLocaleTimeString()
+                        : '—'}
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="master-live-empty">
+                <strong>NO STREAM SESSION YET</strong>
+                <span>This user has no ScenePilot live session reported to ICA Master.</span>
+              </div>
+            )}
           </section>
         )}
 
