@@ -49,7 +49,7 @@ function SoftwareShowcase() {
 
         <div className="text-center max-w-3xl mx-auto mb-14">
           <p className="text-xs uppercase tracking-[0.3em] text-blue-300 mb-4">Software by I Computer Anything</p>
-          <h2 className="section-title mb-3">DispatchOS</h2>
+          <h2 className="section-title mb-3">Urban Carrier OS</h2>
           <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-cyan-300 mb-6">
             Business • Driver • Customer Logistics Software
           </p>
@@ -76,7 +76,7 @@ function SoftwareShowcase() {
               <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">Run the whole job from one command system.</h3>
               <p className="text-cyan-300 font-semibold tracking-wide mb-5">Business → Driver → Customer</p>
               <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
-                DispatchOS acts as the cloud-connected middle layer between your company, your drivers or field team,
+                Urban Carrier OS acts as the cloud-connected middle layer between your company, your drivers or field team,
                 and your customers — receiving jobs, assigning work, managing field progress, and keeping the customer informed in one connected system.
               </p>
 
@@ -95,7 +95,7 @@ function SoftwareShowcase() {
                   rel="noreferrer"
                   className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-lg shadow-blue-900/30"
                 >
-                  View DispatchOS
+                  View Urban Carrier OS
                 </a>
                 <a
                   href={`${DISPATCH_URL}plans`}
