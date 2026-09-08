@@ -183,7 +183,7 @@ function MasterLogin({ onAuthenticated }) {
 
           <div className="master-login-products">
             <span>SCENEPILOT</span>
-            <span>DISPATCH OS</span>
+            <span>URBAN CARRIER OS</span>
             <span>ICA UNIFIED</span>
           </div>
         </div>
@@ -601,7 +601,7 @@ function MasterDashboard({ user, onLogout }) {
               </div>
             ) : (
               <div className="master-empty-box">
-                Company records will populate here as Dispatch OS and ICA Unified are rewired into the central ICA database.
+                Company records will populate here as Urban Carrier OS and ICA Unified are rewired into the central ICA database.
               </div>
             )}
           </section>
@@ -856,7 +856,7 @@ function MasterDashboard({ user, onLogout }) {
             <p>
               The central dashboard is ready to receive product health, company health,
               database status and service events. ScenePilot is already on the shared
-              D1 layer; Dispatch OS and ICA Unified will feed this view as their super-admin
+              D1 layer; Urban Carrier OS and ICA Unified will feed this view as their super-admin
               layers are centralized.
             </p>
 
