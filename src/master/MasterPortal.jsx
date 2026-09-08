@@ -346,7 +346,11 @@ function MasterDashboard({ user, onLogout }) {
   }, [])
 
   const products = useMemo(
-    () => summary?.products || [],
+    () => (summary?.products || []).map(product =>
+      product.slug === 'dispatchos'
+        ? { ...product, name: 'Urban Carrier OS' }
+        : product
+    ),
     [summary]
   )
 
