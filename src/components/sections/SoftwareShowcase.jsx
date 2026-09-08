@@ -49,7 +49,10 @@ function SoftwareShowcase() {
 
         <div className="text-center max-w-3xl mx-auto mb-14">
           <p className="text-xs uppercase tracking-[0.3em] text-blue-300 mb-4">Software by I Computer Anything</p>
-          <h2 className="section-title mb-3">Urban Carrier OS</h2>
+          <h2 className="section-title mb-2">Urban Carrier OS</h2>
+          <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-gray-300 mb-2">
+            Urban Carrier Operating System
+          </p>
           <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-cyan-300 mb-6">
             Business • Driver • Customer Logistics Software
           </p>
