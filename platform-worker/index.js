@@ -31,7 +31,7 @@ function corsHeaders(request, env) {
     return {
       "Access-Control-Allow-Origin": origin || allowed[0] || "*",
       "Access-Control-Allow-Credentials": "true",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-ICA-Stream-Key",
       "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
       Vary: "Origin",
     };
@@ -748,6 +748,195 @@ async function updateProductUser(request, env, slug, userId) {
   return json({ ok: true });
 }
 
+
+async function ensureLiveStreamTable(env) {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS live_stream_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      product_slug TEXT NOT NULL DEFAULT 'scenepilot',
+      room_code TEXT,
+      status TEXT NOT NULL DEFAULT 'offline',
+      started_at INTEGER,
+      ended_at INTEGER,
+      last_seen_at INTEGER NOT NULL,
+      viewers INTEGER NOT NULL DEFAULT 0,
+      bitrate_kbps INTEGER NOT NULL DEFAULT 0,
+      outbound_mbps REAL NOT NULL DEFAULT 0,
+      stream_health TEXT NOT NULL DEFAULT 'unknown',
+      preview_url TEXT,
+      watch_url TEXT,
+      server_name TEXT,
+      metadata_json TEXT
+    )`
+  ).run();
+
+  await env.DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_live_stream_user ON live_stream_sessions(user_id)"
+  ).run();
+
+  await env.DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_live_stream_status ON live_stream_sessions(status, last_seen_at)"
+  ).run();
+}
+
+function streamReportAuthorized(request, env) {
+  const expected = String(env.STREAM_REPORT_KEY || "").trim();
+  const supplied = String(request.headers.get("X-ICA-Stream-Key") || "").trim();
+  return Boolean(expected && supplied && expected === supplied);
+}
+
+async function reportLiveStream(request, env) {
+  if (!streamReportAuthorized(request, env)) {
+    return json({ error: "Stream reporting key required." }, 403);
+  }
+
+  await ensureLiveStreamTable(env);
+
+  const body = await request.json().catch(() => ({}));
+  const sessionId = String(body.sessionId || body.id || "").trim();
+  const email = normalizeEmail(body.email || "");
+  const roomCode = String(body.roomCode || body.room || "").trim().slice(0, 120);
+  const status = body.status === "live" ? "live" : "offline";
+
+  if (!sessionId) return json({ error: "sessionId is required." }, 400);
+
+  let userId = String(body.userId || "").trim();
+  if (!userId && email) {
+    const user = await env.DB.prepare(
+      "SELECT id FROM users WHERE email = ? LIMIT 1"
+    ).bind(email).first();
+    userId = user?.id || "";
+  }
+
+  const now = Date.now();
+  const startedAt = Number(body.startedAt || 0) || (status === "live" ? now : null);
+  const endedAt = status === "offline" ? (Number(body.endedAt || 0) || now) : null;
+  const viewers = Math.max(0, Number(body.viewers || 0) || 0);
+  const bitrateKbps = Math.max(0, Number(body.bitrateKbps || 0) || 0);
+  const outboundMbps = Math.max(0, Number(body.outboundMbps || 0) || 0);
+  const streamHealth = String(body.streamHealth || body.health || "unknown").slice(0, 40);
+  const previewUrl = String(body.previewUrl || "").slice(0, 2000);
+  const watchUrl = String(body.watchUrl || "").slice(0, 2000);
+  const serverName = String(body.serverName || "").slice(0, 160);
+  const metadataJson = JSON.stringify(body.metadata || {});
+
+  await env.DB.prepare(
+    `INSERT INTO live_stream_sessions (
+      id, user_id, product_slug, room_code, status, started_at, ended_at,
+      last_seen_at, viewers, bitrate_kbps, outbound_mbps, stream_health,
+      preview_url, watch_url, server_name, metadata_json
+    ) VALUES (?, ?, 'scenepilot', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      user_id = excluded.user_id,
+      room_code = excluded.room_code,
+      status = excluded.status,
+      started_at = COALESCE(live_stream_sessions.started_at, excluded.started_at),
+      ended_at = excluded.ended_at,
+      last_seen_at = excluded.last_seen_at,
+      viewers = excluded.viewers,
+      bitrate_kbps = excluded.bitrate_kbps,
+      outbound_mbps = excluded.outbound_mbps,
+      stream_health = excluded.stream_health,
+      preview_url = excluded.preview_url,
+      watch_url = excluded.watch_url,
+      server_name = excluded.server_name,
+      metadata_json = excluded.metadata_json`
+  ).bind(
+    sessionId,
+    userId || null,
+    roomCode || null,
+    status,
+    startedAt,
+    endedAt,
+    now,
+    viewers,
+    bitrateKbps,
+    outboundMbps,
+    streamHealth,
+    previewUrl || null,
+    watchUrl || null,
+    serverName || null,
+    metadataJson
+  ).run();
+
+  return json({ ok: true, sessionId, status, userId: userId || null });
+}
+
+async function listLiveSessions(request, env) {
+  const auth = await requireOwner(request, env);
+  if (auth.response) return auth.response;
+
+  await ensureLiveStreamTable(env);
+
+  const staleBefore = Date.now() - 45000;
+  await env.DB.prepare(
+    "UPDATE live_stream_sessions SET status = 'offline', ended_at = COALESCE(ended_at, ?) WHERE status = 'live' AND last_seen_at < ?"
+  ).bind(Date.now(), staleBefore).run();
+
+  const result = await env.DB.prepare(
+    `SELECT
+      s.id,
+      s.user_id,
+      s.room_code,
+      s.status,
+      s.started_at,
+      s.ended_at,
+      s.last_seen_at,
+      s.viewers,
+      s.bitrate_kbps,
+      s.outbound_mbps,
+      s.stream_health,
+      s.preview_url,
+      s.watch_url,
+      s.server_name,
+      u.email,
+      u.display_name
+    FROM live_stream_sessions s
+    LEFT JOIN users u ON u.id = s.user_id
+    ORDER BY CASE WHEN s.status = 'live' THEN 0 ELSE 1 END, s.last_seen_at DESC
+    LIMIT 200`
+  ).all();
+
+  return json({ sessions: result.results || [] });
+}
+
+async function getUserLiveDetail(request, env, userId) {
+  const auth = await requireOwner(request, env);
+  if (auth.response) return auth.response;
+
+  await ensureLiveStreamTable(env);
+
+  const user = await env.DB.prepare(
+    "SELECT id, email, display_name, role, status, last_login_at FROM users WHERE id = ? LIMIT 1"
+  ).bind(userId).first();
+
+  if (!user) return json({ error: "User not found." }, 404);
+
+  const stream = await env.DB.prepare(
+    `SELECT
+      id, room_code, status, started_at, ended_at, last_seen_at, viewers,
+      bitrate_kbps, outbound_mbps, stream_health, preview_url, watch_url,
+      server_name, metadata_json
+    FROM live_stream_sessions
+    WHERE user_id = ?
+    ORDER BY CASE WHEN status = 'live' THEN 0 ELSE 1 END, last_seen_at DESC
+    LIMIT 1`
+  ).bind(userId).first();
+
+  return json({
+    user,
+    stream: stream
+      ? {
+          ...stream,
+          metadata: (() => {
+            try { return JSON.parse(stream.metadata_json || "{}"); } catch (_) { return {}; }
+          })()
+        }
+      : null
+  });
+}
+
 async function platformHealth(request, env) {
   try {
     const count = await env.DB.prepare("SELECT COUNT(*) AS count FROM users").first();
@@ -800,12 +989,23 @@ export default {
         response = await dashboardSummary(request, env);
       } else if (url.pathname === "/platform/users" && request.method === "GET") {
         response = await listUsers(request, env);
+      } else if (url.pathname === "/platform/live-sessions" && request.method === "GET") {
+        response = await listLiveSessions(request, env);
+      } else if (url.pathname === "/platform/live-report" && request.method === "POST") {
+        response = await reportLiveStream(request, env);
       } else {
         const userMatch = url.pathname.match(/^\/platform\/users\/([^/]+)$/);
+        const userLiveMatch = url.pathname.match(/^\/platform\/users\/([^/]+)\/live$/);
         const productUsersMatch = url.pathname.match(/^\/platform\/products\/([^/]+)\/users$/);
         const productUserMatch = url.pathname.match(/^\/platform\/products\/([^/]+)\/users\/([^/]+)$/);
 
-        if (userMatch && request.method === "PATCH") {
+        if (userLiveMatch && request.method === "GET") {
+          response = await getUserLiveDetail(
+            request,
+            env,
+            decodeURIComponent(userLiveMatch[1])
+          );
+        } else if (userMatch && request.method === "PATCH") {
           response = await updateUser(
             request,
             env,
