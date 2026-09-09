@@ -321,6 +321,12 @@ function MasterDashboard({ user, onLogout }) {
   const [productUsers, setProductUsers] = useState([])
   const [productEmail, setProductEmail] = useState('')
   const [productBusy, setProductBusy] = useState(false)
+  const [emailAudience, setEmailAudience] = useState([])
+  const [emailCampaigns, setEmailCampaigns] = useState([])
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')
+  const [emailBusy, setEmailBusy] = useState(false)
+  const [emailMessage, setEmailMessage] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -459,6 +465,63 @@ function MasterDashboard({ user, onLogout }) {
     }
   }
 
+  async function loadEmailUpdates() {
+    setEmailBusy(true)
+    setEmailMessage('')
+    setError('')
+    try {
+      const [audienceData, campaignData] = await Promise.all([
+        api('/platform/email-audience'),
+        api('/platform/email-campaigns'),
+      ])
+      setEmailAudience(audienceData.audience || [])
+      setEmailCampaigns(campaignData.campaigns || [])
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setEmailBusy(false)
+    }
+  }
+
+  async function saveEmailCampaign(event) {
+    event.preventDefault()
+    if (!emailSubject.trim() || !emailBody.trim()) return
+    setEmailBusy(true)
+    setEmailMessage('')
+    setError('')
+    try {
+      await api('/platform/email-campaigns', {
+        method: 'POST',
+        body: JSON.stringify({
+          subject: emailSubject.trim(),
+          bodyText: emailBody.trim(),
+        }),
+      })
+      setEmailSubject('')
+      setEmailBody('')
+      setEmailMessage('Campaign draft saved in ICA Master.')
+      await loadEmailUpdates()
+    } catch (err) {
+      setError(err.message)
+      setEmailBusy(false)
+    }
+  }
+
+  async function copyEmailAudience() {
+    const emails = emailAudience.map((item) => item.email).filter(Boolean)
+    if (!emails.length) {
+      setEmailMessage('No opted-in email addresses yet.')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(emails.join(', '))
+      setEmailMessage(`Copied ${emails.length} opted-in email address${emails.length === 1 ? '' : 'es'} for BCC.`)
+    } catch {
+      setEmailMessage('Clipboard access was blocked by the browser.')
+    }
+  }
+
   async function changeUserStatus(target, status) {
     try {
       await api(`/platform/users/${encodeURIComponent(target.id)}`, {
@@ -493,6 +556,9 @@ function MasterDashboard({ user, onLogout }) {
           <button className={view === 'users' ? 'active' : ''} onClick={() => setView('users')}>
             USERS
           </button>
+          <button className={view === 'email-updates' ? 'active' : ''} onClick={() => { setView('email-updates'); loadEmailUpdates() }}>
+            EMAIL UPDATES
+          </button>
           <button className={view === 'sales' ? 'active' : ''} onClick={() => setView('sales')}>
             SALES / BILLING
           </button>
@@ -519,6 +585,7 @@ function MasterDashboard({ user, onLogout }) {
               {view === 'overview' && 'Platform Overview'}
               {view === 'companies' && 'Company Health'}
               {view === 'users' && 'Users & Access'}
+              {view === 'email-updates' && 'Email Updates'}
               {view === 'sales' && 'Sales & Billing'}
               {view === 'health' && 'Platform Health'}
               {view === 'product-users' && `${selectedProduct?.name || 'Product'} Users`}
@@ -695,6 +762,109 @@ function MasterDashboard({ user, onLogout }) {
           </section>
         )}
 
+
+        {view === 'email-updates' && (
+          <section className="master-email-updates">
+            <div className="master-metrics">
+              <article><span>OPTED IN</span><strong>{emailAudience.length}</strong></article>
+              <article><span>DRAFTS</span><strong>{emailCampaigns.length}</strong></article>
+              <article><span>DELIVERY</span><strong>MANUAL</strong></article>
+              <article><span>SOURCE</span><strong>ICA USERS</strong></article>
+            </div>
+
+            {emailMessage && <div className="dc-live-success">{emailMessage}</div>}
+
+            <div className="master-email-grid">
+              <section className="master-table-card">
+                <div className="master-section-heading">
+                  <div>
+                    <p className="master-eyebrow">CENTRAL OPT-IN AUDIENCE</p>
+                    <h2>Customers who asked for updates</h2>
+                    <p>Only active ICA accounts that explicitly opted in appear here.</p>
+                  </div>
+                  <button type="button" className="master-table-action" onClick={copyEmailAudience}>
+                    COPY BCC LIST
+                  </button>
+                </div>
+
+                <div className="master-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>USER</th>
+                        <th>PRODUCTS</th>
+                        <th>OPT-IN</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {emailAudience.length ? emailAudience.map((target) => (
+                        <tr key={target.id}>
+                          <td>
+                            <strong>{target.display_name || '—'}</strong>
+                            <small>{target.email}</small>
+                          </td>
+                          <td>{target.products || 'ICA ACCOUNT'}</td>
+                          <td>YES</td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan="3">No opted-in customers yet.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="master-table-card master-email-composer">
+                <div className="master-section-heading">
+                  <div>
+                    <p className="master-eyebrow">MASS UPDATE DRAFT</p>
+                    <h2>Write once, send later</h2>
+                    <p>Draft product updates here. One-click bulk delivery will be connected when the email provider is added.</p>
+                  </div>
+                </div>
+
+                <form onSubmit={saveEmailCampaign}>
+                  <label>
+                    SUBJECT
+                    <input
+                      value={emailSubject}
+                      onChange={(event) => setEmailSubject(event.target.value)}
+                      placeholder="ScenePilot update"
+                      required
+                    />
+                  </label>
+                  <label>
+                    MESSAGE
+                    <textarea
+                      rows="9"
+                      value={emailBody}
+                      onChange={(event) => setEmailBody(event.target.value)}
+                      placeholder="Write the update..."
+                      required
+                    />
+                  </label>
+                  <button type="submit" className="master-table-action" disabled={emailBusy}>
+                    {emailBusy ? 'SAVING…' : 'SAVE CAMPAIGN DRAFT'}
+                  </button>
+                </form>
+
+                <div className="master-email-drafts">
+                  {emailCampaigns.map((campaign) => (
+                    <article key={campaign.id}>
+                      <strong>{campaign.subject}</strong>
+                      <span>
+                        {String(campaign.status || 'draft').toUpperCase()} •{' '}
+                        {campaign.created_at ? new Date(Number(campaign.created_at)).toLocaleDateString() : '—'}
+                      </span>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </section>
+        )}
 
         {view === 'user-live' && selectedLiveUser && (
           <section className="master-live-detail">
