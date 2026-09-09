@@ -324,7 +324,11 @@ function MasterDashboard({ user, onLogout }) {
       const [summaryData, usersData, liveData] = await Promise.all([
         api('/platform/summary'),
         api('/platform/users'),
-        api('/platform/live-sessions'),
+        api('/platform/live-sessions').catch((liveError) => {
+          if (liveError.status === 401 || liveError.status === 403) throw liveError
+          console.warn('ICA live-session telemetry unavailable:', liveError)
+          return { sessions: [] }
+        }),
       ])
 
       setSummary(summaryData)
