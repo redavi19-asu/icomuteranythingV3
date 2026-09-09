@@ -1,6 +1,11 @@
 name: Deploy ScenePilot via ICA Master
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-scenepilot.yml"
   workflow_dispatch:
 
 permissions:
