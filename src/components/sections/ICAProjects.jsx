@@ -25,7 +25,6 @@ function ICAProjects() {
     { title:'IntriguedMutts.com', type:'Digital Brand Platform', description:'A multi-feature digital brand platform combining original artwork, merchandise, NFTs, and stock-focused tools in one interactive experience.', link:'https://www.intriguedmutts.com/', mascot:'https://raw.githubusercontent.com/redavi19-asu/intriguedmutts-react/main/intriguedmutts-react/public/intrigued-mutts-society-transparent.png', mascotAlt:'Intrigued Mutts Society artwork', buttonText:'View Project', buttonType:'live', card:'from-amber-950/80 to-slate-950/90 border-amber-500/25', badge:'bg-amber-500/10 border-amber-400/25 text-amber-200', button:'from-amber-700 to-orange-500 hover:from-amber-600 hover:to-orange-400 shadow-amber-950/30' },
     { title:'Ghost Money Millionaire', type:'Streetwear & E-Commerce Brand', description:'A premium fashion storefront built around original Ghost Money Millionaire collections, custom apparel concepts, branded product presentation, and a connected commerce workflow.', link:'https://redavi19-asu.github.io/GhostMoneyMillionaire/', mascot:`${import.meta.env.BASE_URL}ghost-money-mark.svg`, mascotAlt:'Ghost Money Millionaire crowned ghost mascot', buttonText:'View Project', buttonType:'live', card:'from-lime-950/80 to-slate-950/90 border-lime-500/25', badge:'bg-lime-500/10 border-lime-400/25 text-lime-200', button:'from-lime-700 to-emerald-500 hover:from-lime-600 hover:to-emerald-400 shadow-lime-950/30' },
     { title:'Charge Next', type:'EV Service + Dispatch Platform', description:'A live mobile-first EV roadside charging platform connected with Urban Carrier OS for service requests, secure customer flow, driver coordination, job status, and dispatch operations.', link:'https://redavi19-asu.github.io/chargenext/', brandMark:'chargenext', buttonText:'View Charge Next', buttonType:'live', card:'from-sky-950/90 via-blue-950/85 to-slate-950/95 border-sky-400/30', badge:'bg-sky-400/10 border-sky-300/30 text-sky-100', button:'from-sky-700 via-blue-600 to-indigo-600 hover:from-sky-600 hover:via-blue-500 hover:to-indigo-500 shadow-sky-950/40' },
-    { title:'Starlink Event Connectivity', type:'Mobile Internet & Streaming', visual:'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=320&q=85', visualAlt:'Satellite connectivity technology', description:'Reliable high-speed internet and Wi-Fi for events, live streamers, productions, pop-ups, remote locations, and temporary sites where dependable connectivity is limited or unavailable.', buttonText:'Coming Soon', buttonType:'coming-soon', card:'from-violet-950/80 to-slate-950/90 border-violet-500/25', badge:'bg-violet-500/10 border-violet-400/25 text-violet-200', button:'from-violet-800 to-purple-600 shadow-violet-950/30' },
     { title:'Payments + Fulfillment Pipeline', type:'Backend Integration', visual:'https://images.unsplash.com/photo-1556742044-3c52d6e88c62?auto=format&fit=crop&w=320&q=85', visualAlt:'Modern payment terminal and checkout', description:'Integrated payment processing and fulfillment automation with protected APIs, webhooks, and order routing logic.', buttonText:'Learn More', buttonType:'overview', card:'from-orange-950/80 to-slate-950/90 border-orange-500/25', badge:'bg-orange-500/10 border-orange-400/25 text-orange-200', button:'from-orange-700 to-red-500 hover:from-orange-600 hover:to-red-400 shadow-orange-950/30' },
   ]
 
@@ -40,6 +39,95 @@ function ICAProjects() {
   return (
     <section id="ica-projects" className="py-24 px-6 relative"><div className="max-w-6xl mx-auto">
       <motion.div ref={ref} initial={{opacity:0,y:18}} animate={inView?{opacity:1,y:0}:{}} transition={{duration:.5}} className="text-center mb-16"><h2 className="section-title mb-6">Projects / Portfolio</h2><p className="section-subtitle">A selection of live builds, infrastructure work, and working project examples.</p></motion.div>
+      <motion.article
+        initial={{opacity:0,y:26}}
+        animate={inView?{opacity:1,y:0}:{}}
+        transition={{duration:.55,delay:.08}}
+        whileHover={{y:-5}}
+        className="relative mb-10 overflow-hidden rounded-3xl border border-cyan-300/25 bg-gradient-to-br from-slate-950 via-cyan-950/70 to-indigo-950/90 p-8 md:p-10 shadow-[0_28px_80px_rgba(8,145,178,.18)]"
+      >
+        <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl"/>
+        <div className="absolute -left-20 -bottom-24 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl"/>
+
+        <div className="relative grid lg:grid-cols-[1.25fr_.75fr] gap-8 items-start">
+          <div>
+            <span className="inline-flex items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[.16em] text-cyan-100">
+              Featured Production Service
+            </span>
+
+            <h3 className="mt-5 text-3xl md:text-4xl font-black tracking-tight text-white">
+              Live Production + Redundant Connectivity
+            </h3>
+
+            <p className="mt-5 max-w-3xl text-base md:text-lg leading-8 text-slate-200">
+              Professional multi-camera live production with switching, graphics, recording, replay, and on-location streaming — backed by redundant internet so a weak venue connection does not have to end the show.
+            </p>
+
+            <div className="mt-6 grid sm:grid-cols-2 gap-3 text-sm text-slate-100">
+              {[
+                ['🎥','Multi-camera production'],
+                ['🎚️','Live switching + graphics'],
+                ['📡','Starlink backup internet'],
+                ['📶','Cellular backup connection'],
+                ['🛡️','Peplink / Fusion failover'],
+                ['⏺️','Record + replay workflow'],
+              ].map(([icon,label])=>(
+                <div key={label} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[.045] px-4 py-3">
+                  <span className="text-xl" aria-hidden="true">{icon}</span>
+                  <span className="font-semibold">{label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-7 flex flex-wrap gap-3">
+              <motion.button
+                whileHover={{scale:1.03}}
+                whileTap={{scale:.98}}
+                onClick={()=>document.getElementById('final-cta')?.scrollIntoView({behavior:'smooth'})}
+                className="rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 px-6 py-3 font-bold text-white shadow-lg shadow-cyan-950/40"
+              >
+                Request Live Production →
+              </motion.button>
+              <span className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200">
+                Stream from events, venues, remote sites & pop-ups
+              </span>
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl border border-cyan-200/15 bg-black/25 p-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-[.18em] text-cyan-200">Redundant Stream Path</span>
+              <motion.span
+                className="h-2.5 w-2.5 rounded-full bg-emerald-300"
+                animate={{opacity:[.45,1,.45],scale:[.85,1.2,.85]}}
+                transition={{duration:1.4,repeat:Infinity,ease:'easeInOut'}}
+              />
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {[
+                ['PRIMARY','Venue / Ethernet'],
+                ['BACKUP 01','Starlink'],
+                ['BACKUP 02','Cellular'],
+                ['ROUTING','Peplink + Fusion'],
+              ].map(([label,value])=>(
+                <div key={label} className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/55 px-4 py-3">
+                  <span className="text-[10px] font-black tracking-[.16em] text-slate-400">{label}</span>
+                  <span className="text-sm font-bold text-white">{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-400/[.07] p-4">
+              <p className="text-xs font-black uppercase tracking-[.14em] text-emerald-200">Built for continuity</p>
+              <p className="mt-2 text-sm leading-6 text-slate-200">
+                If the primary connection drops, backup connectivity is ready to help keep the broadcast moving.
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.article>
+
       <div className="mobile-horizontal-scroll grid md:grid-cols-2 lg:grid-cols-3 gap-8">{projects.map((project,index)=>(
         <motion.article key={project.title} initial={{opacity:0,y:24}} animate={inView?{opacity:1,y:0}:{}} transition={{duration:.45,delay:index*.07}} whileHover={{y:-8}} className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br ${project.card} p-8 backdrop-blur-sm flex flex-col min-h-[330px] shadow-xl`}>
           {project.mascot&&<motion.img src={project.mascot} alt={project.mascotAlt||`${project.title} artwork`} initial={{opacity:0,rotate:-8,scale:.88}} animate={inView?{opacity:.95,rotate:0,scale:1}:{}} transition={{duration:.5,delay:index*.07+.15}} className={`absolute right-5 top-5 w-auto object-contain drop-shadow-[0_0_18px_rgba(255,255,255,0.16)] pointer-events-none select-none ${isIntrigued(project.title) ? 'h-[68px] max-w-[96px]' : 'h-20 max-w-[112px]'}`}/>} 
