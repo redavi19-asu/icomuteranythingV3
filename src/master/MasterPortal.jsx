@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import DcLiveAdmin from './DcLiveAdmin'
 
 const API_URL =
   import.meta.env.VITE_ICA_MASTER_API_URL ||
@@ -237,7 +238,7 @@ function MasterLogin({ onAuthenticated }) {
   )
 }
 
-function ProductCard({ product, health, onManageUsers }) {
+function ProductCard({ product, health, onManageUsers, onOpenDcLiveAdmin }) {
   const slug = product.slug
   const publicUrl = PRODUCT_LINKS[slug]
   const adminUrl = PRODUCT_ADMIN_LINKS[slug]
@@ -294,11 +295,15 @@ function ProductCard({ product, health, onManageUsers }) {
             OPEN PRODUCT
           </a>
         )}
-        {adminUrl && (
+        {slug === 'dc-live' ? (
+          <button type="button" className="secondary" onClick={onOpenDcLiveAdmin}>
+            DC LIVE CONTROL
+          </button>
+        ) : adminUrl ? (
           <a href={adminUrl} target="_blank" rel="noreferrer" className="secondary">
             PRODUCT ADMIN
           </a>
-        )}
+        ) : null}
       </div>
     </article>
   )
@@ -494,6 +499,9 @@ function MasterDashboard({ user, onLogout }) {
           <button className={view === 'health' ? 'active' : ''} onClick={() => setView('health')}>
             PLATFORM HEALTH
           </button>
+          <button className={view === 'dc-live-admin' ? 'active' : ''} onClick={() => setView('dc-live-admin')}>
+            DC LIVE ADMIN
+          </button>
         </nav>
 
         <div className="master-owner-block">
@@ -515,6 +523,7 @@ function MasterDashboard({ user, onLogout }) {
               {view === 'health' && 'Platform Health'}
               {view === 'product-users' && `${selectedProduct?.name || 'Product'} Users`}
               {view === 'user-live' && 'Live Broadcast Monitor'}
+              {view === 'dc-live-admin' && 'DC Live Control'}
             </h1>
           </div>
           <button onClick={load} disabled={loading} title="Re-run all platform health checks and refresh users, companies and access data">
@@ -547,6 +556,7 @@ function MasterDashboard({ user, onLogout }) {
                   product={product}
                   health={summary?.health?.[product.slug]}
                   onManageUsers={openProductUsers}
+                  onOpenDcLiveAdmin={() => setView('dc-live-admin')}
                 />
               ))}
             </div>
@@ -859,6 +869,8 @@ function MasterDashboard({ user, onLogout }) {
             )}
           </section>
         )}
+
+        {view === 'dc-live-admin' && <DcLiveAdmin />}
 
         {view === 'health' && (
           <section className="master-placeholder">
