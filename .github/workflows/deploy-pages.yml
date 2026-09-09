@@ -69,8 +69,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "ICA Master Worker deploy skipped because Cloudflare repository secrets are not configured."
-            exit 0
+            echo "::error::ICA Master Worker was NOT deployed. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as repository Actions secrets."
+            exit 1
           fi
           npx --yes wrangler@latest deploy --config platform-worker/wrangler.jsonc
 
