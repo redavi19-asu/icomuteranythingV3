@@ -551,6 +551,104 @@ async function dashboardSummary(request, env) {
   });
 }
 
+async function ensureEmailCampaignTable(env) {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS email_campaigns (
+      id TEXT PRIMARY KEY,
+      subject TEXT NOT NULL,
+      body_text TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft',
+      created_by TEXT,
+      created_at TEXT NOT NULL,
+      sent_at TEXT,
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    )`
+  ).run();
+}
+
+async function listEmailAudience(request, env) {
+  const auth = await requireOwner(request, env);
+  if (auth.response) return auth.response;
+
+  const result = await env.DB.prepare(
+    `SELECT
+      u.id,
+      u.email,
+      u.display_name,
+      u.status,
+      u.marketing_opt_in,
+      u.created_at,
+      GROUP_CONCAT(DISTINCT p.name) AS products
+    FROM users u
+    LEFT JOIN user_products up ON up.user_id = u.id
+    LEFT JOIN products p ON p.id = up.product_id
+    WHERE u.marketing_opt_in = 1
+      AND u.status = 'active'
+    GROUP BY
+      u.id,
+      u.email,
+      u.display_name,
+      u.status,
+      u.marketing_opt_in,
+      u.created_at
+    ORDER BY u.created_at DESC
+    LIMIT 1000`
+  ).all();
+
+  return json({
+    audience: result.results || [],
+    count: (result.results || []).length,
+  });
+}
+
+async function emailCampaigns(request, env) {
+  const auth = await requireOwner(request, env);
+  if (auth.response) return auth.response;
+
+  await ensureEmailCampaignTable(env);
+
+  if (request.method === "GET") {
+    const result = await env.DB.prepare(
+      `SELECT id, subject, body_text, status, created_at, sent_at
+       FROM email_campaigns
+       ORDER BY created_at DESC
+       LIMIT 100`
+    ).all();
+
+    return json({
+      campaigns: result.results || [],
+    });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const subject = String(body.subject || "").trim().slice(0, 180);
+  const bodyText = String(body.bodyText || "").trim().slice(0, 20000);
+
+  if (!subject || !bodyText) {
+    return json({ error: "Campaign subject and message are required." }, 400);
+  }
+
+  const id = crypto.randomUUID();
+  const now = Date.now();
+
+  await env.DB.prepare(
+    `INSERT INTO email_campaigns (
+      id, subject, body_text, status, created_by, created_at
+    ) VALUES (?, ?, ?, 'draft', ?, ?)`
+  ).bind(id, subject, bodyText, auth.owner.id, now).run();
+
+  return json({
+    ok: true,
+    campaign: {
+      id,
+      subject,
+      bodyText,
+      status: "draft",
+      createdAt: now,
+    },
+  }, 201);
+}
+
 async function listUsers(request, env) {
   const auth = await requireOwner(request, env);
   if (auth.response) return auth.response;
@@ -1006,6 +1104,13 @@ export default {
         response = await dashboardSummary(request, env);
       } else if (url.pathname === "/platform/users" && request.method === "GET") {
         response = await listUsers(request, env);
+      } else if (url.pathname === "/platform/email-audience" && request.method === "GET") {
+        response = await listEmailAudience(request, env);
+      } else if (
+        url.pathname === "/platform/email-campaigns" &&
+        (request.method === "GET" || request.method === "POST")
+      ) {
+        response = await emailCampaigns(request, env);
       } else if (url.pathname === "/platform/live-sessions" && request.method === "GET") {
         response = await listLiveSessions(request, env);
       } else if (url.pathname === "/platform/live-report" && request.method === "POST") {
