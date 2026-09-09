@@ -2,6 +2,7 @@ name: Deploy ScenePilot via ICA Master
 # Sync ScenePilot email opt-in and account changes
 # Deploy protected Program editor policy
 # Deploy director hamburger cleanup
+# Restore Director selfie cam card
 
 on:
   push:
