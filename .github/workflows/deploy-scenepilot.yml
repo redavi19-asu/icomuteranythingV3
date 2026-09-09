@@ -5,6 +5,7 @@ name: Deploy ScenePilot via ICA Master
 # Restore Director selfie cam card
 # Deploy raw ISO customer recording policy
 # Deploy low-latency large watch player and TV controls
+# Deploy compact owner recording card
 
 on:
   push:
