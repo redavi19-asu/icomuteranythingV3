@@ -406,6 +406,10 @@ async function productHealth(env) {
       frontendUrl: "https://ica-unified.ryanedavis.workers.dev/platform",
       apiPath: "/api/health",
     },
+    "dc-live": {
+      frontendUrl: "https://dc-live.pages.dev",
+      apiUrl: "https://dc-live-api.ryanedavis.workers.dev/health",
+    },
   };
 
   const entries = await Promise.all(
@@ -414,28 +418,37 @@ async function productHealth(env) {
         ? await checkEndpoint(service.frontendUrl)
         : await checkServiceBinding(service.binding, service.frontendPath);
 
-      const api = await checkServiceBinding(
-        service.binding,
-        service.apiPath,
-        { expectJson: true }
-      );
+      const api = service.apiUrl
+        ? await checkEndpoint(service.apiUrl, { expectJson: true })
+        : await checkServiceBinding(
+            service.binding,
+            service.apiPath,
+            { expectJson: true }
+          );
 
       const database = {
         ok: false,
         status: 0,
         latencyMs: null,
-        detail: "Shared ICA D1",
+        detail: slug === "dc-live" ? "DC Live D1" : "Shared ICA D1",
       };
 
-      const dbStarted = Date.now();
-      try {
-        const row = await env.DB.prepare("SELECT 1 AS ok").first();
-        database.ok = Number(row?.ok || 0) === 1;
+      if (slug === "dc-live") {
+        database.ok = Boolean(api.data?.database);
         database.status = database.ok ? 200 : 503;
-        database.latencyMs = Date.now() - dbStarted;
-      } catch (error) {
-        database.error = String(error?.message || error);
-        database.latencyMs = Date.now() - dbStarted;
+        database.latencyMs = api.data?.databaseLatencyMs ?? api.latencyMs ?? null;
+        database.error = api.data?.databaseError || null;
+      } else {
+        const dbStarted = Date.now();
+        try {
+          const row = await env.DB.prepare("SELECT 1 AS ok").first();
+          database.ok = Number(row?.ok || 0) === 1;
+          database.status = database.ok ? 200 : 503;
+          database.latencyMs = Date.now() - dbStarted;
+        } catch (error) {
+          database.error = String(error?.message || error);
+          database.latencyMs = Date.now() - dbStarted;
+        }
       }
 
       const online = Boolean(frontend.ok && api.ok && database.ok);
@@ -460,6 +473,10 @@ async function productHealth(env) {
 async function dashboardSummary(request, env) {
   const auth = await requireOwner(request, env);
   if (auth.response) return auth.response;
+
+  await env.DB.prepare(
+    "INSERT OR IGNORE INTO products (id, slug, name, status, created_at) VALUES ('product_dc_live','dc-live','DC Live','active',?)"
+  ).bind(Date.now()).run();
 
   const [
     userCount,
