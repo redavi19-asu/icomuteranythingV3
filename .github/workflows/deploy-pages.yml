@@ -37,8 +37,11 @@ jobs:
           VITE_ICA_MASTER_TURNSTILE_SITE_KEY: 0x4AAAAAAErtQB79-xi-UTHQ
         run: npm run build
 
-      - name: Add SPA fallback
-        run: cp dist/index.html dist/404.html
+      - name: Add SPA routes
+        run: |
+          cp dist/index.html dist/404.html
+          mkdir -p dist/master
+          cp dist/index.html dist/master/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -70,7 +73,6 @@ jobs:
             exit 0
           fi
           npx --yes wrangler@latest deploy --config platform-worker/wrangler.jsonc
-
 
   deploy:
     needs: build
