@@ -3,6 +3,7 @@ name: Deploy ScenePilot via ICA Master
 # Deploy protected Program editor policy
 # Deploy director hamburger cleanup
 # Restore Director selfie cam card
+# Deploy raw ISO customer recording policy
 
 on:
   push:
