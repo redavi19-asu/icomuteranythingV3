@@ -12,12 +12,14 @@ const PRODUCT_LINKS = {
   scenepilot: 'https://scenepilot.ryanedavis.workers.dev/app',
   dispatchos: 'https://redavi19-asu.github.io/icomputer-dispatch-platform/',
   'ica-unified': 'https://ica-unified.ryanedavis.workers.dev/platform',
+  'dc-live': 'https://dc-live.pages.dev',
 }
 
 const PRODUCT_ADMIN_LINKS = {
   scenepilot: 'https://scenepilot.ryanedavis.workers.dev/admin',
   dispatchos: 'https://redavi19-asu.github.io/icomputer-dispatch-platform/admin',
   'ica-unified': 'https://ica-unified.ryanedavis.workers.dev/platform',
+  'dc-live': 'https://dc-live.pages.dev',
 }
 
 function getToken() {
@@ -269,6 +271,7 @@ function ProductCard({ product, health, onManageUsers }) {
         {slug === 'scenepilot' && 'Live production, camera operators, replay, multiview and broadcast control.'}
         {slug === 'dispatchos' && 'Business, driver and customer logistics operations.'}
         {slug === 'ica-unified' && 'Learning, people, credentials, compliance and organization management.'}
+        {slug === 'dc-live' && 'Viewer accounts, event access, payments, library and protected live playback.'}
       </p>
 
       <div className="master-product-metrics">
