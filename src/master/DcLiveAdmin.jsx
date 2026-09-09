@@ -188,6 +188,45 @@ export default function DcLiveAdmin() {
     }
   }
 
+  async function changeReview(event, reviewStatus) {
+    setBusy(true)
+    setMessage('')
+    setError('')
+    try {
+      await dcApi(`/api/admin/submissions/${encodeURIComponent(event.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ reviewStatus }),
+      })
+      setMessage(
+        reviewStatus === 'approved'
+          ? `${event.title} approved and published.`
+          : reviewStatus === 'rejected'
+            ? `${event.title} rejected and kept off the public site.`
+            : `${event.title} returned to pending review.`
+      )
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function previewEvent(event) {
+    setError('')
+    try {
+      const data = await dcApi(`/api/admin/events/${encodeURIComponent(event.id)}/preview`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      })
+      if (data.playbackUrl) {
+        window.open(`${DC_LIVE_API_URL}${data.playbackUrl}`, '_blank', 'noopener,noreferrer')
+      }
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   async function deleteEvent(event) {
     if (!window.confirm(`Delete "${event.title}" and its stored DC Live media? This cannot be undone.`)) return
     setBusy(true)
@@ -291,8 +330,8 @@ export default function DcLiveAdmin() {
           <p className="master-eyebrow">DC LIVE / OWNER CONTENT CONTROL</p>
           <h2>Events, publishing & Cloudflare storage</h2>
           <p>
-            Publish and unpublish the DC Live home screen, manage pricing, upload finished Programs,
-            posters and trailers, and browse the R2 media bucket without leaving ICA Master.
+            Review ScenePilot creator submissions, preview finished Programs, approve or reject publishing,
+            manage pricing, posters and trailers, and browse the R2 media bucket without leaving ICA Master.
           </p>
         </div>
         <div className="dc-live-storage-card">
@@ -321,22 +360,51 @@ export default function DcLiveAdmin() {
               <article key={event.id} className={form.id === event.id ? 'selected' : ''}>
                 <div className="dc-live-event-row">
                   <div>
-                    <span className={event.status === 'draft' ? 'unpublished' : 'published'}>
-                      {event.status === 'draft' ? 'UNPUBLISHED' : 'PUBLISHED'}
+                    <span className={event.reviewStatus === 'pending_review' || event.reviewStatus === 'rejected' || event.status === 'draft' ? 'unpublished' : 'published'}>
+                      {event.reviewStatus === 'pending_review'
+                        ? 'PENDING REVIEW'
+                        : event.reviewStatus === 'rejected'
+                          ? 'REJECTED'
+                          : event.status === 'draft'
+                            ? 'UNPUBLISHED'
+                            : 'PUBLISHED'}
                     </span>
                     <strong>{event.title}</strong>
                     <small>{event.slug}</small>
+                    {event.creatorEmail && (
+                      <small>
+                        SUBMITTED BY {event.creatorDisplayName || event.creatorEmail}
+                        {event.sourceNetworkName ? ` • ${event.sourceNetworkName}` : ''}
+                      </small>
+                    )}
                   </div>
                   <div className="dc-live-event-badges">
                     <span>{event.accessType === 'paid' ? `$${(Number(event.priceCents || 0) / 100).toFixed(2)}` : 'FREE'}</span>
-                    <span>{event.hasReplay ? 'REPLAY READY' : 'LIVE / NO REPLAY'}</span>
+                    <span>{event.hasReplay ? 'REPLAY READY' : event.reviewStatus ? 'UPLOAD INCOMPLETE' : 'LIVE / NO REPLAY'}</span>
                   </div>
                 </div>
                 <div className="dc-live-event-actions">
                   <button type="button" onClick={() => editEvent(event)}>EDIT</button>
-                  {event.status === 'draft'
-                    ? <button type="button" className="publish" onClick={() => changePublish(event, true)}>PUBLISH</button>
-                    : <button type="button" className="unpublish" onClick={() => changePublish(event, false)}>UNPUBLISH</button>}
+                  {event.hasReplay && (
+                    <button type="button" onClick={() => previewEvent(event)}>PREVIEW</button>
+                  )}
+                  {event.reviewStatus === 'pending_review' || event.reviewStatus === 'rejected'
+                    ? <>
+                        <button
+                          type="button"
+                          className="publish"
+                          disabled={!event.uploadComplete}
+                          onClick={() => changeReview(event, 'approved')}
+                        >
+                          APPROVE & PUBLISH
+                        </button>
+                        {event.reviewStatus === 'pending_review' && (
+                          <button type="button" className="unpublish" onClick={() => changeReview(event, 'rejected')}>REJECT</button>
+                        )}
+                      </>
+                    : event.status === 'draft'
+                      ? <button type="button" className="publish" onClick={() => changePublish(event, true)}>PUBLISH</button>
+                      : <button type="button" className="unpublish" onClick={() => changePublish(event, false)}>UNPUBLISH</button>}
                   <button type="button" className="danger" onClick={() => deleteEvent(event)}>DELETE</button>
                 </div>
               </article>
@@ -351,6 +419,18 @@ export default function DcLiveAdmin() {
               <strong>{form.title || 'Event setup'}</strong>
             </div>
           </div>
+
+          {selected?.reviewStatus && (
+            <div className="dc-live-submission-summary">
+              <span>SCENEPILOT SUBMISSION</span>
+              <strong>{selected.reviewStatus === 'pending_review' ? 'PENDING REVIEW' : selected.reviewStatus.toUpperCase()}</strong>
+              <small>
+                {selected.creatorDisplayName || selected.creatorEmail || 'ScenePilot creator'}
+                {selected.sourceNetworkName ? ` • ${selected.sourceNetworkName}` : ''}
+              </small>
+              <small>{selected.uploadComplete ? 'PROGRAM UPLOAD COMPLETE' : 'PROGRAM UPLOAD INCOMPLETE'}</small>
+            </div>
+          )}
 
           <form className="dc-live-form" onSubmit={saveEvent}>
             <label>
