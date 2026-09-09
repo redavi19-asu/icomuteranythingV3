@@ -407,7 +407,7 @@ async function productHealth(env) {
       apiPath: "/api/health",
     },
     "dc-live": {
-      frontendUrl: "https://dc-live.pages.dev",
+      frontendUrl: "https://redavi19-asu.github.io/dc-live/",
       apiUrl: "https://dc-live-api.ryanedavis.workers.dev/health",
     },
   };
