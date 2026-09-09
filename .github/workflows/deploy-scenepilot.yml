@@ -6,6 +6,7 @@ name: Deploy ScenePilot via ICA Master
 # Deploy raw ISO customer recording policy
 # Deploy low-latency large watch player and TV controls
 # Deploy compact owner recording card
+# Deploy Director telemetry startup fix
 
 on:
   push:
