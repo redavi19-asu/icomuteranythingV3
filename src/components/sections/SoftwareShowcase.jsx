@@ -284,6 +284,97 @@ function SoftwareShowcase() {
             </div>
           </div>
         </motion.div>
+        <motion.div
+          id="software-pricing"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.12 }}
+          transition={{ duration: 0.55 }}
+          className="mt-24 scroll-mt-28"
+        >
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300 mb-4">Custom Software Pricing</p>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-5">Professional software built around your business.</h2>
+            <p className="text-gray-300 leading-relaxed text-lg">
+              These ranges are planning estimates for custom software projects. Final pricing is based on scope, platforms,
+              integrations, security, deployment, and ownership requirements.
+            </p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+            {[
+              {
+                title: 'Starter Custom App',
+                price: '$3,500–$6,000',
+                description: 'A focused branded application with a clean customer-facing workflow.',
+                items: ['Single core workflow', 'Business branding', 'Responsive interface', 'Basic forms + data'],
+              },
+              {
+                title: 'Business App',
+                price: '$7,500–$12,000',
+                description: 'A multi-feature business application prepared for mobile deployment.',
+                items: ['Multiple workflows', 'User accounts', 'Notifications', 'App-store-ready build'],
+              },
+              {
+                title: 'App + Backend + Dashboard',
+                price: '$10,000–$18,000',
+                description: 'A complete software system connecting users, backend services, and management tools.',
+                items: ['Secure authentication', 'Cloud/backend services', 'Admin dashboard', 'API integrations'],
+                featured: true,
+              },
+              {
+                title: 'Advanced Custom Software',
+                price: '$15,000–$30,000+',
+                description: 'Operational software with advanced workflows, automation, media, or real-time features.',
+                items: ['Complex workflows', 'Desktop + mobile options', 'Real-time functionality', 'Custom integrations'],
+              },
+              {
+                title: 'Operations / Logistics Platform',
+                price: '$20,000–$40,000+',
+                description: 'Larger platforms for dispatch, routing, drivers, customers, tracking, and proof-of-service workflows.',
+                items: ['Multi-role dashboards', 'Live operational data', 'Driver/mobile workflows', 'Custom business logic'],
+              },
+            ].map((plan) => (
+              <article
+                key={plan.title}
+                className={`rounded-2xl border p-6 flex flex-col min-h-[330px] ${plan.featured
+                  ? 'border-cyan-300/35 bg-cyan-400/[0.08] shadow-xl shadow-cyan-950/20'
+                  : 'border-white/10 bg-white/[0.03]'}`}
+              >
+                <p className="text-sm font-bold text-white leading-snug">{plan.title}</p>
+                <h3 className="text-2xl md:text-3xl font-extrabold text-cyan-300 mt-4 mb-4 tracking-tight">{plan.price}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{plan.description}</p>
+                <ul className="mt-auto pt-6 space-y-2 text-sm text-gray-300">
+                  {plan.items.map((item) => <li key={item}>• {item}</li>)}
+                </ul>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.05] p-6 text-gray-300 leading-relaxed">
+            <strong className="text-white">Project pricing is quoted after scope.</strong>
+            <span>
+              {' '}Hosting, domains, Apple or Google developer accounts, SMS, maps, payment processing, and other third-party
+              services are separate when required. Optional maintenance and future feature work can be quoted separately.
+            </span>
+          </div>
+
+          <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+            <a
+              href="#final-cta"
+              className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition-all shadow-lg shadow-cyan-950/20"
+            >
+              Request a Custom Software Quote
+            </a>
+            <a
+              href="#software"
+              className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-white font-semibold transition-all"
+            >
+              View ICA Software
+            </a>
+          </div>
+        </motion.div>
+
       </div>
 
       {showUnifiedPreview && (
