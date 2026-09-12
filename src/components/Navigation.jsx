@@ -16,6 +16,7 @@ function Navigation({ activeSection, onRequestService }) {
     { id: 'what-we-do', label: 'Services' },
     { id: 'how-it-works', label: 'How It Works' },
     { id: 'software', label: 'Software' },
+    { id: 'software-pricing', label: 'Pricing' },
     { id: 'ica-projects', label: 'Projects' },
     { id: 'meet-the-lead-tech', label: 'About' },
   ]
