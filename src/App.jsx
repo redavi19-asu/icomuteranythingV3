@@ -39,7 +39,7 @@ function App() {
     const timer = window.setTimeout(() => setIntroVisible(false), loaderDuration)
 
     const handleScroll = () => {
-      const sections = ['hero', 'what-we-do', 'how-it-works', 'why-choose-us', 'software', 'ica-projects', 'meet-the-lead-tech', 'who-it-for', 'final-cta']
+      const sections = ['hero', 'what-we-do', 'how-it-works', 'why-choose-us', 'software', 'software-pricing', 'ica-projects', 'meet-the-lead-tech', 'who-it-for', 'final-cta']
       for (let section of sections) {
         const element = document.getElementById(section)
         if (element) {
