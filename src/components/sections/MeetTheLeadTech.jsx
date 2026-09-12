@@ -109,6 +109,20 @@ function MeetTheLeadTech() {
                   I named the business I Computer Anything because that is how I approach technology: I build it, repair it, configure it, troubleshoot it, and keep learning what comes next. I bring years of hands-on field experience, networking, technical support, server work, and software development into every project. When a project grows large enough to need extra hands, I can bring in trusted help, but I remain your direct point of contact and stay accountable for the work.
                 </p>
 
+                <div className="mb-8 rounded-2xl border border-cyan-400/25 bg-blue-500/10 p-5">
+                  <p className="text-sm font-semibold text-blue-300 mb-2 uppercase tracking-wide">Credentials</p>
+                  <h4 className="text-lg font-semibold text-cyan-200">Upwork Partner Certified</h4>
+                  <p className="mt-2 text-sm text-gray-300 leading-relaxed">Partner Certified credential displayed on my Upwork profile.</p>
+                  <a
+                    href="https://www.upwork.com/freelancers/~018a17f051b80f4907"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex rounded text-sm font-medium text-blue-200 underline underline-offset-4 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-300"
+                  >
+                    View my Upwork profile <span className="sr-only">(opens in a new tab)</span><span aria-hidden="true" className="ml-1">↗</span>
+                  </a>
+                </div>
+
                 <div>
                   <p className="text-sm font-semibold text-blue-300 mb-3 uppercase tracking-wide">Core Specialties</p>
                   <div className="flex flex-wrap gap-2 justify-center md:justify-start">
