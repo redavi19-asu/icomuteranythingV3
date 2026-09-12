@@ -121,6 +121,48 @@ function MeetTheLeadTech() {
                   >
                     View my Upwork profile <span className="sr-only">(opens in a new tab)</span><span aria-hidden="true" className="ml-1">↗</span>
                   </a>
+
+                  <div className="mt-5 border-t border-cyan-400/20 pt-5">
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                      <div
+                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-violet-600 shadow-lg shadow-violet-500/20"
+                        aria-hidden="true"
+                      >
+                        <svg viewBox="0 0 64 64" className="h-9 w-9" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 13c-5 0-9 4-9 9s4 9 9 9c3 0 6-2 8-4l13 13c2 2 5 4 8 4 5 0 9-4 9-9s-4-9-9-9c-3 0-6 2-8 4L26 17c-2-2-5-4-8-4Z" className="text-white" />
+                          <path d="M29 19 45 35 29 51" className="text-white" />
+                        </svg>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-lg font-semibold text-cyan-200">Coding for Web</h4>
+
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className="rounded-md border border-cyan-300/15 bg-white/5 px-2.5 py-1 text-xs font-medium text-gray-200">Front-End Development</span>
+                          <span className="rounded-md border border-cyan-300/15 bg-white/5 px-2.5 py-1 text-xs font-medium text-gray-200">Web Development</span>
+                          <span className="rounded-md border border-cyan-300/15 bg-white/5 px-2.5 py-1 text-xs font-medium text-gray-200">Web Design</span>
+                        </div>
+
+                        <div className="mt-3 space-y-1 text-sm text-gray-300">
+                          <p><span className="font-semibold text-gray-200">Provider:</span> Podium</p>
+                          <p><span className="font-semibold text-gray-200">Issued:</span> January 2025</p>
+                        </div>
+
+                        <p className="mt-3 text-sm text-gray-300 leading-relaxed">
+                          The Global Career Accelerator (GCA) is a one-semester program that embeds real employer projects and career preparation into a student’s academic term. Web Development students complete work with major companies like Intel, L’Oreal, and Airbnb, and master skills across coding in HTML, CSS, and JavaScript, UI/UX, and app development, as well as AI and Intercultural Competency. Students complete the program with portfolio-ready work and resume-worthy real-world experience while they are still enrolled in college.
+                        </p>
+
+                        <a
+                          href="https://www.upwork.com/freelancers/~018a17f051b80f4907"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 inline-flex rounded text-sm font-medium text-blue-200 underline underline-offset-4 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-300"
+                        >
+                          View certification on Upwork <span className="sr-only">(opens in a new tab)</span><span aria-hidden="true" className="ml-1">↗</span>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
