@@ -201,7 +201,7 @@ function SoftwareShowcase() {
 
         <div className="text-center max-w-3xl mx-auto mt-24 mb-14">
           <p className="text-xs uppercase tracking-[0.3em] text-amber-300 mb-4">Live Production SaaS</p>
-          <h2 className="section-title mb-3">ScenePilot</h2>
+          <h2 className="section-title mb-3">Urban Director Studio</h2>
           <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-amber-300 mb-6">
             Director • Camera Operator • Live Production Software
           </p>
@@ -231,7 +231,7 @@ function SoftwareShowcase() {
                 One Director → Wireless Cameras → Preview → Program
               </p>
               <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
-                ScenePilot lets one authorized Director control the production while camera operators join by QR code from their phones. Live operator messaging, multiview, replay, editing, and broadcast controls are being built into the same system.
+                Urban Director Studio lets one authorized Director control the production while camera operators join by QR code from their phones. Live operator messaging, multiview, replay, editing, and broadcast controls are being built into the same system.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
@@ -249,7 +249,7 @@ function SoftwareShowcase() {
                   rel="noreferrer"
                   className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold transition-all shadow-lg shadow-amber-950/20"
                 >
-                  View ScenePilot
+                  View Urban Director Studio
                 </a>
                 <span className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-white/10 bg-white/5 text-gray-300 font-semibold">
                   Download & Stripe Coming Soon
@@ -259,7 +259,7 @@ function SoftwareShowcase() {
 
             <div className="rounded-2xl border border-white/10 bg-black/45 p-4 shadow-2xl">
               <div className="flex items-center justify-between border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
-                <span>ScenePilot Director</span>
+                <span>Urban Director Studio Director</span>
                 <span className="text-amber-200">Room Online</span>
               </div>
 
