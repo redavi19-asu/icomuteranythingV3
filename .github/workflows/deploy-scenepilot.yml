@@ -8,6 +8,7 @@ name: Deploy ScenePilot via ICA Master
 # Deploy compact owner recording card
 # Deploy Director telemetry startup fix
 # Deploy latency/fullscreen fix
+# Deploy mobile Safari login security-check hardening
 
 on:
   push:
