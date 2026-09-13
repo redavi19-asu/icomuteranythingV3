@@ -185,7 +185,7 @@ function MasterLogin({ onAuthenticated }) {
           </p>
 
           <div className="master-login-products">
-            <span>SCENEPILOT</span>
+            <span>URBAN DIRECTOR STUDIO</span>
             <span>URBAN CARRIER OS</span>
             <span>ICA UNIFIED</span>
           </div>
@@ -831,7 +831,7 @@ function MasterDashboard({ user, onLogout }) {
                     <input
                       value={emailSubject}
                       onChange={(event) => setEmailSubject(event.target.value)}
-                      placeholder="ScenePilot update"
+                      placeholder="Urban Director Studio update"
                       required
                     />
                   </label>
@@ -871,7 +871,7 @@ function MasterDashboard({ user, onLogout }) {
             <div className="master-live-detail-head">
               <div>
                 <button className="master-back-button" onClick={() => setView('users')}>← BACK TO USERS</button>
-                <p className="master-eyebrow">SCENEPILOT / LIVE BROADCAST OPERATIONS</p>
+                <p className="master-eyebrow">URBAN DIRECTOR STUDIO / LIVE BROADCAST OPERATIONS</p>
                 <h2>{selectedLiveUser.display_name || selectedLiveUser.email}</h2>
                 <p>{selectedLiveUser.email}</p>
               </div>
@@ -940,7 +940,7 @@ function MasterDashboard({ user, onLogout }) {
             ) : (
               <div className="master-live-empty">
                 <strong>NO STREAM SESSION YET</strong>
-                <span>This user has no ScenePilot live session reported to ICA Master.</span>
+                <span>This user has no Urban Director Studio live session reported to ICA Master.</span>
               </div>
             )}
           </section>
@@ -1048,7 +1048,7 @@ function MasterDashboard({ user, onLogout }) {
             <h2>One health view for all ICA SaaS</h2>
             <p>
               The central dashboard is ready to receive product health, company health,
-              database status and service events. ScenePilot is already on the shared
+              database status and service events. Urban Director Studio is already on the shared
               D1 layer; Urban Carrier OS and ICA Unified will feed this view as their super-admin
               layers are centralized.
             </p>
@@ -1056,7 +1056,7 @@ function MasterDashboard({ user, onLogout }) {
             <section className="master-stream-capacity">
               <div className="master-section-heading">
                 <div>
-                  <p className="master-eyebrow">STREAM ANGLEZ / SCENEPILOT</p>
+                  <p className="master-eyebrow">STREAM ANGLEZ / URBAN DIRECTOR STUDIO</p>
                   <h2>Streaming capacity & load readiness</h2>
                 </div>
               </div>
