@@ -14,7 +14,7 @@ function useInViewHook(options) {
   return { ref, inView }
 }
 
-function ICAProjects() {
+function ICAProjects({ onRequestService }) {
   const [isOverviewOpen, setIsOverviewOpen] = useState(false)
   const { ref, inView } = useInViewHook({ triggerOnce: true, threshold: 0.1 })
   const projects = [
@@ -83,7 +83,7 @@ function ICAProjects() {
               <motion.button
                 whileHover={{scale:1.03}}
                 whileTap={{scale:.98}}
-                onClick={()=>document.getElementById('final-cta')?.scrollIntoView({behavior:'smooth'})}
+                onClick={() => onRequestService('Live Production + Redundant Connectivity')}
                 className="rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 px-6 py-3 font-bold text-white shadow-lg shadow-cyan-950/40"
               >
                 Request Live Production →
