@@ -25,6 +25,7 @@ function App() {
   const [introVisible, setIntroVisible] = useState(true)
   const [reduceMotion, setReduceMotion] = useState(false)
   const [isRequestServiceOpen, setIsRequestServiceOpen] = useState(false)
+  const [requestServicePreset, setRequestServicePreset] = useState('')
   const { scrollY } = useScroll()
 
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0.8])
@@ -61,25 +62,34 @@ function App() {
     return <MasterPortal />
   }
 
+  const openRequestService = (service = '') => {
+    setRequestServicePreset(service)
+    setIsRequestServiceOpen(true)
+  }
+
   return (
     <div className="bg-dark-950 text-white overflow-x-hidden relative">
       <GlobalCinematicBackground activeSection={activeSection} reduceMotion={reduceMotion} />
       <div className={`relative z-10 ${introVisible ? 'invisible pointer-events-none' : 'visible'}`}>
-        <Navigation activeSection={activeSection} onRequestService={() => setIsRequestServiceOpen(true)} />
+        <Navigation activeSection={activeSection} onRequestService={() => openRequestService()} />
         <motion.div style={{ opacity: heroOpacity }}><Hero /></motion.div>
-        <WhatWeDo onRequestService={() => setIsRequestServiceOpen(true)} />
-        <HowItWorks onRequestService={() => setIsRequestServiceOpen(true)} />
+        <WhatWeDo onRequestService={() => openRequestService()} />
+        <HowItWorks onRequestService={() => openRequestService()} />
         <WhyChooseUs />
-        <SoftwareShowcase />
-        <ICAProjects />
+        <SoftwareShowcase onRequestService={openRequestService} />
+        <ICAProjects onRequestService={openRequestService} />
         <MeetTheLeadTech />
         <WhoItFor />
-        <FinalCTA onRequestService={() => setIsRequestServiceOpen(true)} />
+        <FinalCTA onRequestService={() => openRequestService()} />
         <Footer />
       </div>
       <IntroLoaderOverlay visible={introVisible} reduceMotion={reduceMotion} />
       {!introVisible && <CookieBanner />}
-      <RequestServiceOverlay isOpen={isRequestServiceOpen} onClose={() => setIsRequestServiceOpen(false)} />
+      <RequestServiceOverlay
+        isOpen={isRequestServiceOpen}
+        initialService={requestServicePreset}
+        onClose={() => setIsRequestServiceOpen(false)}
+      />
     </div>
   )
 }
