@@ -6,7 +6,7 @@ const ICA_UNIFIED_URL = 'https://ica-unified.ryanedavis.workers.dev/'
 const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview.svg'
 const SCENEPILOT_URL = 'https://scenepilot.ryanedavis.workers.dev/'
 
-function SoftwareShowcase() {
+function SoftwareShowcase({ onRequestService }) {
   const [showUnifiedPreview, setShowUnifiedPreview] = useState(false)
 
   const cloudCapabilities = [
@@ -360,12 +360,13 @@ function SoftwareShowcase() {
           </div>
 
           <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
-            <a
-              href="#final-cta"
+            <button
+              type="button"
+              onClick={() => onRequestService('Custom Software Development')}
               className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition-all shadow-lg shadow-cyan-950/20"
             >
               Request a Custom Software Quote
-            </a>
+            </button>
             <a
               href="#software"
               className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-white font-semibold transition-all"
