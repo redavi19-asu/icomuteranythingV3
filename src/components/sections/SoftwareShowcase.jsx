@@ -292,22 +292,34 @@ function SoftwareShowcase({ onRequestService }) {
           transition={{ duration: 0.55 }}
           className="mt-24 scroll-mt-28"
         >
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300 mb-4">Custom Software Pricing</p>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-5">Professional software built around your business.</h2>
-            <p className="text-gray-300 leading-relaxed text-lg">
-              These ranges are planning estimates for custom software projects. Final pricing is based on scope, platforms,
-              integrations, security, deployment, and ownership requirements.
-            </p>
+          <div className="text-center max-w-4xl mx-auto mb-12">
+            <p className="text-xs uppercase tracking-[0.3em] text-cyan-300 mb-4">Custom Software • Own What You Use</p>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-5">Stop renting software that does not fit your business.</h2>
+            <blockquote className="mx-auto max-w-4xl rounded-2xl border border-cyan-300/25 bg-cyan-400/[0.07] px-6 py-6 md:px-8 md:py-7 text-xl md:text-2xl font-semibold italic leading-relaxed text-cyan-50 shadow-xl shadow-cyan-950/15">
+              “Show me the app you’re paying a subscription for. I’ll build you your own custom version starting at $1,000 — yours to keep, with no monthly software subscription from I Computer Anything.”
+            </blockquote>
+            <div className="mt-7 space-y-4 text-left md:text-center text-gray-300 leading-relaxed text-base md:text-lg">
+              <p>
+                Maybe you are paying every month for scheduling, dispatch, inventory, customer management, forms, dashboards,
+                invoicing, or another business tool — while only using a fraction of what it includes.
+              </p>
+              <p>
+                Tell me which software you use now, what you pay for it, which features you actually need, and what you wish worked differently.
+                I Computer Anything can build a custom alternative around your workflow instead of forcing your business into somebody else’s system.
+              </p>
+              <p className="font-bold text-white">
+                Why rent software forever when you can own software built specifically for you?
+              </p>
+            </div>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
             {[
               {
-                title: 'Starter Custom App',
-                price: '$3,500–$6,000',
-                description: 'A focused branded application with a clean customer-facing workflow.',
-                items: ['Single core workflow', 'Business branding', 'Responsive interface', 'Basic forms + data'],
+                title: 'Subscription-Free Custom Build',
+                price: '$1,000+',
+                description: 'A focused custom alternative built around the features you actually use in an existing app or service.',
+                items: ['Core workflow rebuild', 'Your branding + interface', 'Responsive web experience', 'Built around your must-have features'],
               },
               {
                 title: 'Business App',
@@ -352,10 +364,11 @@ function SoftwareShowcase({ onRequestService }) {
           </div>
 
           <div className="mt-6 rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.05] p-6 text-gray-300 leading-relaxed">
-            <strong className="text-white">Project pricing is quoted after scope.</strong>
+            <strong className="text-white">Owned custom builds start at $1,000 and are quoted after scope.</strong>
             <span>
-              {' '}Hosting, domains, Apple or Google developer accounts, SMS, maps, payment processing, and other third-party
-              services are separate when required. Optional maintenance and future feature work can be quoted separately.
+              {' '}There is no recurring software subscription from I Computer Anything for an owned custom build. Hosting, domains,
+              Apple or Google developer accounts, SMS, maps, payment processing, AI services, and other third-party services are separate
+              when required. Optional maintenance and future feature work can be quoted separately.
             </span>
           </div>
 
@@ -365,7 +378,7 @@ function SoftwareShowcase({ onRequestService }) {
               onClick={() => onRequestService('Custom Software Development')}
               className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition-all shadow-lg shadow-cyan-950/20"
             >
-              Request a Custom Software Quote
+              Request Your Custom Version
             </button>
             <a
               href="#software"
