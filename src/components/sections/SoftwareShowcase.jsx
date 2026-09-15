@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 
 const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform/'
 const ICA_UNIFIED_URL = 'https://ica-unified.ryanedavis.workers.dev/'
+const ICA_UNIFIED_TRIAL_URL = 'https://ica-unified.ryanedavis.workers.dev/register'
 const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview.svg'
 const SCENEPILOT_URL = 'https://scenepilot.ryanedavis.workers.dev/'
 
@@ -175,9 +176,14 @@ function SoftwareShowcase({ onRequestService }) {
                 >
                   View ICA Unified
                 </a>
-                <span className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-emerald-400/20 bg-emerald-500/5 text-emerald-100 font-semibold">
-                  14-Day Trial Available
-                </span>
+                <a
+                  href={ICA_UNIFIED_TRIAL_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-100 font-semibold transition-all"
+                >
+                  Start 14-Day Trial · $249/mo After
+                </a>
               </div>
             </div>
 
