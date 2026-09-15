@@ -2,13 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const SERVICES = ['Custom Software Development','Website / SaaS Development','Live Production + Redundant Connectivity','IT Support','Networking & Server Setup','Cybersecurity & Backup','Hardware Installation & Upgrades','Managed IT Services','Other Technology Request']
-const SOFTWARE_OPTIONS = ['Customer-facing app','Internal dashboard','Mobile app','Desktop app','Automation / AI','Accounts & login','Payments','API integration']
+const SOFTWARE_OPTIONS = ['Replace a subscription app','Rebuild only the features I use','Customer-facing app','Internal dashboard','Mobile app','Desktop app','Automation / AI','Accounts & login','Payments','API integration']
 const PRODUCTION_OPTIONS = ['Multi-camera production','Live switching','Graphics / lower thirds','Recording & replay','Venue internet','Starlink backup','Cellular backup','Peplink / failover']
 const IT_OPTIONS = ['Diagnostics / repair','Wi-Fi / networking','Server / cloud','Security review','Backup / recovery','Hardware setup','Ongoing support','On-site service']
 const TIMELINES = ['Urgent / ASAP','Within 2 weeks','Within 30 days','1–3 months','Planning ahead']
 const BUDGETS = ['Not sure yet','Under $3,500','$3,500–$7,500','$7,500–$15,000','$15,000–$30,000','$30,000+']
 
-const emptyForm = (service = '') => ({ fullName:'', email:'', phone:'', company:'', serviceNeeded:service, projectOptions:[], currentSetup:'', issueDescription:'', timeline:'', budget:'', contactMethod:'Email', bestTime:'' })
+const emptyForm = (service = '') => ({ fullName:'', email:'', phone:'', company:'', serviceNeeded:service, projectOptions:[], currentSetup:'', referenceApp:'', currentCost:'', mustHaveFeatures:'', issueDescription:'', timeline:'', budget:'', contactMethod:'Email', bestTime:'' })
 
 function ChoiceButton({ selected, onClick, children }) {
   return <button type="button" aria-pressed={selected} onClick={onClick} className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all ${selected ? 'border-cyan-300/70 bg-cyan-400/15 text-cyan-100 shadow-md shadow-cyan-950/30' : 'border-white/10 bg-white/[0.035] text-gray-300 hover:border-blue-400/40 hover:bg-blue-500/10'}`}><span className="mr-2 text-cyan-300" aria-hidden="true">{selected ? '✓' : '+'}</span>{children}</button>
@@ -36,6 +36,8 @@ function RequestServiceOverlay({ isOpen, initialService = '', onClose }) {
     return IT_OPTIONS
   }, [formData.serviceNeeded])
 
+  const isSoftwareRequest = formData.serviceNeeded.includes('Software') || formData.serviceNeeded.includes('Website')
+
   const setField = (name, value) => setFormData((current) => ({ ...current, [name]: value }))
   const toggleOption = (option) => setFormData((current) => ({ ...current, projectOptions: current.projectOptions.includes(option) ? current.projectOptions.filter((item) => item !== option) : [...current.projectOptions, option] }))
 
@@ -45,6 +47,9 @@ function RequestServiceOverlay({ isOpen, initialService = '', onClose }) {
       formData.company && `Company / Organization: ${formData.company}`,
       formData.projectOptions.length && `Requested capabilities: ${formData.projectOptions.join(', ')}`,
       formData.currentSetup && `Current setup / environment: ${formData.currentSetup}`,
+      formData.referenceApp && `Current subscription app / reference: ${formData.referenceApp}`,
+      formData.currentCost && `Current software cost: ${formData.currentCost}`,
+      formData.mustHaveFeatures && `Must-have features: ${formData.mustHaveFeatures}`,
       formData.timeline && `Timeline: ${formData.timeline}`,
       formData.budget && `Planning budget: ${formData.budget}`,
       formData.contactMethod && `Preferred contact: ${formData.contactMethod}`,
@@ -70,13 +75,23 @@ function RequestServiceOverlay({ isOpen, initialService = '', onClose }) {
         <form onSubmit={handleSubmit} className="space-y-8">
           <fieldset><legend className="mb-3 text-sm font-bold text-blue-100">1. What do you need? *</legend><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{SERVICES.map((service)=><ChoiceButton key={service} selected={formData.serviceNeeded===service} onClick={()=>setFormData((current)=>({...current,serviceNeeded:service,projectOptions:[]}))}>{service}</ChoiceButton>)}</div></fieldset>
           {formData.serviceNeeded && <fieldset><legend className="mb-1 text-sm font-bold text-blue-100">2. What should be included?</legend><p className="mb-3 text-xs text-gray-400">Choose as many as you need.</p><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{optionSet.map((option)=><ChoiceButton key={option} selected={formData.projectOptions.includes(option)} onClick={()=>toggleOption(option)}>{option}</ChoiceButton>)}</div></fieldset>}
+          {isSoftwareRequest && <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/[0.06] p-5 md:p-6">
+            <p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">Subscription Replacement / Custom Alternative</p>
+            <h3 className="mt-2 text-xl font-black text-white">Show me what you use now. I’ll scope what your own version should do.</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-300">You do not need to recreate every feature. Tell me what you actually use, what you are paying, and what you want changed.</p>
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
+              <label className="text-sm font-bold text-blue-100">App or software you use now<input value={formData.referenceApp} onChange={(e)=>setField('referenceApp',e.target.value)} className={fieldClass} placeholder="App name or link" /></label>
+              <label className="text-sm font-bold text-blue-100">What are you paying now?<input value={formData.currentCost} onChange={(e)=>setField('currentCost',e.target.value)} className={fieldClass} placeholder="Example: $79/month or $699/year" /></label>
+            </div>
+            <label className="mt-5 block text-sm font-bold text-blue-100">Which features do you actually need?<textarea rows={3} value={formData.mustHaveFeatures} onChange={(e)=>setField('mustHaveFeatures',e.target.value)} className={`${fieldClass} resize-y`} placeholder="Example: scheduling, reminders, customer profiles, invoices, reports, staff login..." /></label>
+          </div>}
           <div className="grid gap-5 md:grid-cols-2">
             <label className="text-sm font-bold text-blue-100">Full name *<input required value={formData.fullName} onChange={(e)=>setField('fullName',e.target.value)} className={fieldClass} placeholder="Your name" /></label>
             <label className="text-sm font-bold text-blue-100">Company / organization<input value={formData.company} onChange={(e)=>setField('company',e.target.value)} className={fieldClass} placeholder="Business or organization name" /></label>
             <label className="text-sm font-bold text-blue-100">Email *<input required type="email" value={formData.email} onChange={(e)=>setField('email',e.target.value)} className={fieldClass} placeholder="you@example.com" /></label>
             <label className="text-sm font-bold text-blue-100">Phone<input type="tel" value={formData.phone} onChange={(e)=>setField('phone',e.target.value)} className={fieldClass} placeholder="Best callback number" /></label>
           </div>
-          <label className="block text-sm font-bold text-blue-100">Current setup or environment<input value={formData.currentSetup} onChange={(e)=>setField('currentSetup',e.target.value)} className={fieldClass} placeholder="Existing website/app, venue, devices, network, software, or equipment" /></label>
+          <label className="block text-sm font-bold text-blue-100">{isSoftwareRequest ? 'Current setup, workflow, or environment' : 'Current setup or environment'}<input value={formData.currentSetup} onChange={(e)=>setField('currentSetup',e.target.value)} className={fieldClass} placeholder={isSoftwareRequest ? 'How your business uses the current software today' : 'Existing website/app, venue, devices, network, software, or equipment'} /></label>
           <div className="grid gap-7 lg:grid-cols-2">
             <fieldset><legend className="mb-3 text-sm font-bold text-blue-100">3. Target timeline</legend><div className="grid gap-2 sm:grid-cols-2">{TIMELINES.map((item)=><ChoiceButton key={item} selected={formData.timeline===item} onClick={()=>setField('timeline',item)}>{item}</ChoiceButton>)}</div></fieldset>
             <fieldset><legend className="mb-3 text-sm font-bold text-blue-100">4. Planning budget</legend><div className="grid gap-2 sm:grid-cols-2">{BUDGETS.map((item)=><ChoiceButton key={item} selected={formData.budget===item} onClick={()=>setField('budget',item)}>{item}</ChoiceButton>)}</div></fieldset>
@@ -86,7 +101,7 @@ function RequestServiceOverlay({ isOpen, initialService = '', onClose }) {
           <label className="block text-sm font-bold text-blue-100">Best day or time to reach you<input value={formData.bestTime} onChange={(e)=>setField('bestTime',e.target.value)} className={fieldClass} placeholder="Example: Weekdays after 5 PM" /></label>
           {error && <div role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
           <button type="submit" disabled={isSubmitting || !formData.serviceNeeded} className="w-full rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 px-8 py-4 text-base font-black text-white shadow-lg shadow-blue-950/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting?'Sending request…':'Send Detailed Request →'}</button>
-          <p className="text-center text-xs leading-5 text-gray-500">No payment is collected here. I’ll review the request and contact you about scope, availability, and next steps.</p>
+          <p className="text-center text-xs leading-5 text-gray-500">No payment is collected here. Custom software builds start at $1,000. I’ll review the request and contact you about scope, ownership, availability, and next steps. Third-party services may have separate recurring costs when required.</p>
         </form>
       </> : <div className="py-16 text-center"><div className="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-full border-2 border-emerald-400/50 bg-emerald-400/10 text-4xl text-emerald-300">✓</div><h3 className="mb-3 text-3xl font-black text-white">Detailed request sent.</h3><p className="mx-auto mb-8 max-w-xl text-lg text-gray-300">Thank you. I have the technical details needed to review your request and follow up with the right next steps.</p><button type="button" onClick={onClose} className="rounded-xl bg-blue-600 px-8 py-3 font-bold text-white hover:bg-blue-500">Close</button></div>}</div>
     </motion.div>
