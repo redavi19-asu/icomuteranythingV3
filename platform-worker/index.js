@@ -403,7 +403,7 @@ async function productHealth(env) {
     },
     "ica-unified": {
       binding: env.ICA_UNIFIED,
-      frontendUrl: "https://ica-unified.ryanedavis.workers.dev/platform",
+      frontendUrl: "https://unified.icomputeranything.com/platform",
       apiPath: "/api/health",
     },
     "dc-live": {
