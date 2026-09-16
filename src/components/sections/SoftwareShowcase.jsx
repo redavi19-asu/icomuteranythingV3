@@ -2,8 +2,8 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 
 const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform/'
-const ICA_UNIFIED_URL = 'https://ica-unified.ryanedavis.workers.dev/'
-const ICA_UNIFIED_TRIAL_URL = 'https://ica-unified.ryanedavis.workers.dev/register'
+const ICA_UNIFIED_URL = 'https://unified.icomputeranything.com/'
+const ICA_UNIFIED_TRIAL_URL = 'https://unified.icomputeranything.com/register'
 const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview.svg'
 const SCENEPILOT_URL = 'https://scenepilot.ryanedavis.workers.dev/'
 
