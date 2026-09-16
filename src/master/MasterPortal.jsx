@@ -12,14 +12,14 @@ const TURNSTILE_SITE_KEY =
 const PRODUCT_LINKS = {
   scenepilot: 'https://scenepilot.ryanedavis.workers.dev/app',
   dispatchos: 'https://redavi19-asu.github.io/icomputer-dispatch-platform/',
-  'ica-unified': 'https://ica-unified.ryanedavis.workers.dev/platform',
+  'ica-unified': 'https://unified.icomputeranything.com/platform',
   'dc-live': 'https://redavi19-asu.github.io/dc-live/',
 }
 
 const PRODUCT_ADMIN_LINKS = {
   scenepilot: 'https://scenepilot.ryanedavis.workers.dev/admin',
   dispatchos: 'https://redavi19-asu.github.io/icomputer-dispatch-platform/admin',
-  'ica-unified': 'https://ica-unified.ryanedavis.workers.dev/platform',
+  'ica-unified': 'https://unified.icomputeranything.com/platform',
   'dc-live': 'https://redavi19-asu.github.io/dc-live/',
 }
 
