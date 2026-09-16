@@ -182,7 +182,7 @@ function SoftwareShowcase({ onRequestService }) {
                   rel="noreferrer"
                   className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-100 font-semibold transition-all"
                 >
-                  Start 14-Day Trial · $249/mo After
+                  Start 14-Day Trial · $299/mo After
                 </a>
               </div>
             </div>
