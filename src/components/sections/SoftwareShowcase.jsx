@@ -206,6 +206,113 @@ function SoftwareShowcase({ onRequestService }) {
         </motion.div>
 
         <div className="text-center max-w-3xl mx-auto mt-24 mb-14">
+          <p className="text-xs uppercase tracking-[0.3em] text-red-300 mb-4">Managed Cybersecurity & Device Operations</p>
+          <h2 className="section-title mb-3">ICA Cybersecurity Control</h2>
+          <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-orange-300 mb-6">
+            Endpoint • Network • AI-Assisted IT Operations
+          </p>
+          <p className="section-subtitle">
+            A managed control platform for device health, authorized network coverage, mobile care, support workflows, and AI-assisted operations — built to give homes and businesses a clearer view of the technology they depend on.
+          </p>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.55 }}
+          className="relative overflow-hidden rounded-3xl border border-red-400/25 bg-gradient-to-br from-zinc-950 via-slate-950 to-orange-950/30 p-8 md:p-12 shadow-2xl shadow-red-950/20"
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(239,68,68,0.14),transparent_34%),radial-gradient(circle_at_85%_80%,rgba(249,115,22,0.10),transparent_32%)] pointer-events-none" />
+
+          <div className="relative z-10 grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
+            <div>
+              <div className="inline-flex px-3 py-1 rounded-full border border-red-400/30 bg-red-500/10 text-xs font-semibold text-red-100 mb-5">
+                ICA Control • Private Beta
+              </div>
+              <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">
+                One command center for the devices that keep your business moving.
+              </h3>
+              <p className="text-orange-300 font-semibold tracking-wide mb-5">
+                Computer → Network → Mobile → Support
+              </p>
+              <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
+                ICA Cybersecurity Control brings endpoint health, update posture, security-baseline checks, authorized local-network discovery,
+                mobile device care, support requests, audit history, and Ask ICA into one management experience. Customers choose what is covered,
+                while I Computer Anything gets the operational view needed to monitor and support approved devices.
+              </p>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                {['Endpoint Health', 'Network Coverage', 'Ask ICA', 'Mobile Care', 'Update Posture', 'Security Baseline', 'Remote Support', 'Audit Trail'].map((item) => (
+                  <span key={item} className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-200">
+                    {item}
+                  </span>
+                ))}
+              </div>
+
+              <div className="mt-9 flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => onRequestService('ICA Cybersecurity Control')}
+                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-all shadow-lg shadow-red-950/30"
+                >
+                  Request Early Access
+                </button>
+                <span className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-orange-300/20 bg-orange-400/[0.07] text-orange-100 font-semibold">
+                  Home from $29/mo • Business from $299/mo
+                </span>
+              </div>
+
+              <p className="mt-5 text-xs leading-relaxed text-gray-500 max-w-2xl">
+                ICA Cybersecurity Control currently focuses on managed device health, visibility, support, and security posture. Advanced EDR/MDR protection will be introduced only through supported security integrations.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/45 p-4 md:p-5 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+                <span>ICA Cybersecurity Control</span>
+                <span className="text-emerald-300">Systems Online</span>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                {[
+                  ['24', 'Managed Devices', 'text-white'],
+                  ['92', 'Health Score', 'text-emerald-300'],
+                  ['7', 'Network Covered', 'text-orange-300'],
+                  ['2', 'Needs Review', 'text-red-300'],
+                ].map(([value, label, tone]) => (
+                  <div key={label} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                    <strong className={`block text-2xl md:text-3xl ${tone}`}>{value}</strong>
+                    <span className="mt-1 block text-[10px] uppercase tracking-[0.14em] text-gray-500">{label}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {[
+                  ['Endpoint Health', 'Healthy', 'bg-emerald-400'],
+                  ['Security Baseline', 'Verified', 'bg-emerald-400'],
+                  ['Network Coverage', '7 selected', 'bg-orange-400'],
+                  ['Ask ICA', 'Ready', 'bg-red-400'],
+                ].map(([label, state, dot]) => (
+                  <div key={label} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.025] px-4 py-3">
+                    <span className="flex items-center gap-2 text-sm text-gray-300"><i className={`h-2 w-2 rounded-full ${dot}`} />{label}</span>
+                    <strong className="text-xs text-gray-400">{state}</strong>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 rounded-xl border border-red-400/15 bg-red-500/[0.05] p-4">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-red-200 mb-2">Ask ICA</p>
+                <p className="m-0 text-sm leading-relaxed text-gray-300">
+                  “Review this device and tell me what needs attention.”
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <div className="text-center max-w-3xl mx-auto mt-24 mb-14">
           <p className="text-xs uppercase tracking-[0.3em] text-amber-300 mb-4">Live Production SaaS</p>
           <h2 className="section-title mb-3">Urban Director Studio</h2>
           <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-amber-300 mb-6">
