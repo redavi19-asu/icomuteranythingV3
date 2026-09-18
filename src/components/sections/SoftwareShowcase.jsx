@@ -6,6 +6,8 @@ const ICA_UNIFIED_URL = 'https://unified.icomputeranything.com/'
 const ICA_UNIFIED_TRIAL_URL = 'https://unified.icomputeranything.com/register'
 const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview.svg'
 const SCENEPILOT_URL = 'https://scenepilot.ryanedavis.workers.dev/'
+const ICA_CONTROL_URL = 'https://redavi19-asu.github.io/ica-control/'
+const ICA_CONTROL_CONSOLE_URL = 'https://redavi19-asu.github.io/ica-control/#/console'
 
 function SoftwareShowcase({ onRequestService }) {
   const [showUnifiedPreview, setShowUnifiedPreview] = useState(false)
@@ -207,7 +209,7 @@ function SoftwareShowcase({ onRequestService }) {
 
         <div className="text-center max-w-3xl mx-auto mt-24 mb-14">
           <p className="text-xs uppercase tracking-[0.3em] text-red-300 mb-4">Managed Cybersecurity & Device Operations</p>
-          <h2 className="section-title mb-3">ICA Cybersecurity Control</h2>
+          <h2 className="section-title mb-3">ICA Control</h2>
           <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-orange-300 mb-6">
             Endpoint • Network • AI-Assisted IT Operations
           </p>
@@ -228,7 +230,7 @@ function SoftwareShowcase({ onRequestService }) {
           <div className="relative z-10 grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
             <div>
               <div className="inline-flex px-3 py-1 rounded-full border border-red-400/30 bg-red-500/10 text-xs font-semibold text-red-100 mb-5">
-                ICA Control • Private Beta
+                ICA Control • RMM + Cybersecurity
               </div>
               <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">
                 One command center for the devices that keep your business moving.
@@ -237,7 +239,7 @@ function SoftwareShowcase({ onRequestService }) {
                 Computer → Network → Mobile → Support
               </p>
               <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
-                ICA Cybersecurity Control brings endpoint health, update posture, security-baseline checks, authorized local-network discovery,
+                ICA Control brings endpoint health, update posture, security-baseline checks, authorized local-network discovery,
                 mobile device care, support requests, audit history, and Ask ICA into one management experience. Customers choose what is covered,
                 while I Computer Anything gets the operational view needed to monitor and support approved devices.
               </p>
@@ -251,26 +253,32 @@ function SoftwareShowcase({ onRequestService }) {
               </div>
 
               <div className="mt-9 flex flex-col sm:flex-row gap-3">
-                <button
-                  type="button"
-                  onClick={() => onRequestService('ICA Cybersecurity Control')}
+                <a
+                  href={ICA_CONTROL_URL}
+                  target="_blank"
+                  rel="noreferrer"
                   className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-all shadow-lg shadow-red-950/30"
                 >
-                  Request Early Access
-                </button>
-                <span className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-orange-300/20 bg-orange-400/[0.07] text-orange-100 font-semibold">
-                  Home from $29/mo • Business from $299/mo
-                </span>
+                  Open ICA Control
+                </a>
+                <a
+                  href={ICA_CONTROL_CONSOLE_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-orange-300/20 bg-orange-400/[0.07] hover:bg-orange-400/[0.12] text-orange-100 font-semibold transition-all"
+                >
+                  Secure Console
+                </a>
               </div>
 
               <p className="mt-5 text-xs leading-relaxed text-gray-500 max-w-2xl">
-                ICA Cybersecurity Control currently focuses on managed device health, visibility, support, and security posture. Advanced EDR/MDR protection will be introduced only through supported security integrations.
+                ICA Control currently focuses on managed device health, visibility, support, and security posture. Advanced EDR/MDR protection will be introduced only through supported security integrations.
               </p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-black/45 p-4 md:p-5 shadow-2xl">
               <div className="flex items-center justify-between border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
-                <span>ICA Cybersecurity Control</span>
+                <span>ICA Control</span>
                 <span className="text-emerald-300">Systems Online</span>
               </div>
 
