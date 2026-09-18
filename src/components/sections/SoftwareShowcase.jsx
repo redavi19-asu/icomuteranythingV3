@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform/'
 const ICA_UNIFIED_URL = 'https://unified.icomputeranything.com/'
 const ICA_UNIFIED_TRIAL_URL = 'https://unified.icomputeranything.com/register'
-const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview.svg'
+const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview-light.svg'
 const SCENEPILOT_URL = 'https://scenepilot.ryanedavis.workers.dev/'
 const ICA_CONTROL_URL = 'https://redavi19-asu.github.io/ica-control/'
 const ICA_CONTROL_CONSOLE_URL = 'https://redavi19-asu.github.io/ica-control/#/console'
@@ -155,7 +155,12 @@ function SoftwareShowcase({ onRequestService }) {
               <div className="inline-flex px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-xs font-semibold text-emerald-200 mb-5">
                 Multi-Tenant Cloud SaaS
               </div>
-              <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">One workspace for learning and business operations.</h3>
+              <h3
+                className="text-3xl md:text-5xl tracking-tight mb-3"
+                style={{ fontFamily: '"DM Serif Display", serif', fontWeight: 400 }}
+              >
+                One workspace for learning and business operations.
+              </h3>
               <p className="text-emerald-300 font-semibold tracking-wide mb-5">One company → One database → One login → One member record</p>
               <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
                 ICA Unified connects AMS and LMS workflows inside the same cloud platform. A company can use ICA Unified as its portal or connect its existing website to the ICA Unified backend, keeping people, learning, credentials, documents, compliance, and reporting tied to the same organization data.
@@ -192,7 +197,7 @@ function SoftwareShowcase({ onRequestService }) {
             <button
               type="button"
               onClick={() => setShowUnifiedPreview(true)}
-              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/35 p-2 md:p-3 text-left shadow-2xl"
+              className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-2 md:p-3 text-left shadow-2xl"
               aria-label="Open ICA Unified dashboard preview"
             >
               <img
@@ -200,7 +205,7 @@ function SoftwareShowcase({ onRequestService }) {
                 alt="ICA Unified dashboard preview"
                 className="block w-full h-auto rounded-xl object-cover transition-transform duration-300 group-hover:scale-[1.015]"
               />
-              <span className="absolute bottom-5 right-5 rounded-full border border-white/20 bg-black/70 px-4 py-2 text-xs font-semibold text-white backdrop-blur-sm">
+              <span className="absolute bottom-5 right-5 rounded-full border border-slate-300 bg-white/90 px-4 py-2 text-xs font-semibold text-slate-800 backdrop-blur-sm">
                 Tap to enlarge
               </span>
             </button>
