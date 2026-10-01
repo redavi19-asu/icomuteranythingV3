@@ -565,6 +565,9 @@ function MasterDashboard({ user, onLogout }) {
           <button className={view === 'health' ? 'active' : ''} onClick={() => setView('health')}>
             PLATFORM HEALTH
           </button>
+          <button className={view === 'control-ops' ? 'active' : ''} onClick={() => setView('control-ops')}>
+            CONTROL OPS
+          </button>
           <button className={view === 'dc-live-admin' ? 'active' : ''} onClick={() => setView('dc-live-admin')}>
             DC LIVE ADMIN
           </button>
@@ -591,6 +594,7 @@ function MasterDashboard({ user, onLogout }) {
               {view === 'product-users' && `${selectedProduct?.name || 'Product'} Users`}
               {view === 'user-live' && 'Live Broadcast Monitor'}
               {view === 'dc-live-admin' && 'DC Live Control'}
+              {view === 'control-ops' && 'ICA Control Operations'}
             </h1>
           </div>
           <button onClick={load} disabled={loading} title="Re-run all platform health checks and refresh users, companies and access data">
@@ -608,6 +612,33 @@ function MasterDashboard({ user, onLogout }) {
               <article><span>COMPANIES</span><strong>{summary?.metrics?.organizations || 0}</strong></article>
               <article><span>ACTIVE ACCESS</span><strong>{summary?.metrics?.activeProductAccess || 0}</strong></article>
             </div>
+
+            <section className="master-control-summary">
+              <div className="master-section-heading">
+                <div>
+                  <p className="master-eyebrow">ICA CONTROL · AUTOMATED OPERATIONS</p>
+                  <h2>Universal security summary</h2>
+                </div>
+                <button type="button" onClick={() => setView('control-ops')}>OPEN CONTROL OPS</button>
+              </div>
+              {summary?.controlReport ? (
+                <>
+                  <div className="master-control-metrics">
+                    <article><span>SECURITY EVENTS</span><strong>{Number(summary.controlReport.metrics?.securityEvents || 0)}</strong></article>
+                    <article><span>AUTO RESOLVED</span><strong>{Number(summary.controlReport.metrics?.autoResolved || 0)}</strong></article>
+                    <article><span>NEEDS REVIEW</span><strong>{Number(summary.controlReport.metrics?.needsReview || 0)}</strong></article>
+                    <article><span>ENDPOINTS ONLINE</span><strong>{Number(summary.controlReport.metrics?.endpointsOnline || 0)}/{Number(summary.controlReport.metrics?.managedEndpoints || 0)}</strong></article>
+                  </div>
+                  <div className="master-control-engines">
+                    {(summary.controlReport.engines || []).map((engine) => (
+                      <span key={engine.id || engine.label}><i className={engine.state === 'online' ? 'good' : engine.state === 'pending' ? 'waiting' : 'bad'} />{engine.label || engine.provider}<small>{String(engine.state || 'pending').toUpperCase()}</small></span>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="master-empty-box">ICA Control has not delivered its first Universal Report yet. The secure bridge will populate this automatically after the report key is synchronized.</div>
+              )}
+            </section>
 
             <div className="master-section-heading">
               <div>
@@ -651,6 +682,63 @@ function MasterDashboard({ user, onLogout }) {
               )}
             </section>
           </>
+        )}
+
+        {view === 'control-ops' && (
+          <section className="master-control-ops">
+            <div className="master-section-heading">
+              <div>
+                <p className="master-eyebrow">AUTOMATION · FIX-IT · ENGINE HEALTH</p>
+                <h2>ICA Control Universal Report</h2>
+              </div>
+            </div>
+
+            {summary?.controlReport ? (
+              <>
+                <div className="master-metrics">
+                  <article><span>SECURITY EVENTS</span><strong>{Number(summary.controlReport.metrics?.securityEvents || 0)}</strong></article>
+                  <article><span>INCIDENTS RESOLVED</span><strong>{Number(summary.controlReport.metrics?.incidentsResolved || 0)}</strong></article>
+                  <article><span>AUTO FIXED</span><strong>{Number(summary.controlReport.metrics?.autoResolved || 0)}</strong></article>
+                  <article><span>NEEDS REVIEW</span><strong>{Number(summary.controlReport.metrics?.needsReview || 0)}</strong></article>
+                </div>
+
+                <section className="master-table-card">
+                  <div className="master-section-heading"><div><p className="master-eyebrow">SECURITY ENGINES</p><h2>Live engine state</h2></div></div>
+                  <div className="master-control-engine-grid">
+                    {(summary.controlReport.engines || []).map((engine) => (
+                      <article key={engine.id || engine.label}>
+                        <i className={engine.state === 'online' ? 'good' : engine.state === 'pending' ? 'waiting' : 'bad'} />
+                        <div><strong>{engine.label || engine.provider}</strong><small>{engine.provider}</small></div>
+                        <span>{String(engine.state || 'pending').toUpperCase()}</span>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="master-table-card">
+                  <div className="master-section-heading"><div><p className="master-eyebrow">FIX-IT AUTOMATION</p><h2>Latest remediation runs</h2></div></div>
+                  {(summary.controlReport.remediations || []).length ? (
+                    <div className="master-control-remediation-list">
+                      {summary.controlReport.remediations.map((run) => (
+                        <article key={run.id}>
+                          <div><strong>{run.device_name || 'Managed endpoint'}</strong><small>{run.customer_name || run.provider || 'ICA Control'}</small></div>
+                          <b>{String(run.state || '').replaceAll('_',' ').toUpperCase()}</b>
+                          <p>{run.summary || 'ICA automation is processing this incident.'}</p>
+                          <time>{run.updated_at ? new Date(run.updated_at).toLocaleString() : ''}</time>
+                        </article>
+                      ))}
+                    </div>
+                  ) : <p className="master-empty">No remediation runs in the current report window.</p>}
+                </section>
+
+                <p className="master-control-freshness">
+                  Latest Control report: {summary.controlReport.receivedAt ? new Date(summary.controlReport.receivedAt).toLocaleString() : summary.controlReport.generatedAt}
+                </p>
+              </>
+            ) : (
+              <div className="master-empty-box">No ICA Control report has been received yet.</div>
+            )}
+          </section>
         )}
 
         {view === 'companies' && (

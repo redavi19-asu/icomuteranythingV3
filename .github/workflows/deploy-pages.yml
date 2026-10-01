@@ -74,6 +74,18 @@ jobs:
           fi
           npx --yes wrangler@latest deploy --config platform-worker/wrangler.jsonc
 
+      - name: Synchronize private ICA Control report bridge
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          REPORT_KEY="$(openssl rand -hex 32)"
+          printf '%s' "$REPORT_KEY" | npx --yes wrangler@latest secret put ICA_MASTER_REPORT_KEY --config platform-worker/wrangler.jsonc
+          printf '%s' "$REPORT_KEY" | npx --yes wrangler@latest secret put ICA_MASTER_REPORT_KEY --name ica-control-api
+          unset REPORT_KEY
+          echo "ICA Control → ICA Master report bridge synchronized."
+
   deploy:
     needs: build
     runs-on: ubuntu-latest

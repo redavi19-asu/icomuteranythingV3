@@ -470,6 +470,103 @@ async function productHealth(env) {
   return Object.fromEntries(entries);
 }
 
+async function ensureControlReportTable(env) {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS control_reports (
+      id TEXT PRIMARY KEY,
+      product TEXT NOT NULL,
+      report_type TEXT NOT NULL,
+      period TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      metrics_json TEXT NOT NULL,
+      engines_json TEXT NOT NULL,
+      remediations_json TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      received_at INTEGER NOT NULL
+    )`
+  ).run();
+
+  await env.DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_control_reports_received ON control_reports(received_at DESC)"
+  ).run();
+}
+
+function controlReportAuthorized(request, env) {
+  const expected = String(env.ICA_MASTER_REPORT_KEY || "").trim();
+  const supplied = String(request.headers.get("X-ICA-Control-Report-Key") || "").trim();
+  return Boolean(expected && supplied && expected === supplied);
+}
+
+async function ingestControlReport(request, env) {
+  if (!controlReportAuthorized(request, env)) {
+    return json({ error: "ICA Control report key required." }, 403);
+  }
+
+  await ensureControlReportTable(env);
+  const body = await request.json().catch(() => null);
+  if (!body || body.product !== "ICA Control" || body.reportType !== "universal-security-operations") {
+    return json({ error: "Invalid ICA Control report payload." }, 400);
+  }
+
+  const id = crypto.randomUUID();
+  const generatedAt = String(body.generatedAt || new Date().toISOString()).slice(0, 64);
+  const period = String(body.period || "day").slice(0, 20);
+  const compactRemediations = Array.isArray(body.remediations) ? body.remediations.slice(0, 30) : [];
+  const compactPayload = {
+    product: "ICA Control",
+    reportType: body.reportType,
+    period,
+    periodLabel: String(body.periodLabel || "").slice(0, 80),
+    generatedAt,
+    metrics: body.metrics || {},
+    engines: Array.isArray(body.engines) ? body.engines.slice(0, 20) : [],
+    remediations: compactRemediations,
+  };
+
+  await env.DB.prepare(
+    `INSERT INTO control_reports (
+      id, product, report_type, period, generated_at,
+      metrics_json, engines_json, remediations_json, payload_json, received_at
+    ) VALUES (?, 'ICA Control', ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    id,
+    body.reportType,
+    period,
+    generatedAt,
+    JSON.stringify(body.metrics || {}),
+    JSON.stringify(compactPayload.engines),
+    JSON.stringify(compactRemediations),
+    JSON.stringify(compactPayload),
+    Date.now()
+  ).run();
+
+  await env.DB.prepare(
+    `INSERT INTO platform_events (
+      id, event_type, message, severity, created_at
+    ) VALUES (?, 'ica_control_report_received', ?, ?, ?)`
+  ).bind(
+    crypto.randomUUID(),
+    `ICA Control report received · ${Number(body.metrics?.securityEvents || 0)} security events · ${Number(body.metrics?.autoResolved || 0)} auto resolved`,
+    Number(body.metrics?.needsReview || 0) > 0 ? "warning" : "info",
+    Date.now()
+  ).run();
+
+  return json({ ok: true, reportId: id }, 202);
+}
+
+async function latestControlReport(env) {
+  await ensureControlReportTable(env);
+  const row = await env.DB.prepare(
+    "SELECT payload_json, received_at FROM control_reports ORDER BY received_at DESC LIMIT 1"
+  ).first();
+  if (!row) return null;
+  try {
+    return { ...JSON.parse(row.payload_json || "{}"), receivedAt: Number(row.received_at || 0) };
+  } catch (_) {
+    return null;
+  }
+}
+
 async function dashboardSummary(request, env) {
   const auth = await requireOwner(request, env);
   if (auth.response) return auth.response;
@@ -487,6 +584,7 @@ async function dashboardSummary(request, env) {
     organizationsResult,
     recentEventsResult,
     health,
+    controlReport,
   ] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS count FROM users").first(),
     env.DB.prepare("SELECT COUNT(*) AS count FROM users WHERE status = 'active'").first(),
@@ -534,6 +632,7 @@ async function dashboardSummary(request, env) {
       LIMIT 30`
     ).all(),
     productHealth(env),
+    latestControlReport(env),
   ]);
 
   return json({
@@ -548,6 +647,7 @@ async function dashboardSummary(request, env) {
     organizations: organizationsResult.results || [],
     recentEvents: recentEventsResult.results || [],
     health,
+    controlReport,
   });
 }
 
@@ -1100,6 +1200,8 @@ export default {
         response = owner
           ? json({ user: owner })
           : json({ error: "Unauthorized." }, 401);
+      } else if (url.pathname === "/platform/control-report" && request.method === "POST") {
+        response = await ingestControlReport(request, env);
       } else if (url.pathname === "/platform/summary" && request.method === "GET") {
         response = await dashboardSummary(request, env);
       } else if (url.pathname === "/platform/users" && request.method === "GET") {
