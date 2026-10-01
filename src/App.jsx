@@ -17,6 +17,7 @@ import IntroLoaderOverlay from './components/effects/IntroLoaderOverlay'
 import RequestServiceOverlay from './components/RequestServiceOverlay'
 import MasterPortal from './master/MasterPortal'
 import './master/master.css'
+import './master/master-facelift.css'
 
 function App() {
   const isMasterRoute = window.location.pathname.startsWith('/master')
