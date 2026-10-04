@@ -73,9 +73,9 @@ function SoftwareShowcase({ onRequestService }) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.55 }}
-          className="relative overflow-hidden rounded-3xl border border-blue-400/30 bg-gradient-to-br from-blue-950/85 via-slate-950/90 to-black/90 p-8 md:p-12 shadow-2xl shadow-blue-950/30"
+          className="relative overflow-hidden rounded-3xl border border-orange-300/35 bg-gradient-to-br from-[#061a33] via-[#0a4a91] to-[#0f87d9] p-8 md:p-12 shadow-2xl shadow-blue-950/35"
         >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.22),transparent_35%),radial-gradient(circle_at_20%_80%,rgba(6,182,212,0.12),transparent_35%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_16%,rgba(255,255,255,0.20),transparent_28%),radial-gradient(circle_at_16%_82%,rgba(249,115,22,0.18),transparent_30%)] pointer-events-none" />
 
           <div className="relative z-10 grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
             <div>
@@ -102,7 +102,7 @@ function SoftwareShowcase({ onRequestService }) {
                   href={DISPATCH_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-lg shadow-blue-900/30"
+                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold transition-all shadow-lg shadow-orange-950/25"
                 >
                   View Urban Carrier OS
                 </a>
@@ -110,25 +110,30 @@ function SoftwareShowcase({ onRequestService }) {
                   href={`${DISPATCH_URL}plans`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-blue-400/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-100 font-semibold transition-all"
+                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-white/30 bg-white/10 hover:bg-white/15 text-white font-semibold transition-all"
                 >
                   Plans & Subscription
                 </a>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                ['01', 'Customer requests'],
-                ['02', 'Business dispatches'],
-                ['03', 'Driver completes'],
-                ['04', 'Customer stays updated'],
-              ].map(([number, label]) => (
-                <div key={number} className="min-h-32 rounded-2xl border border-white/10 bg-black/25 p-5 flex flex-col justify-between">
-                  <span className="text-blue-300 text-sm font-mono">{number}</span>
-                  <span className="text-white font-semibold">{label}</span>
-                </div>
-              ))}
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/30 bg-white/10 p-3 shadow-2xl backdrop-blur-sm">
+              <img
+                src={URBAN_CARRIER_ICON_URL}
+                alt="Urban Carrier OS city delivery artwork"
+                className="aspect-square w-full rounded-[1.6rem] object-cover"
+              />
+              <div className="absolute inset-x-6 bottom-6 grid grid-cols-2 gap-2">
+                {[
+                  ['Dispatch', 'Live jobs + assignments'],
+                  ['Driver', 'Routes + field updates'],
+                ].map(([title, label]) => (
+                  <div key={title} className="rounded-xl border border-white/25 bg-[#061a33]/80 px-3 py-3 backdrop-blur">
+                    <strong className="block text-xs text-orange-200">{title}</strong>
+                    <span className="mt-1 block text-[10px] text-white/65">{label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </motion.div>
