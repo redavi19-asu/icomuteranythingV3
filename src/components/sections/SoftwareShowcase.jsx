@@ -217,7 +217,7 @@ function SoftwareShowcase({ onRequestService }) {
             <button
               type="button"
               onClick={() => setShowUnifiedPreview(true)}
-              className="group relative overflow-hidden rounded-2xl border border-[#29445b] bg-[#081521] p-2 md:p-3 text-left shadow-2xl shadow-black/25"
+              className="group relative overflow-hidden rounded-2xl border border-[#29445b] bg-[#081521] p-2 md:p-3 text-left shadow-2xl shadow-[#07101a]/35"
               aria-label="Open ICA Unified dashboard preview"
             >
               <img
