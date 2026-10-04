@@ -141,9 +141,14 @@ function SoftwareShowcase({ onRequestService }) {
         </motion.div>
 
         <div className="text-center max-w-3xl mx-auto mt-24 mb-14">
-          <p className="text-xs uppercase tracking-[0.3em] text-emerald-300 mb-4">Cloud Business Management Software</p>
-          <h2 className="section-title mb-3">ICA Unified</h2>
-          <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-emerald-300 mb-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-[#5eb8ff] mb-4">Cloud Business Management Software</p>
+          <h2
+            className="section-title mb-3"
+            style={{ fontFamily: '"DM Serif Display", serif', fontWeight: 400 }}
+          >
+            ICA Unified
+          </h2>
+          <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-[#9db0c0] mb-6">
             LMS + AMS Business Management Platform
           </p>
           <p className="section-subtitle">
@@ -156,34 +161,34 @@ function SoftwareShowcase({ onRequestService }) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.55 }}
-          className="relative overflow-hidden rounded-3xl border border-emerald-400/25 bg-gradient-to-br from-slate-950 via-black to-emerald-950/40 p-8 md:p-12 shadow-2xl shadow-emerald-950/20"
+          className="relative overflow-hidden rounded-3xl border border-[#24435d] bg-[linear-gradient(160deg,#0b1b2a_0%,#07111b_64%,#0a2131_100%)] p-8 md:p-12 shadow-2xl shadow-[#07101a]/45"
         >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.15),transparent_34%),radial-gradient(circle_at_85%_80%,rgba(34,211,238,0.09),transparent_32%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_18%,rgba(25,143,255,0.13),transparent_34%),radial-gradient(circle_at_86%_82%,rgba(94,184,255,0.08),transparent_32%)] pointer-events-none" />
 
           <div className="relative z-10 grid gap-10 lg:grid-cols-[.92fr_1.08fr] lg:items-center">
             <div>
               <img
                 src={ICA_UNIFIED_ICON_URL}
                 alt="ICA Unified icon"
-                className="mb-6 h-24 w-24 rounded-2xl bg-white object-contain p-2 shadow-2xl shadow-emerald-950/30"
+                className="mb-6 h-24 w-24 rounded-2xl bg-white object-contain p-2 shadow-2xl shadow-[#178cff]/15"
               />
-              <div className="inline-flex px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-xs font-semibold text-emerald-200 mb-5">
+              <div className="inline-flex px-3 py-1 rounded-full border border-[#29445b] bg-[#0a1723] text-xs font-semibold text-[#d9e9f5] mb-5">
                 Multi-Tenant Cloud SaaS
               </div>
               <h3
-                className="text-3xl md:text-5xl tracking-tight mb-3"
+                className="text-3xl md:text-5xl tracking-tight mb-3 text-[#edf6ff]"
                 style={{ fontFamily: '"DM Serif Display", serif', fontWeight: 400 }}
               >
                 One workspace for learning and business operations.
               </h3>
-              <p className="text-emerald-300 font-semibold tracking-wide mb-5">One company → One database → One login → One member record</p>
-              <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
+              <p className="text-[#5eb8ff] font-semibold tracking-wide mb-5">One company → One database → One login → One member record</p>
+              <p className="text-[#9db0c0] leading-relaxed text-lg max-w-2xl">
                 ICA Unified connects AMS and LMS workflows inside the same cloud platform. A company can use ICA Unified as its portal or connect its existing website to the ICA Unified backend, keeping people, learning, credentials, documents, compliance, and reporting tied to the same organization data.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
                 {['Learning', 'People', 'Credentials', 'Documents', 'Compliance', 'Reports', 'Website Integration', 'Cloud Backend'].map((item) => (
-                  <span key={item} className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-200">
+                  <span key={item} className="px-3 py-2 rounded-lg border border-[#20384d] bg-[#091824] text-sm text-[#acd3ee]">
                     {item}
                   </span>
                 ))}
@@ -194,7 +199,7 @@ function SoftwareShowcase({ onRequestService }) {
                   href={ICA_UNIFIED_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-950/30"
+                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl bg-[#178cff] hover:bg-[#2498ff] text-white font-bold transition-all shadow-lg shadow-[#0d76de]/25"
                 >
                   View ICA Unified
                 </a>
@@ -202,7 +207,7 @@ function SoftwareShowcase({ onRequestService }) {
                   href={ICA_UNIFIED_TRIAL_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-100 font-semibold transition-all"
+                  className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-[#29445b] bg-[#0a1723] hover:border-[#5eb8ff] hover:bg-[#0d2233] text-[#d9e9f5] font-semibold transition-all"
                 >
                   Start 14-Day Trial · $299/mo After
                 </a>
@@ -212,7 +217,7 @@ function SoftwareShowcase({ onRequestService }) {
             <button
               type="button"
               onClick={() => setShowUnifiedPreview(true)}
-              className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-2 md:p-3 text-left shadow-2xl"
+              className="group relative overflow-hidden rounded-2xl border border-[#29445b] bg-[#081521] p-2 md:p-3 text-left shadow-2xl shadow-black/25"
               aria-label="Open ICA Unified dashboard preview"
             >
               <img
@@ -220,7 +225,7 @@ function SoftwareShowcase({ onRequestService }) {
                 alt="ICA Unified dashboard preview"
                 className="block w-full h-auto rounded-xl object-cover transition-transform duration-300 group-hover:scale-[1.015]"
               />
-              <span className="absolute bottom-5 right-5 rounded-full border border-slate-300 bg-white/90 px-4 py-2 text-xs font-semibold text-slate-800 backdrop-blur-sm">
+              <span className="absolute bottom-5 right-5 rounded-full border border-[#29445b] bg-[#07101a]/90 px-4 py-2 text-xs font-semibold text-[#d9e9f5] backdrop-blur-sm">
                 Tap to enlarge
               </span>
             </button>
