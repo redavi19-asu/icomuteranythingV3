@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
+import UrbanCarrierCityScene from '../UrbanCarrierCityScene'
 
 const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform/'
 const ICA_UNIFIED_URL = 'https://unified.icomputeranything.com/'
@@ -120,17 +121,13 @@ function SoftwareShowcase({ onRequestService }) {
             </div>
 
             <div className="relative overflow-hidden rounded-[2rem] border border-white/30 bg-white/10 p-3 shadow-2xl backdrop-blur-sm">
-              <img
-                src={URBAN_CARRIER_ICON_URL}
-                alt="Urban Carrier OS city delivery artwork"
-                className="aspect-square w-full rounded-[1.6rem] object-cover"
-              />
+              <UrbanCarrierCityScene compact />
               <div className="absolute inset-x-6 bottom-6 grid grid-cols-2 gap-2">
                 {[
                   ['Dispatch', 'Live jobs + assignments'],
                   ['Driver', 'Routes + field updates'],
                 ].map(([title, label]) => (
-                  <div key={title} className="rounded-xl border border-white/25 bg-[#061a33]/80 px-3 py-3 backdrop-blur">
+                  <div key={title} className="rounded-xl border border-white/25 bg-[#061a33]/82 px-3 py-3 backdrop-blur">
                     <strong className="block text-xs text-orange-200">{title}</strong>
                     <span className="mt-1 block text-[10px] text-white/65">{label}</span>
                   </div>
