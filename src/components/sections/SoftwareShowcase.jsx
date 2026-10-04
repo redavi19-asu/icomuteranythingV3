@@ -91,6 +91,28 @@ function SoftwareShowcase({ onRequestService }) {
                 and your customers — receiving jobs, assigning work, managing field progress, and keeping the customer informed in one connected system.
               </p>
 
+              <div className="mt-8 lg:hidden relative overflow-hidden rounded-[2rem] border border-white/30 bg-white/10 p-3 shadow-2xl backdrop-blur-sm">
+                <iframe
+                  src={`${DISPATCH_URL}visual/city`}
+                  title="Live 3D Urban Carrier city"
+                  className="block aspect-[16/10] w-full rounded-[1.6rem] border-0 bg-[#061a33]"
+                  loading="lazy"
+                  scrolling="no"
+                  aria-label="Live 3D Urban Carrier city with couriers and delivery vehicles"
+                />
+                <div className="absolute inset-x-6 bottom-6 grid grid-cols-2 gap-2">
+                  {[
+                    ['Dispatch', 'Live jobs + assignments'],
+                    ['Driver', 'Routes + field updates'],
+                  ].map(([title, label]) => (
+                    <div key={title} className="rounded-xl border border-white/25 bg-[#061a33]/82 px-3 py-3 backdrop-blur">
+                      <strong className="block text-xs text-orange-200">{title}</strong>
+                      <span className="mt-1 block text-[10px] text-white/65">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="mt-8 flex flex-wrap gap-3">
                 {['Business Workspace', 'Booking', 'Dispatch', 'Driver App', 'Customer Updates', 'Billing', 'Cloud Backend'].map((item) => (
                   <span key={item} className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-200">
@@ -119,7 +141,7 @@ function SoftwareShowcase({ onRequestService }) {
               </div>
             </div>
 
-            <div className="relative overflow-hidden rounded-[2rem] border border-white/30 bg-white/10 p-3 shadow-2xl backdrop-blur-sm">
+            <div className="hidden lg:block relative overflow-hidden rounded-[2rem] border border-white/30 bg-white/10 p-3 shadow-2xl backdrop-blur-sm">
               <iframe
                 src={`${DISPATCH_URL}visual/city`}
                 title="Live 3D Urban Carrier city"
