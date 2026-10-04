@@ -5,6 +5,9 @@ const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform
 const ICA_UNIFIED_URL = 'https://unified.icomputeranything.com/'
 const ICA_UNIFIED_TRIAL_URL = 'https://unified.icomputeranything.com/register'
 const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview-light.svg'
+const ICA_UNIFIED_ICON_URL = '/images/ica-unified-icon.svg'
+const ICA_CONTROL_ICON_URL = 'https://redavi19-asu.github.io/ica-control/branding/icon-512.png'
+const URBAN_DIRECTOR_ICON_URL = 'https://scenepilot.ryanedavis.workers.dev/urban-director-icon.svg'
 const SCENEPILOT_URL = 'https://scenepilot.ryanedavis.workers.dev/'
 const ICA_CONTROL_URL = 'https://redavi19-asu.github.io/ica-control/'
 const ICA_CONTROL_CONSOLE_URL = 'https://redavi19-asu.github.io/ica-control/#/console'
@@ -152,6 +155,11 @@ function SoftwareShowcase({ onRequestService }) {
 
           <div className="relative z-10 grid gap-10 lg:grid-cols-[.92fr_1.08fr] lg:items-center">
             <div>
+              <img
+                src={ICA_UNIFIED_ICON_URL}
+                alt="ICA Unified icon"
+                className="mb-6 h-24 w-24 rounded-2xl bg-white object-contain p-2 shadow-2xl shadow-emerald-950/30"
+              />
               <div className="inline-flex px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-xs font-semibold text-emerald-200 mb-5">
                 Multi-Tenant Cloud SaaS
               </div>
@@ -234,6 +242,11 @@ function SoftwareShowcase({ onRequestService }) {
 
           <div className="relative z-10 grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
             <div>
+              <img
+                src={ICA_CONTROL_ICON_URL}
+                alt="ICA Control icon"
+                className="mb-6 h-24 w-24 rounded-2xl bg-white object-contain p-2 shadow-2xl shadow-red-950/30"
+              />
               <div className="inline-flex px-3 py-1 rounded-full border border-red-400/30 bg-red-500/10 text-xs font-semibold text-red-100 mb-5">
                 ICA Control • RMM + Cybersecurity
               </div>
@@ -348,6 +361,11 @@ function SoftwareShowcase({ onRequestService }) {
 
           <div className="relative z-10 grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-start">
             <div>
+              <img
+                src={URBAN_DIRECTOR_ICON_URL}
+                alt="Urban Director Studio icon"
+                className="mb-6 h-24 w-24 rounded-2xl bg-white object-contain p-2 shadow-2xl shadow-amber-950/30"
+              />
               <div className="inline-flex px-3 py-1 rounded-full border border-amber-300/25 bg-amber-300/10 text-xs font-semibold text-amber-100 mb-5">
                 ICA SaaS • Live Production + AI Studio
               </div>
