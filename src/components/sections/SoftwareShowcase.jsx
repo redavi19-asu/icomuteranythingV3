@@ -8,6 +8,7 @@ const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview-light.svg'
 const ICA_UNIFIED_ICON_URL = '/images/ica-unified-icon.svg'
 const ICA_CONTROL_ICON_URL = 'https://redavi19-asu.github.io/ica-control/branding/icon-512.png'
 const URBAN_DIRECTOR_ICON_URL = 'https://scenepilot.ryanedavis.workers.dev/urban-director-icon.svg'
+const URBAN_CARRIER_ICON_URL = '/images/urban-carrier-icon.svg'
 const SCENEPILOT_URL = 'https://scenepilot.ryanedavis.workers.dev/'
 const ICA_CONTROL_URL = 'https://redavi19-asu.github.io/ica-control/'
 const ICA_CONTROL_CONSOLE_URL = 'https://redavi19-asu.github.io/ica-control/#/console'
@@ -79,11 +80,12 @@ function SoftwareShowcase({ onRequestService }) {
 
           <div className="relative z-10 grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
             <div>
-              <div className="inline-flex px-3 py-1 rounded-full border border-blue-400/30 bg-blue-500/10 text-xs font-semibold text-blue-200 mb-5">
+              <img src={URBAN_CARRIER_ICON_URL} alt="Urban Carrier OS icon" className="mb-6 h-24 w-24 rounded-[1.6rem] border border-white/50 bg-white object-cover p-1 shadow-2xl shadow-blue-950/35" />
+              <div className="inline-flex px-3 py-1 rounded-full border border-orange-300/35 bg-orange-400/15 text-xs font-semibold text-orange-100 mb-5">
                 Flagship Cloud Logistics Software
               </div>
-              <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">Run the whole job from one command system.</h3>
-              <p className="text-cyan-300 font-semibold tracking-wide mb-5">Business → Driver → Customer</p>
+              <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">Dispatch. Route. Track. Run modern carrier operations.</h3>
+              <p className="text-orange-200 font-semibold tracking-wide mb-5">Business → Driver → Customer</p>
               <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
                 Urban Carrier OS acts as the cloud-connected middle layer between your company, your drivers or field team,
                 and your customers — receiving jobs, assigning work, managing field progress, and keeping the customer informed in one connected system.
