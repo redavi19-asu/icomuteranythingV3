@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
-import UrbanCarrierCityScene from '../UrbanCarrierCityScene'
 
 const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform/'
 const ICA_UNIFIED_URL = 'https://unified.icomputeranything.com/'
@@ -121,7 +120,14 @@ function SoftwareShowcase({ onRequestService }) {
             </div>
 
             <div className="relative overflow-hidden rounded-[2rem] border border-white/30 bg-white/10 p-3 shadow-2xl backdrop-blur-sm">
-              <UrbanCarrierCityScene compact />
+              <iframe
+                src={`${DISPATCH_URL}visual/city`}
+                title="Live 3D Urban Carrier city"
+                className="block aspect-[16/10] w-full rounded-[1.6rem] border-0 bg-[#061a33]"
+                loading="lazy"
+                scrolling="no"
+                aria-label="Live 3D Urban Carrier city with couriers and delivery vehicles"
+              />
               <div className="absolute inset-x-6 bottom-6 grid grid-cols-2 gap-2">
                 {[
                   ['Dispatch', 'Live jobs + assignments'],
