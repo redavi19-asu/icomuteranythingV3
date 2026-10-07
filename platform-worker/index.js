@@ -106,7 +106,7 @@ function bearerToken(request) {
   return header.slice(7).trim();
 }
 
-async function verifyTurnstile(request, env, token) {
+async function verifyTurnstile(request, env, token, expectedAction = "") {
   const secret = String(env.TURNSTILE_SECRET_KEY || "").trim();
 
   if (!secret) {
@@ -135,8 +135,33 @@ async function verifyTurnstile(request, env, token) {
     }
 
     const data = await result.json();
+    const hostname = String(data?.hostname || "").trim().toLowerCase();
+    const action = String(data?.action || "").trim();
 
-    if (!data.success) {
+    const allowedHostnames = new Set(
+      allowedOrigins(env)
+        .map((value) => {
+          try { return new URL(value).hostname.toLowerCase(); } catch (_) { return ""; }
+        })
+        .filter(Boolean)
+    );
+
+    const origin = String(request.headers.get("Origin") || "").trim();
+    if (origin) {
+      try { allowedHostnames.add(new URL(origin).hostname.toLowerCase()); } catch (_) {}
+    }
+
+    const hostnameValid = Boolean(hostname && allowedHostnames.has(hostname));
+    const actionValid = Boolean(action && (!expectedAction || action === expectedAction));
+
+    if (!data.success || !hostnameValid || !actionValid) {
+      console.warn("ICA_MASTER_TURNSTILE_REJECTED", {
+        hostname,
+        action,
+        hostnameValid,
+        actionValid,
+        errors: Array.isArray(data?.["error-codes"]) ? data["error-codes"] : [],
+      });
       return { ok: false, response: json({ error: "Security verification failed. Please try again." }, 403) };
     }
 
@@ -228,7 +253,7 @@ async function requireOwner(request, env) {
 
 async function handleLogin(request, env) {
   const body = await request.json().catch(() => ({}));
-  const check = await verifyTurnstile(request, env, String(body.turnstileToken || "").trim());
+  const check = await verifyTurnstile(request, env, String(body.turnstileToken || "").trim(), "ica_master_login");
 
   if (!check.ok) return check.response;
 
