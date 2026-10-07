@@ -65,6 +65,31 @@ function Turnstile({ onToken, onError, resetKey }) {
     }
 
     let cancelled = false
+    let responseTimer = null
+    let lastToken = ''
+
+    const publishToken = (value) => {
+      const token = String(value || '')
+      if (token === lastToken) return Boolean(token)
+      lastToken = token
+      onToken(token)
+      return Boolean(token)
+    }
+
+    const recoverSolvedToken = () => {
+      if (cancelled) return false
+      let token = ''
+      if (widgetRef.current !== null && window.turnstile?.getResponse) {
+        try { token = String(window.turnstile.getResponse(widgetRef.current) || '') } catch (_) {}
+      }
+      if (!token) {
+        const responseField =
+          ref.current?.querySelector?.('input[name="cf-turnstile-response"]') ||
+          ref.current?.closest?.('form')?.querySelector?.('input[name="cf-turnstile-response"]')
+        token = String(responseField?.value || '')
+      }
+      return token ? publishToken(token) : false
+    }
 
     const render = () => {
       if (cancelled || !ref.current || !window.turnstile) return
@@ -77,10 +102,27 @@ function Turnstile({ onToken, onError, resetKey }) {
         sitekey: TURNSTILE_SITE_KEY,
         theme: 'light',
         action: 'ica_master_login',
-        callback: (token) => onToken(token),
-        'expired-callback': () => onToken(''),
-        'error-callback': (code) => { onToken(''); if (onError) onError(String(code || 'unknown')); },
+        size: 'flexible',
+        appearance: 'always',
+        retry: 'auto',
+        'retry-interval': 4000,
+        'refresh-expired': 'auto',
+        'refresh-timeout': 'auto',
+        callback: (token) => publishToken(token),
+        'expired-callback': () => publishToken(''),
+        'timeout-callback': () => {
+          if (!recoverSolvedToken()) publishToken('')
+        },
+        'error-callback': (code) => {
+          if (!recoverSolvedToken()) {
+            publishToken('')
+            if (onError) onError(String(code || 'unknown'))
+          }
+        },
       })
+
+      recoverSolvedToken()
+      responseTimer = window.setInterval(recoverSolvedToken, 250)
     }
 
     if (window.turnstile) {
@@ -103,6 +145,7 @@ function Turnstile({ onToken, onError, resetKey }) {
 
     return () => {
       cancelled = true
+      if (responseTimer) window.clearInterval(responseTimer)
       if (widgetRef.current !== null && window.turnstile) {
         try { window.turnstile.remove(widgetRef.current) } catch (_) {}
       }
