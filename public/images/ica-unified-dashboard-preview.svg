@@ -45,8 +45,8 @@
   <g fill="#aab8c9" font-family="Arial" font-size="16">
     <text x="48" y="562">Company Profile</text><text x="48" y="604">Roles &amp; Permissions</text><text x="48" y="646">Integrations</text><text x="48" y="688">Billing</text>
   </g>
-  <text x="30" y="744" fill="#5f7089" font-family="Arial" font-size="12" font-weight="700" letter-spacing="2">SUPER ADMIN</text>
-  <text x="48" y="786" fill="#aab8c9" font-family="Arial" font-size="16">Platform Admin</text>
+  <text x="30" y="744" fill="#5f7089" font-family="Arial" font-size="12" font-weight="700" letter-spacing="2">ICA MASTER</text>
+  <text x="48" y="786" fill="#aab8c9" font-family="Arial" font-size="16">Platform Control</text>
   <rect x="22" y="835" width="190" height="92" rx="16" fill="#0d1a2a" stroke="#1d3248"/>
   <text x="38" y="862" fill="#f5f8fb" font-family="Arial" font-size="14" font-weight="700">Need Help?</text>
   <text x="38" y="885" fill="#72839a" font-family="Arial" font-size="12">Visit our Help Center</text>
