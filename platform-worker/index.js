@@ -431,6 +431,11 @@ async function productHealth(env) {
       frontendUrl: "https://unified.icomputeranything.com/platform",
       apiPath: "/api/health",
     },
+    "ica-control": {
+      frontendUrl: "https://control.icomputeranything.com/",
+      apiUrl: "https://ica-control-api.ryanedavis.workers.dev/health",
+      databaseUrl: "https://ica-control-api.ryanedavis.workers.dev/api/auth/bootstrap-status",
+    },
     "dc-live": {
       frontendUrl: "https://redavi19-asu.github.io/dc-live/",
       apiUrl: "https://dc-live-api.ryanedavis.workers.dev/health",
@@ -455,10 +460,21 @@ async function productHealth(env) {
         ok: false,
         status: 0,
         latencyMs: null,
-        detail: slug === "dc-live" ? "DC Live D1" : "Shared ICA D1",
+        detail:
+          slug === "dc-live"
+            ? "DC Live D1"
+            : slug === "ica-control"
+              ? "ICA Control D1"
+              : "Shared ICA D1",
       };
 
-      if (slug === "dc-live") {
+      if (service.databaseUrl) {
+        const databaseCheck = await checkEndpoint(service.databaseUrl, { expectJson: true });
+        database.ok = Boolean(databaseCheck.ok);
+        database.status = databaseCheck.status || 0;
+        database.latencyMs = databaseCheck.latencyMs ?? null;
+        database.error = databaseCheck.error || null;
+      } else if (slug === "dc-live") {
         database.ok = Boolean(api.data?.database);
         database.status = database.ok ? 200 : 503;
         database.latencyMs = api.data?.databaseLatencyMs ?? api.latencyMs ?? null;
@@ -598,6 +614,10 @@ async function dashboardSummary(request, env) {
 
   await env.DB.prepare(
     "INSERT OR IGNORE INTO products (id, slug, name, status, created_at) VALUES ('product_dc_live','dc-live','DC Live','active',?)"
+  ).bind(Date.now()).run();
+
+  await env.DB.prepare(
+    "INSERT OR IGNORE INTO products (id, slug, name, status, created_at) VALUES ('product_ica_control','ica-control','ICA Control','active',?)"
   ).bind(Date.now()).run();
 
   const [
