@@ -225,7 +225,7 @@ function MasterLogin({ onAuthenticated }) {
           <p className="master-eyebrow">I COMPUTER ANYTHING / OWNER CONTROL</p>
           <h1>SUPER<br/>PLATFORM</h1>
           <p className="master-login-sub">
-            One private owner entrance for the entire ICA software portfolio.
+            One private ICA Master entrance for the entire ICA software portfolio.
           </p>
 
           <div className="master-login-products">
@@ -589,7 +589,7 @@ function MasterDashboard({ user, onLogout }) {
       <aside className="master-sidebar">
         <div className="master-sidebar-brand">
           <strong>ICA</strong>
-          <span>SUPER PLATFORM</span>
+          <span>ICA MASTER</span>
         </div>
 
         <nav>
