@@ -10,6 +10,7 @@ const TURNSTILE_SITE_KEY =
   '0x4AAAAAAErtQB79-xi-UTHQ'
 
 const PRODUCT_LINKS = {
+  'ica-control': 'https://control.icomputeranything.com/',
   scenepilot: 'https://scenepilot.ryanedavis.workers.dev/app',
   dispatchos: 'https://redavi19-asu.github.io/icomputer-dispatch-platform/',
   'ica-unified': 'https://unified.icomputeranything.com/platform',
@@ -228,6 +229,7 @@ function MasterLogin({ onAuthenticated }) {
           </p>
 
           <div className="master-login-products">
+            <span>ICA CONTROL</span>
             <span>URBAN DIRECTOR STUDIO</span>
             <span>URBAN CARRIER OS</span>
             <span>ICA UNIFIED</span>
@@ -312,6 +314,7 @@ function ProductCard({ product, health, onManageUsers, onOpenDcLiveAdmin }) {
 
       <h3>{product.name}</h3>
       <p>
+        {slug === 'ica-control' && 'Endpoint management, security operations, automation, monitoring and customer support.'}
         {slug === 'scenepilot' && 'Live production, camera operators, replay, multiview and broadcast control.'}
         {slug === 'dispatchos' && 'Business, driver and customer logistics operations.'}
         {slug === 'ica-unified' && 'Learning, people, credentials, compliance and organization management.'}
