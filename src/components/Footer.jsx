@@ -73,6 +73,12 @@ function Footer() {
             <p className="text-gray-500 text-sm leading-relaxed">
               Premium tech solutions for everyone.
             </p>
+            <a
+              href="mailto:ryanedavis@gmail.com?subject=I%20Computer%20Anything%20Support"
+              className="mt-4 inline-block text-sm font-semibold text-cyan-300 hover:text-cyan-200 transition-colors"
+            >
+              Support · ryanedavis@gmail.com
+            </a>
           </motion.div>
 
           {/* Links */}
@@ -112,7 +118,7 @@ function Footer() {
           viewport={{ once: true }}
           className="text-sm text-gray-500 text-center"
         >
-          <p>© {currentYear} I Computer Anything. All rights reserved.</p>
+          <p>© {currentYear} I Computer Anything. All rights reserved. · Support: ryanedavis@gmail.com</p>
         </motion.div>
 
         {/* Cookie Preferences Modal */}
