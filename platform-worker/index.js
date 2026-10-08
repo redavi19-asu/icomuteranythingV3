@@ -1,4 +1,4 @@
-import { saveFreeAccess, revokeFreeAccess } from './access-grants.js';
+import { saveFreeAccess, revokeFreeAccess, ensureAccessGrantSchema } from './access-grants.js';
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const PASSWORD_ITERATIONS = 100000;
@@ -876,6 +876,7 @@ async function updateUser(request, env, userId) {
 async function freeAccess(request, env) {
   const auth = await requireOwner(request, env);
   if (auth.response) return auth.response;
+  await ensureAccessGrantSchema(env.DB);
   if (request.method === "GET") {
     const result = await env.DB.prepare("SELECT email,product_slug,status,expires_at,created_at,updated_at FROM email_access_grants ORDER BY updated_at DESC LIMIT 500").all();
     return json({ grants: result.results || [] });

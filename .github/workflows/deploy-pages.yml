@@ -75,7 +75,6 @@ jobs:
             echo "::error::ICA Master Worker was NOT deployed. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as repository Actions secrets."
             exit 1
           fi
-          npx --yes wrangler@latest d1 execute ica-saas-db --remote --config platform-worker/wrangler.jsonc --file platform-worker/migrations/0005_email_access_grants.sql
           npx --yes wrangler@latest deploy --config platform-worker/wrangler.jsonc
 
       - name: Synchronize private ICA Control report bridge

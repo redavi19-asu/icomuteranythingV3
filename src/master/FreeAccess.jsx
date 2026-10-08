@@ -54,7 +54,7 @@ export default function FreeAccess({ api, initialProduct = 'all' }) {
       {duration==='until' && <label>Expiration date<input type="date" required value={date} onChange={e=>setDate(e.target.value)} /></label>}
       <button disabled={busy}>{busy ? 'Saving…' : 'GIVE FREE ACCESS'}</button>
     </form>
-    <p>Access follows the verified sign-in email and the product’s normal account setup. This grants customer access, never administrator permissions. Existing paid subscriptions are not cancelled by a free-access grant.</p>
+    <p>Access follows the verified sign-in email and the product’s normal account setup. For Unified, an organization owner’s grant covers their organization; a member’s grant stays personal. This grants customer access, never administrator permissions. Existing paid subscriptions are not cancelled by a free-access grant.</p>
     {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
     <div className="master-table-wrap"><table><thead><tr><th>EMAIL</th><th>PRODUCT</th><th>STATUS</th><th>EXPIRES</th><th>ACTION</th></tr></thead><tbody>
       {grants.map(g=>{const active=g.status==='active'&&(!g.expires_at||Number(g.expires_at)>Date.now());return <tr key={`${g.email}:${g.product_slug}`}><td>{g.email}</td><td>{names[g.product_slug]}</td><td>{active ? 'Comped — no payment required' : g.status==='revoked' ? 'Revoked' : 'Expired'}</td><td>{g.expires_at ? new Date(Number(g.expires_at)).toLocaleString() : 'Ongoing'}</td><td><button type="button" disabled={busy} onClick={()=>edit(g)}>{active ? 'EDIT' : 'RESTORE'}</button>{active&&<button type="button" disabled={busy} onClick={()=>revoke(g)}>REVOKE FREE ACCESS</button>}</td></tr>})}
