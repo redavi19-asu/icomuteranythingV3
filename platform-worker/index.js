@@ -1,3 +1,4 @@
+import { saveFreeAccess, revokeFreeAccess } from './access-grants.js';
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const PASSWORD_ITERATIONS = 100000;
@@ -872,6 +873,27 @@ async function updateUser(request, env, userId) {
 }
 
 
+async function freeAccess(request, env) {
+  const auth = await requireOwner(request, env);
+  if (auth.response) return auth.response;
+  if (request.method === "GET") {
+    const result = await env.DB.prepare("SELECT email,product_slug,status,expires_at,created_at,updated_at FROM email_access_grants ORDER BY updated_at DESC LIMIT 500").all();
+    return json({ grants: result.results || [] });
+  }
+  const body = await request.json().catch(() => ({}));
+  try {
+    if (request.method === "POST") {
+      const grant = await saveFreeAccess(env.DB, auth.owner.id, body);
+      return json({ ok: true, grant });
+    }
+    await revokeFreeAccess(env.DB, auth.owner.id, body);
+    return json({ ok: true });
+  } catch (error) {
+    if (/Enter a valid|Choose /.test(error.message)) return json({ error: error.message }, 400);
+    throw error;
+  }
+}
+
 async function getProductBySlug(env, slug) {
   return env.DB.prepare(
     "SELECT id, slug, name, status FROM products WHERE slug = ? LIMIT 1"
@@ -1247,6 +1269,8 @@ export default {
           : json({ error: "Unauthorized." }, 401);
       } else if (url.pathname === "/platform/control-report" && request.method === "POST") {
         response = await ingestControlReport(request, env);
+      } else if (url.pathname === "/platform/free-access" && ["GET", "POST", "PATCH"].includes(request.method)) {
+        response = await freeAccess(request, env);
       } else if (url.pathname === "/platform/summary" && request.method === "GET") {
         response = await dashboardSummary(request, env);
       } else if (url.pathname === "/platform/users" && request.method === "GET") {

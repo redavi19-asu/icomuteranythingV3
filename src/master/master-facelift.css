@@ -957,3 +957,5 @@
     to { opacity: 1; transform: translateY(0); }
   }
 }
+
+.master-free-form{display:flex;flex-wrap:wrap;align-items:end;gap:16px;margin:24px 0}.master-free-form label{display:grid;gap:8px;min-width:170px;flex:1}.master-free-form input,.master-free-form select{width:100%;min-height:44px;padding:10px;border:1px solid #555;border-radius:6px;background:#181a20;color:#fff;font:inherit}.master-free-form button,.master-free-access td button{min-height:44px;padding:10px 16px;border-radius:6px;cursor:pointer;margin:4px}.master-free-access p{line-height:1.6}.master-free-access [role=status]{color:#74e4aa}.master-free-access [role=alert]{color:#ffaaa3}

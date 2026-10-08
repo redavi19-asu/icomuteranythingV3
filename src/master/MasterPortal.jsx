@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import DcLiveAdmin from './DcLiveAdmin'
+import FreeAccess from './FreeAccess'
 
 const API_URL =
   import.meta.env.VITE_ICA_MASTER_API_URL ||
@@ -362,11 +363,12 @@ function MasterDashboard({ user, onLogout }) {
   const [selectedLiveUser, setSelectedLiveUser] = useState(null)
   const [selectedLiveDetail, setSelectedLiveDetail] = useState(null)
   const [liveBusy, setLiveBusy] = useState(false)
-  const [view, setView] = useState('overview')
+  const [view, setView] = useState(new URLSearchParams(window.location.search).get('view') === 'free-access' ? 'free-access' : 'overview')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [productUsers, setProductUsers] = useState([])
   const [productEmail, setProductEmail] = useState('')
   const [productBusy, setProductBusy] = useState(false)
+  const [grantProduct, setGrantProduct] = useState('all')
   const [emailAudience, setEmailAudience] = useState([])
   const [emailCampaigns, setEmailCampaigns] = useState([])
   const [emailSubject, setEmailSubject] = useState('')
@@ -602,6 +604,7 @@ function MasterDashboard({ user, onLogout }) {
           <button className={view === 'users' ? 'active' : ''} onClick={() => setView('users')}>
             USERS
           </button>
+          <button className={view === 'free-access' ? 'active' : ''} onClick={() => { setGrantProduct('all'); setView('free-access') }}>GIVE FREE ACCESS</button>
           <button className={view === 'email-updates' ? 'active' : ''} onClick={() => { setView('email-updates'); loadEmailUpdates() }}>
             EMAIL UPDATES
           </button>
@@ -633,6 +636,7 @@ function MasterDashboard({ user, onLogout }) {
             <h1>
               {view === 'overview' && 'Platform Overview'}
               {view === 'companies' && 'Company Health'}
+              {view === 'free-access' && 'Give Free Access'}
               {view === 'users' && 'Users & Access'}
               {view === 'email-updates' && 'Email Updates'}
               {view === 'sales' && 'Sales & Billing'}
@@ -1093,6 +1097,8 @@ function MasterDashboard({ user, onLogout }) {
         )}
 
 
+        {view === 'free-access' && <FreeAccess key={grantProduct} api={api} initialProduct={grantProduct} />}
+
         {view === 'product-users' && selectedProduct && (
           <section className="master-table-card">
             <div className="master-product-admin-head">
@@ -1103,19 +1109,10 @@ function MasterDashboard({ user, onLogout }) {
                 <p className="master-eyebrow">PRODUCT ACCESS CONTROL</p>
                 <h2>{selectedProduct.name} Users</h2>
                 <p className="master-product-admin-copy">
-                  Add an existing ICA account to this product, or kick/reactivate product access without disabling the person's entire ICA account.
+                  Manage existing product users below. Give free access by email before or after registration using the free-access button.
                 </p>
               </div>
-              <form className="master-add-user" onSubmit={addProductUser}>
-                <input
-                  type="email"
-                  placeholder="user@email.com"
-                  value={productEmail}
-                  onChange={(event) => setProductEmail(event.target.value)}
-                  required
-                />
-                <button disabled={productBusy}>ADD USER BY EMAIL</button>
-              </form>
+              <button type="button" onClick={() => { setGrantProduct(['ica-control','ica-unified','scenepilot'].includes(selectedProduct.slug) ? selectedProduct.slug : 'all'); setView('free-access') }}>GIVE FREE ACCESS BY EMAIL</button>
             </div>
 
             {productBusy && !productUsers.length ? (
