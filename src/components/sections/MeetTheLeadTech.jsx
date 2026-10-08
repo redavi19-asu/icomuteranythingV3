@@ -103,7 +103,7 @@ function MeetTheLeadTech() {
                     Ryan Davis
                   </span>
                 </h3>
-                <p className="text-lg text-blue-300/80 mb-6 font-medium">Founder · Developer · IT Technician</p>
+                <p className="text-lg text-blue-300/80 mb-6 font-medium">Founder · Software Developer · IT Technician</p>
 
                 <p className="text-gray-300 leading-relaxed mb-8 text-lg">
                   I named the business I Computer Anything because that is how I approach technology: I build it, repair it, configure it, troubleshoot it, and keep learning what comes next. I bring years of hands-on field experience, networking, technical support, server work, and software development into every project. When a project grows large enough to need extra hands, I can bring in trusted help, but I remain your direct point of contact and stay accountable for the work.
@@ -159,6 +159,26 @@ function MeetTheLeadTech() {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                <div className="mb-8 rounded-2xl border border-cyan-400/25 bg-blue-500/10 p-5">
+                  <p className="text-sm font-semibold text-blue-300 mb-2 uppercase tracking-wide">App Development &amp; Releases</p>
+                  <h4 className="text-lg font-semibold text-cyan-200">Apple · Android · Windows Developer</h4>
+                  <p className="mt-2 text-sm text-gray-300 leading-relaxed">Building and releasing ICA apps across desktop and mobile platforms.</p>
+                  <dl className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
+                    <div className="rounded-xl border border-cyan-300/15 bg-white/5 p-3">
+                      <dt className="font-semibold text-cyan-200">Apple / macOS</dt>
+                      <dd className="mt-2 text-gray-300 leading-relaxed">Developer ID signed and notarized macOS releases.</dd>
+                    </div>
+                    <div className="rounded-xl border border-cyan-300/15 bg-white/5 p-3">
+                      <dt className="font-semibold text-cyan-200">Android</dt>
+                      <dd className="mt-2 text-gray-300 leading-relaxed">Signed ICA Control APK available by direct download.</dd>
+                    </div>
+                    <div className="rounded-xl border border-cyan-300/15 bg-white/5 p-3">
+                      <dt className="font-semibold text-cyan-200">Windows</dt>
+                      <dd className="mt-2 text-gray-300 leading-relaxed">Microsoft Artifact Signing setup in progress.</dd>
+                    </div>
+                  </dl>
                 </div>
 
                 <div>
