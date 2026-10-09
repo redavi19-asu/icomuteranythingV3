@@ -216,7 +216,7 @@ function MeetTheLeadTech() {
                     <div className="rounded-xl border border-blue-400/30 bg-gradient-to-br from-blue-400/10 to-white/5 p-4">
                       <div className="mb-4 flex h-20 items-center justify-center rounded-xl bg-black/20"><PlatformLogo platform="windows" /></div>
                       <dt className="font-semibold text-cyan-200">Windows</dt>
-                      <dd className="mt-2 text-gray-300 leading-relaxed">Microsoft Artifact Signing setup in progress.</dd>
+                      <dd className="mt-2 text-gray-300 leading-relaxed">Windows code signing completed with Microsoft Artifact Signing.</dd>
                     </div>
                   </dl>
                 </div>
