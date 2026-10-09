@@ -1,6 +1,43 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 
+function PlatformLogo({ platform }) {
+  if (platform === 'apple') {
+    return <i aria-hidden="true" className="fa-brands fa-apple text-white text-5xl" />
+  }
+
+  if (platform === 'android') {
+    return (
+      <svg viewBox="0 0 80 90" className="h-16 w-16" aria-hidden="true" focusable="false">
+        <g fill="#A4C639">
+          <path d="M18 29a22 22 0 0 1 44 0Z" />
+          <rect x="18" y="33" width="44" height="36" rx="5" />
+          <rect x="5" y="32" width="10" height="33" rx="5" />
+          <rect x="65" y="32" width="10" height="33" rx="5" />
+          <rect x="25" y="62" width="10" height="24" rx="5" />
+          <rect x="45" y="62" width="10" height="24" rx="5" />
+        </g>
+        <path d="m24 12-6-9m38 9 6-9" stroke="#A4C639" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="29" cy="20" r="2.5" fill="white" />
+        <circle cx="51" cy="20" r="2.5" fill="white" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg viewBox="0 0 100 90" className="h-16 w-20" aria-hidden="true" focusable="false">
+      <g fill="#080D18" stroke="#7891AC" strokeWidth="0.5">
+        <path d="M37 17C57 0 74 6 98 15L84 76C63 67 49 63 24 79Z" />
+        <path d="m26 18 8-3-2 10-8 3Zm-13 8 7-3-2 8-7 3ZM3 35l5-2-1 6-5 2Zm19 0 8-3-2 10-8 3ZM10 44l7-3-2 8-7 3ZM1 54l5-2-1 6-5 2Zm18-1 8-3-2 10-8 3Zm-12 9 7-3-2 8-7 3Zm9 9 8-3-2 10-8 3Z" />
+      </g>
+      <path d="M41 20c8-5 15-7 22-7l-5 23c-7 0-14 2-22 7Z" fill="#F25022" />
+      <path d="M68 13c8 1 16 3 24 6l-5 23c-8-3-16-5-24-6Z" fill="#7FBA00" />
+      <path d="M35 48c8-5 15-7 22-7l-5 23c-7 0-14 2-22 7Z" fill="#00A4EF" />
+      <path d="M62 41c8 1 16 3 24 6l-5 23c-8-3-16-5-24-6Z" fill="#FFB900" />
+    </svg>
+  )
+}
+
 function useInView(options) {
   const ref = React.useRef(null)
   const [inView, setInView] = React.useState(false)
@@ -166,15 +203,18 @@ function MeetTheLeadTech() {
                   <h4 className="text-lg font-semibold text-cyan-200">Apple · Android · Windows Developer</h4>
                   <p className="mt-2 text-sm text-gray-300 leading-relaxed">Building and releasing ICA apps across desktop and mobile platforms.</p>
                   <dl className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
-                    <div className="rounded-xl border border-cyan-300/15 bg-white/5 p-3">
+                    <div className="rounded-xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-4">
+                      <div className="mb-4 flex h-20 items-center justify-center rounded-xl bg-black/20"><PlatformLogo platform="apple" /></div>
                       <dt className="font-semibold text-cyan-200">Apple / macOS</dt>
                       <dd className="mt-2 text-gray-300 leading-relaxed">Developer ID signed and notarized macOS releases.</dd>
                     </div>
-                    <div className="rounded-xl border border-cyan-300/15 bg-white/5 p-3">
+                    <div className="rounded-xl border border-lime-400/25 bg-gradient-to-br from-lime-400/10 to-white/5 p-4">
+                      <div className="mb-4 flex h-20 items-center justify-center rounded-xl bg-black/20"><PlatformLogo platform="android" /></div>
                       <dt className="font-semibold text-cyan-200">Android</dt>
                       <dd className="mt-2 text-gray-300 leading-relaxed">Signed ICA Control APK available by direct download.</dd>
                     </div>
-                    <div className="rounded-xl border border-cyan-300/15 bg-white/5 p-3">
+                    <div className="rounded-xl border border-blue-400/30 bg-gradient-to-br from-blue-400/10 to-white/5 p-4">
+                      <div className="mb-4 flex h-20 items-center justify-center rounded-xl bg-black/20"><PlatformLogo platform="windows" /></div>
                       <dt className="font-semibold text-cyan-200">Windows</dt>
                       <dd className="mt-2 text-gray-300 leading-relaxed">Microsoft Artifact Signing setup in progress.</dd>
                     </div>
