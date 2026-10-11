@@ -84,6 +84,11 @@ function SoftwareShowcase({ onRequestService }) {
               <div className="inline-flex px-3 py-1 rounded-full border border-orange-300/35 bg-orange-400/15 text-xs font-semibold text-orange-100 mb-5">
                 Flagship Cloud Logistics Software
               </div>
+              <div className="mb-5 rounded-xl border border-cyan-300/40 bg-cyan-300/10 p-4">
+                <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.18em] text-cyan-200">Headline integration • Meta smart glasses</p>
+                <p className="text-lg font-bold leading-snug text-white">First-person cameras for live productions.</p>
+                <p className="mt-2 text-sm leading-relaxed text-gray-200">Planned Meta Ray-Ban camera integration uses your phone and Director’s existing secure QR camera join. Choose Front, Rear, or Meta Glasses while your iPad or computer remains the one authorized Director. Native wearable connection is in development and not yet available to customers.</p>
+              </div>
               <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">Dispatch. Route. Track. Run modern carrier operations.</h3>
               <p className="text-orange-200 font-semibold tracking-wide mb-5">Business → Driver → Customer</p>
               <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
@@ -425,6 +430,7 @@ function SoftwareShowcase({ onRequestService }) {
                   'Director Console',
                   'Wireless Phone + Tablet Cameras',
                   'QR / Secure Camera Join',
+                  'Meta Smart Glasses Integration — In Development',
                   'Preview + Program Switching',
                   'Multiview',
                   'Crew Messaging',
