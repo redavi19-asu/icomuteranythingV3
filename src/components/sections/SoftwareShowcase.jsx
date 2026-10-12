@@ -384,7 +384,20 @@ function SoftwareShowcase({ onRequestService }) {
           </div>
         </motion.div>
 
-        <div className="text-center max-w-4xl mx-auto mt-24 mb-14">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.55 }}
+          className="mx-auto mt-20 mb-12 max-w-2xl rounded-2xl border border-cyan-300/40 bg-gradient-to-r from-cyan-950/70 via-slate-900/85 to-blue-950/70 p-5 text-center shadow-xl shadow-cyan-950/30"
+        >
+          <span className="inline-block rounded-full border border-cyan-300/40 bg-cyan-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">Featured technology • In development</span>
+          <h2 className="mt-3 text-xl font-bold text-white md:text-2xl">Meta Ray-Ban smart glasses × Urban Director Studio</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-200 md:text-base">Our next live-production camera source: pair Meta glasses to your phone, scan Director’s secure camera QR code, and direct from an iPad or computer. Native glasses streaming is under development.</p>
+          <button type="button" onClick={() => document.getElementById('urban-director')?.scrollIntoView({ behavior: 'smooth' })} className="mt-4 rounded-lg border border-cyan-300/50 px-5 py-2 font-semibold text-cyan-100 transition hover:bg-cyan-300/15">Explore Urban Director →</button>
+        </motion.div>
+
+        <div id="urban-director" className="scroll-mt-24 text-center max-w-4xl mx-auto mt-24 mb-14">
           <p className="text-xs uppercase tracking-[0.3em] text-amber-300 mb-4">Live Production + AI Media SaaS</p>
           <h2 className="section-title mb-3">Urban Director Studio</h2>
           <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-amber-300 mb-6">
