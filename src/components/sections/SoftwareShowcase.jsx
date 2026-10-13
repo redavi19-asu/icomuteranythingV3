@@ -84,11 +84,6 @@ function SoftwareShowcase({ onRequestService }) {
               <div className="inline-flex px-3 py-1 rounded-full border border-orange-300/35 bg-orange-400/15 text-xs font-semibold text-orange-100 mb-5">
                 Flagship Cloud Logistics Software
               </div>
-              <div className="mb-5 rounded-xl border border-cyan-300/40 bg-cyan-300/10 p-4">
-                <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.18em] text-cyan-200">Headline integration • Meta smart glasses</p>
-                <p className="text-lg font-bold leading-snug text-white">First-person cameras for live productions.</p>
-                <p className="mt-2 text-sm leading-relaxed text-gray-200">Planned Meta Ray-Ban camera integration uses your phone and Director’s existing secure QR camera join. Choose Front, Rear, or Meta Glasses while your iPad or computer remains the one authorized Director. Native wearable connection is in development and not yet available to customers.</p>
-              </div>
               <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">Dispatch. Route. Track. Run modern carrier operations.</h3>
               <p className="text-orange-200 font-semibold tracking-wide mb-5">Business → Driver → Customer</p>
               <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
@@ -384,18 +379,6 @@ function SoftwareShowcase({ onRequestService }) {
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.55 }}
-          className="mx-auto mt-20 mb-12 max-w-2xl rounded-2xl border border-cyan-300/40 bg-gradient-to-r from-cyan-950/70 via-slate-900/85 to-blue-950/70 p-5 text-center shadow-xl shadow-cyan-950/30"
-        >
-          <span className="inline-block rounded-full border border-cyan-300/40 bg-cyan-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">Featured technology • In development</span>
-          <h2 className="mt-3 text-xl font-bold text-white md:text-2xl">Meta Ray-Ban smart glasses × Urban Director Studio</h2>
-          <p className="mt-2 text-sm leading-relaxed text-slate-200 md:text-base">Our next live-production camera source: pair Meta glasses to your phone, scan Director’s secure camera QR code, and direct from an iPad or computer. Native glasses streaming is under development.</p>
-          <button type="button" onClick={() => document.getElementById('urban-director')?.scrollIntoView({ behavior: 'smooth' })} className="mt-4 rounded-lg border border-cyan-300/50 px-5 py-2 font-semibold text-cyan-100 transition hover:bg-cyan-300/15">Explore Urban Director →</button>
-        </motion.div>
 
         <div id="urban-director" className="scroll-mt-24 text-center max-w-4xl mx-auto mt-24 mb-14">
           <p className="text-xs uppercase tracking-[0.3em] text-amber-300 mb-4">Live Production + AI Media SaaS</p>
@@ -427,6 +410,13 @@ function SoftwareShowcase({ onRequestService }) {
               />
               <div className="inline-flex px-3 py-1 rounded-full border border-amber-300/25 bg-amber-300/10 text-xs font-semibold text-amber-100 mb-5">
                 ICA SaaS • Live Production + AI Studio
+              </div>
+              <div className="mb-6 max-w-2xl rounded-2xl border border-cyan-300/40 bg-gradient-to-r from-cyan-950/70 via-slate-900/85 to-blue-950/70 p-5 shadow-xl shadow-cyan-950/30">
+                <span className="inline-block rounded-full border border-cyan-300/40 bg-cyan-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">Featured technology • In development</span>
+                <h4 className="mt-3 text-xl font-bold text-white md:text-2xl">Meta Ray-Ban smart glasses × Urban Director Studio</h4>
+                <p className="mt-2 text-sm leading-relaxed text-slate-200 md:text-base">
+                  Planned first-person camera integration: pair Meta glasses to your phone, join Director's secure camera session by QR code, and manage the production from your iPad or computer. Native glasses streaming is still in development and not yet available to customers.
+                </p>
               </div>
               <h3 className="text-3xl md:text-5xl font-bold tracking-tight mb-3">
                 Run the production, create the media, and control the broadcast from one studio.
