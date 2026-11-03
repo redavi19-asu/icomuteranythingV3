@@ -88,6 +88,23 @@ function sanitizeContext(value) {
   return JSON.stringify(snapshot).slice(0,MAX_CONTEXT);
 }
 
+async function readBoundedBody(request, limit) {
+  if(!request.body)return '';
+  const reader=request.body.getReader();
+  const chunks=[];let size=0;
+  try {
+    while(true){
+      const {done,value}=await reader.read();if(done)break;
+      size+=value.byteLength;
+      if(size>limit){await reader.cancel();return null;}
+      chunks.push(value);
+    }
+  }finally{reader.releaseLock()}
+  const bytes=new Uint8Array(size);let offset=0;
+  for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+  return new TextDecoder().decode(bytes);
+}
+
 async function consumeRateLimit(env, ownerId){
   if(!env.DB)return false; // fail closed when usage metering is offline
   const hour=new Date().toISOString().slice(0,13);
@@ -120,8 +137,8 @@ export async function tradingAiChat(request,env,owner) {
   if(request.method!=='POST'||!String(request.headers.get('Content-Type')||'').toLowerCase().includes('application/json'))return reply({error:'Expected JSON POST.'},415);
   const len=Number(request.headers.get('Content-Length')||0);
   if(len>16000)return reply({error:'Request too large.'},413);
-  const raw=await request.text();
-  if(new TextEncoder().encode(raw).byteLength>16000)return reply({error:'Request too large.'},413);
+  const raw=await readBoundedBody(request,16000);
+  if(raw===null)return reply({error:'Request too large.'},413);
   let body;try{body=JSON.parse(raw);}catch{return reply({error:'Invalid JSON.'},400)}
   if(!body||typeof body!=='object'||Array.isArray(body))return reply({error:'Invalid request.'},400);
   const message=text(body.message);
@@ -159,7 +176,7 @@ export async function tradingAiChat(request,env,owner) {
   try {
     const response=await fetch(API_URL,{
       method:'POST',
-      headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},
+      headers:{Authorization:'Bearer '+text(env.OPENAI_API_KEY),'Content-Type':'application/json'},
       body:JSON.stringify(payload),
       signal:controller.signal
     });

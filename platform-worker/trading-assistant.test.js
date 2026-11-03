@@ -86,3 +86,11 @@ test('incomplete model answers are rejected instead of presented as complete ana
  globalThis.fetch=async()=>new Response(JSON.stringify({status:'incomplete',output:[{content:[{type:'output_text',text:'Partial answer'}]}]}),{status:200});
  try{const r=await tradingAiChat(request(envelope),env(),owner);assert.equal(r.status,502);assert.match((await r.json()).error,/incomplete/)}finally{globalThis.fetch=original}
 });
+
+
+test('rejects a chunked oversized body and enforces byte rather than character limits',async()=>{
+ for(const content of ['x'.repeat(16001),'€'.repeat(6000)]){
+  const req=new Request('https://worker.invalid/platform/trading-ai/chat',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://icomputeranything.com'},body:content});
+  assert.equal((await tradingAiChat(req,env(),owner)).status,413);
+ }
+});
