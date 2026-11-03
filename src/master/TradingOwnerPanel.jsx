@@ -1,4 +1,5 @@
 import React, {useMemo,useState} from 'react';
+import TradingAiAssistant from './TradingAiAssistant';
 // The trading calculation engine is derived from the private trading-platform repo.
 // This panel is mounted only after ICA Master verifies the owner session.
 // It contains no API keys, account details, or real order execution.
@@ -313,7 +314,7 @@ function TradingOwnerPanel(){
    <p className="master-eyebrow">OWNER VERIFIED THROUGH ICA MASTER</p><h2 style={{fontSize:23,color:'#d5fff3',margin:'7px 0'}}>My Trading Platform</h2>
    <p style={{fontSize:13,lineHeight:1.65,color:'#b0c8d4'}}>Use your existing ICA Master email, password and Cloudflare Turnstile. This is your private market-research and Paper Money workspace. Schwab and live order execution are not connected.</p>
    <div style={{display:'flex',gap:9,flexWrap:'wrap',marginTop:18}}>
-    {['paper','radar','roadmap'].map(t=><button key={t} type="button" onClick={()=>setTab(t)} style={{...button,background:tab===t?'#087f7c':'#142e45'}}>{t==='paper'?'Paper Money Lab':t==='radar'?'Opportunity Radar':'AI Trader Roadmap'}</button>)}
+    {['paper','radar','ai','roadmap'].map(t=><button key={t} type="button" onClick={()=>setTab(t)} style={{...button,background:tab===t?'#087f7c':'#142e45'}}>{t==='paper'?'Paper Money Lab':t==='radar'?'Opportunity Radar':t==='ai'?'Ask ICA Trading AI':'AI Trader Roadmap'}</button>)}
    </div>
   </div>
   {error&&<div className="master-error wide" role="alert">{error}</div>}
@@ -346,6 +347,7 @@ function TradingOwnerPanel(){
   {tab==='radar'&&<div style={bg}><h3 style={{fontSize:17,color:'#dff7fe'}}>Ranked technical opportunities</h3><p style={{fontSize:12,color:'#a1becf'}}>This radar evaluates only the historical bar data you import. No licensed live feed is connected.</p>
    {ranked.length?ranked.slice(0,25).map((x,i)=><article key={x.symbol} style={{borderBottom:'1px solid #30566b',padding:'11px 0',display:'flex',justifyContent:'space-between',gap:13,alignItems:'center',flexWrap:'wrap'}}><div><strong style={{color:'#c9f8e9'}}>{i+1}. {x.symbol}</strong><p style={{fontSize:11,color:'#a9c1cf',margin:'5px 0'}}>{x.reason}</p><small style={{fontSize:10,color:'#a7c5cc'}}>RSI {x.metrics?.rsi14??'—'} · VWAP {x.metrics?.vwap??'—'} · volume {x.metrics?.volumeMultiple??'—'}×</small></div><div style={{textAlign:'right'}}><strong style={{color:'#d9fbff'}}>{x.score}/100</strong><p style={{color:x.state==='TECHNICAL_WATCH'?'#6bf0cb':'#e8ba89',fontSize:11,margin:'4px 0'}}>{x.state.replaceAll('_',' ')}</p></div></article>):<p className="master-empty">Import underlying bars to scan them.</p>}
   </div>}
+  {tab==='ai'&&<TradingAiAssistant ranked={ranked} report={report} rules={rules} quotes={quotes||[]} barName={names.bars} quoteName={names.quotes}/>}
   {tab==='roadmap'&&<div style={bg}><h3 style={{color:'#d9fff4'}}>AI trading system — paper first</h3><p style={{fontSize:13,color:'#b2cad6',lineHeight:1.7}}>First, use historical data and paper fills to test the stop-loss and gain rules. Next, connect approved Schwab real-time data, scan the market and run a live paper brokerage simulator. Only after extensive forward testing, safety validation and your explicit approval will we consider real orders. AI explanations will never bypass hard risk limits.</p><p style={{fontSize:12,color:'#cbdce6'}}>The original separately protected owner console remains available as a backup while we verify this ICA Master entrance.</p><a href="https://trading-platform-owner.ryanedavis.workers.dev/" target="_blank" rel="noreferrer" style={{color:'#7de3d8',fontSize:12}}>Alternate Owner Console (Cloudflare email-code login)</a></div>}
   <p style={{fontSize:12,color:'#86a5b6'}}>Your latest paper session is stored in this browser only. Saved sessions: {journal.length}. No actual financial data, orders, API credentials or account balances are exposed by this panel.</p>
  </section>
