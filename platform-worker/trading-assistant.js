@@ -182,7 +182,22 @@ export async function tradingAiChat(request,env,owner) {
     });
     if(!response.ok) {
       console.error('TRADING_AI_PROVIDER_ERROR',response.status);
-      return reply({error:response.status===401||response.status===403?'OpenAI API credential or model access needs attention.':'OpenAI provider temporarily unavailable.',code:response.status},502);
+      let providerCode='';
+      try {
+        const rawError=await readBoundedBody(response,16000);
+        const details=rawError?JSON.parse(rawError):null;
+        providerCode=details?.error?.code||details?.error?.type||'';
+      }catch{} // Never return or log the provider's raw error body.
+      const message=response.status===429
+        ? (providerCode==='insufficient_quota'
+          ? 'OpenAI API credits or billing quota are unavailable. Add API credits or review billing at platform.openai.com; ChatGPT subscriptions do not include API credits.'
+          : 'OpenAI API request or quota limit reached. Check API billing and limits, then try again later.')
+        : response.status===401||response.status===403
+          ? 'OpenAI API credential or model access needs attention.'
+          : response.status===404
+            ? 'The configured OpenAI model is unavailable for this API project. Review model access.'
+            : 'OpenAI provider temporarily unavailable.';
+      return reply({error:message,code:response.status},502);
     }
     const result=await response.json().catch(()=>null);
     const output=(Array.isArray(result?.output)?result.output:[]).flatMap(x=>

@@ -94,3 +94,15 @@ test('rejects a chunked oversized body and enforces byte rather than character l
   assert.equal((await tradingAiChat(req,env(),owner)).status,413);
  }
 });
+
+
+test('billing quota failure explains API activation without leaking provider details',async()=>{
+ const original=globalThis.fetch;
+ globalThis.fetch=async()=>new Response(JSON.stringify({error:{code:'insufficient_quota',message:'private provider details'}}),{status:429});
+ try{
+  const r=await tradingAiChat(request(envelope),env(),owner);
+  assert.equal(r.status,502);const d=await r.json();assert.equal(d.code,429);
+  assert.match(d.error,/API credits or billing quota/);
+  assert.ok(!JSON.stringify(d).includes('private provider details'));
+ }finally{globalThis.fetch=original}
+});
