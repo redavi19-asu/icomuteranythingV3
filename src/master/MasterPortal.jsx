@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import DcLiveAdmin from './DcLiveAdmin'
+import TradingOwnerPanel from './TradingOwnerPanel'
 import FreeAccess from './FreeAccess'
 
 const API_URL =
@@ -363,7 +364,7 @@ function MasterDashboard({ user, onLogout }) {
   const [selectedLiveUser, setSelectedLiveUser] = useState(null)
   const [selectedLiveDetail, setSelectedLiveDetail] = useState(null)
   const [liveBusy, setLiveBusy] = useState(false)
-  const [view, setView] = useState(new URLSearchParams(window.location.search).get('view') === 'free-access' ? 'free-access' : 'overview')
+  const [view, setView] = useState(() => { const requested = new URLSearchParams(window.location.search).get('view'); return ['free-access','trading'].includes(requested) ? requested : 'overview' })
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [productUsers, setProductUsers] = useState([])
   const [productEmail, setProductEmail] = useState('')
@@ -614,6 +615,7 @@ function MasterDashboard({ user, onLogout }) {
           <button className={view === 'health' ? 'active' : ''} onClick={() => setView('health')}>
             PLATFORM HEALTH
           </button>
+          <button className={view === 'trading' ? 'active' : ''} onClick={() => setView('trading')}>TRADING PLATFORM</button>
           <button className={view === 'control-ops' ? 'active' : ''} onClick={() => setView('control-ops')}>
             CONTROL OPS
           </button>
@@ -645,6 +647,7 @@ function MasterDashboard({ user, onLogout }) {
               {view === 'user-live' && 'Live Broadcast Monitor'}
               {view === 'dc-live-admin' && 'DC Live Control'}
               {view === 'control-ops' && 'ICA Control Operations'}
+              {view === 'trading' && 'Private Trading Platform'}
             </h1>
           </div>
           <button onClick={load} disabled={loading} title="Re-run all platform health checks and refresh users, companies and access data">
@@ -653,6 +656,8 @@ function MasterDashboard({ user, onLogout }) {
         </header>
 
         {error && <div className="master-error wide">{error}</div>}
+
+        {view === 'trading' && <TradingOwnerPanel />}
 
         {view === 'overview' && (
           <>
