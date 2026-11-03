@@ -108,3 +108,82 @@
 @media(max-width:980px){.itt-layout{grid-template-columns:1fr}.itt-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.itt-risk-panel{grid-column:span 2}.itt-chart-embed{height:425px;min-height:425px}}
 @media(max-width:630px){.ica-trading-terminal{padding:10px;border-radius:15px}.itt-hero{padding:10px 3px 15px}.itt-brand-emblem{height:46px;width:46px;border-radius:12px}.itt-brand h2{font-size:23px}.itt-brand p{font-size:11px}.itt-status-bar{gap:6px}.itt-status,.itt-clock{padding:7px 9px;font-size:9px}.itt-tape-label{display:none}.itt-stats{gap:8px}.itt-stat{padding:12px}.itt-stat strong{font-size:19px}.itt-stat-heading small{font-size:10px}.itt-stat p{font-size:9px}.itt-side{display:flex}.itt-risk-panel{grid-column:auto}.itt-card{padding:12px}.itt-chart-embed{height:340px;min-height:340px}.itt-alert-body{gap:9px;min-height:125px}.itt-radar-viz{width:72px;height:72px;flex-basis:72px}.itt-radar-viz span:nth-child(1){inset:10px}.itt-radar-viz span:nth-child(2){inset:20px}.itt-radar-viz span:nth-child(3){inset:30px}.itt-alert-body h4{font-size:15px}.itt-alert-body p{font-size:11px}.itt-alert-actions button{font-size:12px;padding:14px 5px}.itt-pnl-grid{grid-template-columns:repeat(2,1fr)}.itt-rule-checks{grid-template-columns:1fr 1fr}.itt-tape-label{display:none}}
 @media(prefers-reduced-motion:no-preference){.itt-radar-viz:after{content:'';position:absolute;width:52%;height:1px;top:50%;left:50%;transform-origin:left center;background:linear-gradient(90deg,#7be9bd8c,transparent);animation:itt-sweep 5s linear infinite;pointer-events:none}@keyframes itt-sweep{to{transform:rotate(360deg)}}}
+
+/* Detached and widescreen ICA Prime monitor workspace. */
+.ica-trading-terminal.itt-expanded{
+ position:fixed;inset:0;z-index:9999;width:100vw;max-width:none;height:100dvh;
+ padding:12px 18px 18px;border:0;border-radius:0;overflow:auto;overscroll-behavior:contain;
+ background:radial-gradient(ellipse 30% 23% at 50% 0%,rgba(36,107,121,.13),transparent),#090f1b;
+}
+.itt-wide-button,.itt-popout-button{
+ background:linear-gradient(115deg,#164d4a,#1e3856);color:#e6fff8;cursor:pointer;
+ border:1px solid #3b8b84;border-radius:9px;padding:9px 12px;font-size:11px;font-weight:850;
+ white-space:nowrap;letter-spacing:.2px
+}
+.itt-wide-button:hover,.itt-popout-button:hover{background:#226b63;border-color:#78dac6}
+.itt-wide-button:focus-visible,.itt-popout-button:focus-visible{outline:2px solid #83ffde;outline-offset:2px}
+.itt-popout-button{font-size:10px;padding:7px 9px;margin:4px 0}
+.itt-panel-buttons{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.itt-pop-notice{padding:10px 14px;background:#4c2839;border:1px solid #9f6a70;color:#f9d6db;border-radius:9px;font-size:12px}
+.itt-chart-embed{position:relative}
+.itv-embed{position:relative}
+.itv-embed tv-advanced-chart{display:block;width:100%;height:100%;min-height:100%}
+.itv-widget-status{
+ position:absolute;inset:0;z-index:2;background:#0c1a2b;display:flex;flex-direction:column;
+ justify-content:center;align-items:center;gap:13px;padding:20px;text-align:center;
+ color:#a7c9d5;font-size:13px
+}
+.itv-widget-status strong{color:#e8fcff;font-size:15px}
+.itv-widget-status a{color:#7ce9d1;padding:10px 16px;border:1px solid #358d80;border-radius:9px}
+.itt-expanded .itt-hero{padding:7px 2px 12px}
+.itt-expanded .itt-ticker-tape{margin-bottom:10px}
+.itt-expanded .itt-stats{margin-bottom:10px}
+.itt-expanded .itt-stat{padding:10px 13px}
+.itt-expanded .itt-stat strong{font-size:19px;margin:6px 0 2px}
+.itt-expanded .itt-card{padding:12px}
+.itt-expanded .itt-chart-panel{padding:12px 12px 9px}
+.itt-expanded .itt-chart-embed{height:500px;min-height:420px}
+.itt-expanded .itt-radar-viz{width:80px;height:80px;flex-basis:80px}
+.itt-expanded .itt-alert-body{min-height:120px}
+.itt-expanded .itt-alert-heading h3{font-size:16px}
+.itt-expanded .itt-alert-body h4{font-size:14px}
+.itt-expanded .itt-alert-body p{font-size:11px}
+.itt-expanded .itt-alert-actions button{padding:11px 8px;font-size:13px}
+.itt-expanded .itt-rule-checks{margin-top:9px}
+.itt-expanded .itt-watch-rows button{padding:8px 9px}
+.itt-expanded .itt-watch-tabs{margin-bottom:8px}
+.itt-expanded .itt-scan-note{margin-top:8px}
+.itt-expanded .itt-scanner-center{padding:11px 5px 12px}
+@media(min-width:1500px){
+ .itt-monitor-view .itt-layout{
+  display:grid;grid-template-columns:minmax(420px,1.55fr) minmax(245px,.65fr) minmax(360px,.90fr);
+  grid-template-areas:"chart watch alert" "chart scanner results" "chain risk results";
+  gap:12px;align-items:stretch
+ }
+ .itt-monitor-view .itt-main,.itt-monitor-view .itt-side{display:contents}
+ .itt-monitor-view .itt-chart-panel{grid-area:chart}
+ .itt-monitor-view .itt-watchlist{grid-area:watch}
+ .itt-monitor-view .itt-alert-panel{grid-area:alert}
+ .itt-monitor-view .itt-scan-panel{grid-area:scanner}
+ .itt-monitor-view .itt-activity-panel{grid-area:results}
+ .itt-monitor-view .itt-chain-panel{grid-area:chain}
+ .itt-monitor-view .itt-risk-panel{grid-area:risk}
+ .itt-monitor-view .itt-chart-embed{height:min(61vh,660px);min-height:450px}
+ .itt-monitor-view .itt-card{min-width:0}
+}
+.itt-popout-window{padding:14px 19px 19px!important}
+.itt-popout-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.itt-popout-header h2{color:#ecfff8;font-size:21px;margin:4px 0 0}
+.itt-popout-window>.itt-card{width:100%;min-height:calc(100dvh - 110px)}
+.itt-popout-window .itt-chart-panel{display:flex;flex-direction:column}
+.itt-popout-window .itt-chart-embed{flex:1;height:calc(100dvh - 210px);min-height:300px}
+.itt-popout-window .itt-watch-rows button{padding:14px}
+@media(max-width:700px){
+ .ica-trading-terminal.itt-expanded{padding:10px}
+ .itt-status-bar{width:100%;gap:5px}
+ .itt-wide-button{font-size:10px;padding:8px}
+ .itt-popout-button{font-size:9px;padding:6px 8px}
+ .itt-expanded .itt-chart-embed{height:350px;min-height:300px}
+ .itt-popout-window>.itt-card{min-height:auto}
+ .itt-popout-window .itt-chart-embed{height:calc(100dvh - 205px)}
+}
