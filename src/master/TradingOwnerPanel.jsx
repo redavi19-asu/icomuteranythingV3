@@ -1,5 +1,6 @@
 import React, {useMemo,useState} from 'react';
 import TradingAiAssistant from './TradingAiAssistant';
+import TradingApprovalConsole from './TradingApprovalConsole.jsx';
 // The trading calculation engine is derived from the private trading-platform repo.
 // This panel is mounted only after ICA Master verifies the owner session.
 // It contains no API keys, account details, or real order execution.
@@ -7,7 +8,7 @@ import {parseMarketCsv,rankOpportunities,PAPER_DEFAULTS,parseOptionQuotesCsv,rep
 
 
 function TradingOwnerPanel(){
- const [tab,setTab]=useState('paper'),[bars,setBars]=useState(null),[quotes,setQuotes]=useState(null);
+ const [tab,setTab]=useState('approvals'),[bars,setBars]=useState(null),[quotes,setQuotes]=useState(null);
  const [names,setNames]=useState({bars:'',quotes:''}),[rules,setRules]=useState({...PAPER_DEFAULTS}),[report,setReport]=useState(null),[error,setError]=useState('');
  const [journal,setJournal]=useState(()=>{try{const v=JSON.parse(localStorage.getItem('ica-trading-owner-paper-v1')||'[]');return Array.isArray(v)?v.slice(0,20):[]}catch{return[]}});
  const ranked=useMemo(()=>rankOpportunities(bars||{},{now:Date.now()}),[bars]);
@@ -41,19 +42,19 @@ function TradingOwnerPanel(){
    <p className="master-eyebrow">OWNER VERIFIED THROUGH ICA MASTER</p><h2 style={{fontSize:23,color:'#d5fff3',margin:'7px 0'}}>My Trading Platform</h2>
    <p style={{fontSize:13,lineHeight:1.65,color:'#b0c8d4'}}>Use your existing ICA Master email, password and Cloudflare Turnstile. This is your private market-research and Paper Money workspace. Schwab and live order execution are not connected.</p>
    <div style={{display:'flex',gap:9,flexWrap:'wrap',marginTop:18}}>
-    {['paper','radar','ai','roadmap'].map(t=><button key={t} type="button" onClick={()=>setTab(t)} style={{...button,background:tab===t?'#087f7c':'#142e45'}}>{t==='paper'?'Paper Money Lab':t==='radar'?'Opportunity Radar':t==='ai'?'Ask ICA Trading AI':'AI Trader Roadmap'}</button>)}
+    {['approvals','paper','radar','ai','roadmap'].map(t=><button key={t} type="button" onClick={()=>setTab(t)} style={{...button,background:tab===t?'#087f7c':'#142e45'}}>{t==='approvals'?'Approval Desk':t==='paper'?'Paper Money Lab':t==='radar'?'Opportunity Radar':t==='ai'?'Ask ICA Trading AI':'AI Trader Roadmap'}</button>)}
    </div>
   </div>
   {error&&<div className="master-error wide" role="alert">{error}</div>}
-  {(tab==='paper'||tab==='radar')&&<div style={bg}>
+  {(tab==='paper'||tab==='radar'||tab==='approvals')&&<div style={bg}>
    <h3 style={{fontSize:17,color:'#dff7fe',margin:'0 0 12px'}}>Import actual historical market data</h3>
    <p style={{fontSize:12,lineHeight:1.65,color:'#a2bbc8'}}>No fabricated quotes or trades. Historical bars must contain real timestamped OHLCV values. Option quote snapshots must include actual bid, ask, delta, volume and open interest.</p>
    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(225px,1fr))',gap:14}}>
     <label style={label}>Underlying OHLCV bars CSV<input style={field} type="file" accept=".csv,text/csv" onChange={e=>upload(e,'bars')}/><small>{names.bars||'symbol,time,open,high,low,close,volume'}</small></label>
-    {tab==='paper'&&<label style={label}>Option quote timeline CSV<input style={field} type="file" accept=".csv,text/csv" onChange={e=>upload(e,'quotes')}/><small>{names.quotes||'symbol,contract,time,expiration,strike,side,bid,ask,delta,volume,openInterest'}</small></label>}
+    {(tab==='paper'||tab==='approvals')&&<label style={label}>Option quote timeline CSV<input style={field} type="file" accept=".csv,text/csv" onChange={e=>upload(e,'quotes')}/><small>{names.quotes||'symbol,contract,time,expiration,strike,side,bid,ask,delta,volume,openInterest'}</small></label>}
    </div>
   </div>}
-  {tab==='paper'&&<div style={bg}>
+  {(tab==='paper'||tab==='approvals')&&<div style={bg}>
    <h3 style={{fontSize:17,color:'#dff7fe'}}>Stops, profit targets & risk limits</h3>
    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(205px,1fr))',gap:13}}>
     {controls.map(([key,name,step])=><label key={key} style={label}>{name}<input style={field} type="number" min="0" step={step} value={rules[key]} onChange={e=>{setRules(old=>({...old,[key]:Number(e.target.value)}));setReport(null)}}/></label>)}
@@ -74,6 +75,7 @@ function TradingOwnerPanel(){
   {tab==='radar'&&<div style={bg}><h3 style={{fontSize:17,color:'#dff7fe'}}>Ranked technical opportunities</h3><p style={{fontSize:12,color:'#a1becf'}}>This radar evaluates only the historical bar data you import. No licensed live feed is connected.</p>
    {ranked.length?ranked.slice(0,25).map((x,i)=><article key={x.symbol} style={{borderBottom:'1px solid #30566b',padding:'11px 0',display:'flex',justifyContent:'space-between',gap:13,alignItems:'center',flexWrap:'wrap'}}><div><strong style={{color:'#c9f8e9'}}>{i+1}. {x.symbol}</strong><p style={{fontSize:11,color:'#a9c1cf',margin:'5px 0'}}>{x.reason}</p><small style={{fontSize:10,color:'#a7c5cc'}}>RSI {x.metrics?.rsi14??'—'} · VWAP {x.metrics?.vwap??'—'} · volume {x.metrics?.volumeMultiple??'—'}×</small></div><div style={{textAlign:'right'}}><strong style={{color:'#d9fbff'}}>{x.score}/100</strong><p style={{color:x.state==='TECHNICAL_WATCH'?'#6bf0cb':'#e8ba89',fontSize:11,margin:'4px 0'}}>{x.state.replaceAll('_',' ')}</p></div></article>):<p className="master-empty">Import underlying bars to scan them.</p>}
   </div>}
+  {tab==='approvals'&&<TradingApprovalConsole bars={bars} quotes={quotes} rules={rules} barName={names.bars} quoteName={names.quotes}/>}
   {tab==='ai'&&<TradingAiAssistant ranked={ranked} report={report} rules={rules} quotes={quotes||[]} barName={names.bars} quoteName={names.quotes}/>}
   {tab==='roadmap'&&<div style={bg}><h3 style={{color:'#d9fff4'}}>AI trading system — paper first</h3><p style={{fontSize:13,color:'#b2cad6',lineHeight:1.7}}>First, use historical data and paper fills to test the stop-loss and gain rules. Next, connect approved Schwab real-time data, scan the market and run a live paper brokerage simulator. Only after extensive forward testing, safety validation and your explicit approval will we consider real orders. AI explanations will never bypass hard risk limits.</p><p style={{fontSize:12,color:'#cbdce6'}}>The original separately protected owner console remains available as a backup while we verify this ICA Master entrance.</p><a href="https://trading-platform-owner.ryanedavis.workers.dev/" target="_blank" rel="noreferrer" style={{color:'#7de3d8',fontSize:12}}>Alternate Owner Console (Cloudflare email-code login)</a></div>}
   <p style={{fontSize:12,color:'#86a5b6'}}>Your latest paper session is stored in this browser only. Saved sessions: {journal.length}. No actual financial data, orders, API credentials or account balances are exposed by this panel.</p>

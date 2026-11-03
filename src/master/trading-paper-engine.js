@@ -274,4 +274,4 @@ function replayPaperOptions(groups,quotes,config={}){
   trades,open,marked,blocked,days:Object.fromEntries(daily)};
 }
 
-export {parseMarketCsv,rankOpportunities,evaluateSymbol,PAPER_DEFAULTS,validatePaperRules,parseOptionQuotesCsv,replayPaperOptions};
+export {parseMarketCsv,rankOpportunities,evaluateSymbol,PAPER_DEFAULTS,validatePaperRules,parseOptionQuotesCsv,replayPaperOptions,eligiblePaperQuote,marketTime};
