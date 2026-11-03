@@ -135,6 +135,7 @@ export async function tradingAiChat(request,env,owner) {
   }).filter(Boolean);
   const context=sanitizeContext(body.context);
   if(!context)return reply({error:'Research context missing.'},400);
+  if(!env.DB)return reply({error:'AI usage guard unavailable. Try again later.'},503);
   let permitted;
   try{permitted=await consumeRateLimit(env,owner.id)}catch(err){
     console.error('TRADING_AI_RATE_LIMIT_UNAVAILABLE',String(err?.message||'unknown'));
