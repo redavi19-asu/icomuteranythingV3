@@ -6,7 +6,7 @@
  * Financial data is limited to deliberately supplied and labeled research
  * summaries; no Schwab credentials or account data enter the model context.
  */
-const MODEL_DEFAULT = 'gpt-5.6-terra';
+const MODEL_DEFAULT = 'gpt-6.1-terra';
 const MAX_QUESTION = 1800;
 const MAX_CONTEXT = 8500;
 const MAX_HISTORY = 6;
@@ -145,7 +145,8 @@ export async function tradingAiChat(request,env,owner) {
   const payload={
     model,
     store:false,
-    max_output_tokens:1000,
+    max_output_tokens:1500,
+    reasoning:{effort:'low'},
     instructions:systemInstructions,
     input:[
       ...history.map(item=>({role:item.role,content:item.content})),
