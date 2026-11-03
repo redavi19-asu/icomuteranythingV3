@@ -60,6 +60,21 @@ function sanitizeContext(value) {
     if (typeof item.score === 'number' && Number.isFinite(item.score) && item.score >= 0 && item.score <= 100) info.score=item.score;
     return info;
   }).filter(Boolean);
+  const optionQuotes = (Array.isArray(value.optionQuotes) ? value.optionQuotes : []).slice(0,8).map(item => {
+    if(!item || typeof item !== 'object')return null;
+    const q={
+      symbol:text(item.symbol).slice(0,10),
+      contract:text(item.contract).slice(0,90),
+      side:text(item.side).slice(0,8),
+      expiry:text(item.expiry).slice(0,12),
+      asOf:text(item.asOf).slice(0,50)
+    };
+    for(const k of ['strike','bid','ask','delta','volume','openInterest']){
+      const n=item[k];
+      if(typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<1e9)q[k]=n;
+    }
+    return q;
+  }).filter(Boolean);
   const paper = value.paper && typeof value.paper === 'object' && !Array.isArray(value.paper) ? value.paper : null;
   let summary=null;
   if(paper){
@@ -69,7 +84,7 @@ function sanitizeContext(value) {
       if(typeof num==='number'&&Number.isFinite(num)&&Math.abs(num)<1e9)summary[key]=num;
     }
   }
-  const snapshot={source,asOf:madeAt,note:reason,rules,opportunities,paper:summary};
+  const snapshot={source,asOf:madeAt,note:reason,rules,opportunities,optionQuotes,paper:summary};
   return JSON.stringify(snapshot).slice(0,MAX_CONTEXT);
 }
 
