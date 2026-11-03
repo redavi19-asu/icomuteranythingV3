@@ -79,3 +79,10 @@ test('OpenAI model failures never disclose provider secrets',async()=>{
    assert.ok(!JSON.stringify(await r.json()).includes('test-key'));
  }finally{globalThis.fetch=original}
 });
+
+
+test('incomplete model answers are rejected instead of presented as complete analysis',async()=>{
+ const original=globalThis.fetch;
+ globalThis.fetch=async()=>new Response(JSON.stringify({status:'incomplete',output:[{content:[{type:'output_text',text:'Partial answer'}]}]}),{status:200});
+ try{const r=await tradingAiChat(request(envelope),env(),owner);assert.equal(r.status,502);assert.match((await r.json()).error,/incomplete/)}finally{globalThis.fetch=original}
+});

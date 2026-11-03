@@ -18,4 +18,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node --test platform-worker/access-grants.test.js
+      - run: node --test platform-worker/trading-assistant.test.js platform-worker/trading-router.test.js src/master/trading-paper-engine.test.js
       - run: npm run build

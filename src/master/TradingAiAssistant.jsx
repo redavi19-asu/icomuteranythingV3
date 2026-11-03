@@ -38,11 +38,12 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
   const [checking,setChecking]=useState(true);
+  const [verified,setVerified]=useState(false);
   const end=useRef(null);
   const inFlight=useRef(false);
 
   const refresh=async()=>{
-    setChecking(true);setStatusError('');
+    setChecking(true);setStatusError('');setVerified(false);
     try{const data=await privateTradingRequest('/platform/trading-ai/status');setStatus(data)}
     catch(err){setStatus(null);setStatusError(err.message)}
     finally{setChecking(false)}
@@ -80,6 +81,7 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
       const payload={message,history:messages.slice(-6).map(x=>({role:x.role,content:x.content})),context};
       const reply=await privateTradingRequest('/platform/trading-ai/chat',payload);
       setMessages(prev=>[...prev,{id:crypto.randomUUID(),role:'assistant',content:reply.answer}]);
+      setVerified(true);
     }catch(err){
       setError(err.message);
       setQuestion(message);
@@ -106,7 +108,7 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
         </div>
         <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:7}}>
           <strong style={{color:ready?'#8ef5c8':'#f9c38c',fontSize:12}}>
-            {checking?'CHECKING CONNECTION…':ready?'AI CONNECTED':'AI CONNECTION PENDING'}
+            {checking?'CHECKING CONNECTION…':ready?(verified?'AI RESPONSE VERIFIED':'API KEY CONFIGURED · SEND A TEST'):'AI CONNECTION PENDING'}
           </strong>
           <small style={{fontSize:10,color:'#a6c3d1'}}>NO LIVE DATA · NO REAL ORDERS</small>
           <button type="button" onClick={refresh} disabled={checking} style={{...btn,padding:'6px 11px'}}>Check connection</button>

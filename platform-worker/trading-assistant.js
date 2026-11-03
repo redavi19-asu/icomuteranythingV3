@@ -121,7 +121,7 @@ export async function tradingAiChat(request,env,owner) {
   const len=Number(request.headers.get('Content-Length')||0);
   if(len>16000)return reply({error:'Request too large.'},413);
   const raw=await request.text();
-  if(raw.length>16000)return reply({error:'Request too large.'},413);
+  if(new TextEncoder().encode(raw).byteLength>16000)return reply({error:'Request too large.'},413);
   let body;try{body=JSON.parse(raw);}catch{return reply({error:'Invalid JSON.'},400)}
   if(!body||typeof body!=='object'||Array.isArray(body))return reply({error:'Invalid request.'},400);
   const message=text(body.message);
@@ -138,7 +138,7 @@ export async function tradingAiChat(request,env,owner) {
   if(!env.DB)return reply({error:'AI usage guard unavailable. Try again later.'},503);
   let permitted;
   try{permitted=await consumeRateLimit(env,owner.id)}catch(err){
-    console.error('TRADING_AI_RATE_LIMIT_UNAVAILABLE',String(err?.message||'unknown'));
+    console.error('TRADING_AI_RATE_LIMIT_UNAVAILABLE');
     return reply({error:'AI usage guard unavailable. Try again later.'},503);
   }
   if(!permitted)return reply({error:'AI hourly request limit reached (30). Try again in a later hour.'},429);
@@ -171,6 +171,7 @@ export async function tradingAiChat(request,env,owner) {
     const output=(Array.isArray(result?.output)?result.output:[]).flatMap(x=>
       Array.isArray(x?.content)?x.content.filter(z=>z.type==='output_text'&&typeof z.text==='string').map(z=>z.text):[]
     ).join('\n').trim().slice(0,8000);
+    if(result?.status==='incomplete')return reply({error:'AI response was incomplete. Please retry with a shorter question.'},502);
     if(!output)return reply({error:'The model did not return text; try a shorter question.'},502);
     return reply({answer:output,model,mode:'analysis_only',realOrdersEnabled:false,marketDataConnected:false,source:'openai_responses_api'});
   }catch(err){
