@@ -64,9 +64,9 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
     const keys=['premiumBudget','startingCash','stopLossPct','takeProfitPct','trailActivatePct','trailDistancePct','maxDailyLoss','maxLossPerTrade','maxTradesPerDay','maxHoldMinutes','dailyGoal'];
     const safeRules=Object.fromEntries(keys.filter(k=>Number.isFinite(rules[k])).map(k=>[k,rules[k]]));
     return {
-      source:'USER_IMPORTED_UNVERIFIED_CSV_OR_NO_DATA',
+      source:'SCHWAB_NOT_CONNECTED',
       asOf:new Date().toISOString(),
-      note:(barName?'Bars file: '+barName+'. ':'')+(quoteName?'Option snapshots file: '+quoteName+'. ':'')+'This is NOT a live or licensed market feed.',
+      note:'No Schwab market data or brokerage connection is active in ICA. This assistant can discuss strategy but must not claim to see current quotes or submit orders.',
       rules:safeRules,opportunities:relevant,optionQuotes:options,paper:report?.summary||null
     };
   },[ranked,report,rules,quotes,barName,quoteName]);
@@ -90,8 +90,8 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
   const ready=status?.configured===true;
   const hasData=Boolean(ranked.length||quotes.length||report);
   const examples=[
-    'Review my paper results and explain the stop-loss and profit-target performance.',
-    'Which imported setups should I skip because confirmation is incomplete?',
+    'Help me refine our stop-loss and profit-target rules.',
+    'What confirmations should an options setup pass before ICA alerts me?',
     'How do bid-ask spread and delta affect a quick SPY options scalp?',
     'What would make a trade worth waiting for rather than entering early?'
   ];
@@ -102,8 +102,8 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
           <p className="master-eyebrow">PRIVATE OWNER · OPENAI-POWERED RESEARCH</p>
           <h3 style={{fontSize:20,color:'#dafff6',margin:'8px 0'}}>Ask ICA Trading AI</h3>
           <p style={{...muted,margin:'6px 0 0',maxWidth:750}}>
-            Discuss market conditions, options contract liquidity, entries, stops and paper trades.
-            The assistant receives only the selected imported research summary; it does not see your brokerage account or control orders.
+            Discuss options setups, contract liquidity, entries, exits and risk settings.
+            Schwab market data and trade execution are not connected yet.
           </p>
         </div>
         <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:7}}>
@@ -122,12 +122,12 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
       <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap'}}>
         <strong style={{color:'#daf7f3',fontSize:13}}>Private conversation</strong>
         <div style={{display:'flex',gap:10,alignItems:'center'}}>
-          <small style={{fontSize:11,color:'#94b1c2'}}>{hasData?'Imported research summary ready':'No imported quotes attached'}</small>
+          <small style={{fontSize:11,color:'#94b1c2'}}>{hasData?'Research context ready':'Brokerage data not yet connected'}</small>
           {messages.length>0&&<button type="button" onClick={()=>{setMessages([]);setError('')}} style={{...btn,padding:'5px 10px',background:'#183247'}}>Clear</button>}
         </div>
       </div>
       <div aria-live="polite" style={{display:'flex',flexDirection:'column',gap:12,minHeight:190,maxHeight:440,overflowY:'auto',padding:'17px 2px',marginTop:8}}>
-        {messages.length===0&&<p style={{...muted,margin:'10px auto',maxWidth:660,textAlign:'center'}}>Ask about a technical setup, why to WAIT, contract spreads, stop loss, trailing profit, or your latest Paper Money replay. Without verified market quotes, the correct decision may be WAIT.</p>}
+        {messages.length===0&&<p style={{...muted,margin:'10px auto',maxWidth:660,textAlign:'center'}}>Ask about technical setups, contract spreads, stop-loss rules and profit-taking. Current market quotes will require Schwab integration.</p>}
         {messages.map(item=><article key={item.id} style={{
           whiteSpace:'pre-wrap',overflowWrap:'anywhere',alignSelf:item.role==='user'?'flex-end':'flex-start',
           background:item.role==='user'?'#164a4c':'#142c43',border:'1px solid '+(item.role==='user'?'#3a8b83':'#375671'),
@@ -144,7 +144,7 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
         <label style={{display:'flex',flexDirection:'column',gap:7,fontSize:11,color:'#a5c3d0'}}>
           Your question
           <textarea aria-label="Question for the Trading AI" value={question} onChange={e=>setQuestion(e.target.value)}
-            maxLength={1800} rows={3} placeholder={ready?'Ask about SPY, BNO, your risk plan or paper results…':'AI connection pending. OpenAI API key required.'}
+            maxLength={1800} rows={3} placeholder={ready?'Ask about SPY, BNO, our setups or risk plan…':'AI connection pending. OpenAI API key required.'}
             style={{background:'#0b2032',border:'1px solid #366377',borderRadius:10,color:'#ebfaff',padding:13,resize:'vertical',font:'inherit',fontSize:12,minWidth:0,width:'100%'}}/>
         </label>
         <button type="submit" disabled={!ready||busy||!question.trim()} style={{...btn,opacity:ready&&!busy&&question.trim()?1:.4,marginBottom:0}}>Send</button>
@@ -153,6 +153,6 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
         {examples.map(item=><button type="button" key={item} onClick={()=>setQuestion(item)} style={{...btn,padding:'7px 9px',background:'#142f42',fontSize:10,fontWeight:650,maxWidth:270,textAlign:'left'}}>{item}</button>)}
       </div>
     </section>
-    <p style={{...muted,fontSize:11}}>OpenAI model replies are explanatory research, not trading signals or guaranteed results. This conversation lasts only until you leave this view. No background monitoring, paper order placement or Schwab order execution is enabled. The AI provider is called with response storage disabled.</p>
+    <p style={{...muted,fontSize:11}}>OpenAI model replies are explanatory research, not trading signals or guaranteed results. This conversation lasts only until you leave this view. No background monitoring or Schwab order execution is enabled. The AI provider is called with response storage disabled.</p>
   </div>;
 }
