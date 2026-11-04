@@ -3,7 +3,7 @@ const API=import.meta.env.VITE_ICA_MASTER_API_URL||'https://ica-master-platform.
 async function request(path,post=false){
  const token=localStorage.getItem('ica_master_token')||'';if(!token)throw Error('Sign in to ICA Master first.');
  const r=await fetch(API+'/platform/schwab/'+path,{method:post?'POST':'GET',headers:{Authorization:'Bearer '+token,...(post?{'Content-Type':'application/json'}:{})},...(post?{body:'{}'}:{})});
- const d=await r.json();if(!r.ok)throw Error(d.error||'Schwab connection unavailable.');return d;
+ const d=await r.json();if(!r.ok)throw Error((d.error||'Schwab connection unavailable.')+(d.providerStatus?' HTTP '+d.providerStatus:'')+(d.errorCode?' · '+d.errorCode.replaceAll('_',' '):''));return d;
 }
 export default function SchwabConnection({symbol='SPY',onStatus}){
  const [status,setStatus]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[snapshot,setSnapshot]=useState(null),[setup,setSetup]=useState('');
