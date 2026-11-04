@@ -43,7 +43,7 @@ function useSchwabQuoteStream(symbol,enabled){
    }catch(e){
     if(!active)return;
     setState(v=>({...v,status:'unavailable',error:e.message||'Streaming unavailable.'}));
-    retry=setTimeout(connect,Math.min(20000,3000*2**Math.min(3,attempt++)));
+    if(!/permission|authorized|Trader API|401|403/i.test(e.message||''))retry=setTimeout(connect,Math.min(20000,3000*2**Math.min(3,attempt++)));
    }
   }
   function watchOption(e){if(!active||!socket||socket.readyState!==WebSocket.OPEN||typeof e.detail?.symbol!=='string')return;socket.send(JSON.stringify({type:'watch_option',symbol:e.detail.symbol}))}
@@ -89,7 +89,7 @@ export function SchwabChart({symbol,enabled}){
  return <section className="itt-card itt-schwab-interactive" style={expanded?{position:'fixed',inset:20,zIndex:10000,overflow:'auto',background:'#101722'}:{}} aria-label="Interactive Schwab price chart">
  <div className="itt-card-heading"><div><div className="itt-eyebrow">SCHWAB MARKET DATA · INTERACTIVE</div><h3>{symbol} · Price chart</h3></div><button className="itt-wide-button" onClick={()=>setExpanded(!expanded)}>{expanded?'Close expanded chart':'Expand chart'}</button></div>
  <div className="itt-schwab-chart-content">
- <div className="itt-schwab-quote"><strong>{money(q?.last)} · Bid {money(q?.bid)} · Ask {money(q?.ask)}</strong><span>Quote {stamp(q?.quoteTime)} ET · {q?.realtime===true?'Provider marks real-time':q?.realtime===false?'Delayed':'Delay status unconfirmed'} · {stream.status==='connected'?'STREAM ACTIVE · WebSocket updates':stream.status==='unavailable'?'STREAM UNAVAILABLE · 15s polling':stream.status==='reconnecting'?'RECONNECTING · 15s polling':'15s polling fallback'}</span></div>
+ <div className="itt-schwab-quote"><strong>{money(q?.last)} · Bid {money(q?.bid)} · Ask {money(q?.ask)}</strong><span>Quote {stamp(q?.quoteTime)} ET · {q?.realtime===true?'Provider marks real-time':q?.realtime===false?'Delayed':'Delay status unconfirmed'} · {stream.status==='connected'?'STREAM ACTIVE · WebSocket updates':stream.status==='unavailable'?'STREAM NOT AUTHORIZED · 15s polling':stream.status==='reconnecting'?'RECONNECTING · 15s polling':'15s polling fallback'}</span></div>
  <div className={'itt-stream-state '+(stream.status==='connected'?'itt-stream-on':'')} role="status">{stream.status==='connected'?'● SCHWAB LIVE STREAM':stream.status==='offline'?'○ OFFLINE': '○ '+stream.status.toUpperCase()} {stream.error&&' — '+stream.error}</div>
  <div className="itt-schwab-toolbar"><div>{[1,5,15,30,60].map(f=><button type="button" key={f} className={frequency===f?'selected':''} aria-pressed={frequency===f} onClick={()=>{setFrequency(f);range(65)}}>{f}m</button>)}</div><div><button onClick={()=>zoom(-1)} title="Zoom in">＋ Zoom</button><button onClick={()=>zoom(1)} title="Zoom out">－ Zoom</button><button onClick={()=>{setOffset(0);setHover(null)}}>Latest ↦</button></div></div>
  {!enabled?<p>Connect Schwab under Connections & advanced settings to load candles.</p>:error||quote.error?<p role="alert">{error||quote.error}</p>:loading&&!allCandles.length?<p>Loading Schwab candles…</p>:candles.length?<div className="itt-schwab-canvas">
