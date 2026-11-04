@@ -54,7 +54,7 @@ export async function openSchwabStream(request,env){
   upstream=handshake.webSocket;upstream.accept();
  }catch{return Response.json({error:'Schwab streaming socket unavailable.'},{status:503})}
  const [client,server]=Object.values(new WebSocketPair());server.accept();
- let ready=false,seq=10,stopped=false;
+ let ready=false,seq=10,stopped=false,optionSymbol=null;
  const send=value=>{if(!stopped)try{server.send(JSON.stringify(value))}catch{}};
  const terminate=(reason='Stream disconnected')=>{if(stopped)return;stopped=true;try{upstream.close(1000,reason)}catch{}try{server.close(1000,reason)}catch{}};
  const command=(service,fields,keys)=>({service,requestid:String(++seq),command:'SUBS',SchwabClientCustomerId:stream.customer,SchwabClientCorrelId:stream.correl,parameters:{keys,fields}});
@@ -74,8 +74,12 @@ export async function openSchwabStream(request,env){
     }
    }
    if(Array.isArray(msg.data))for(const packet of msg.data){
-    if(!['LEVELONE_EQUITIES','CHART_EQUITY'].includes(packet.service))continue;
+    if(!['LEVELONE_EQUITIES','CHART_EQUITY','LEVELONE_OPTIONS'].includes(packet.service))continue;
     for(const item of packet.content||[]){
+     if(packet.service==='LEVELONE_OPTIONS'){
+      if(item.key===optionSymbol)send({type:'option_quote',symbol:optionSymbol,bid:item['2']??null,ask:item['3']??null,last:item['4']??null,delayed:item.delayed??null,receivedAt:Date.now()});
+      continue;
+     }
      if(item.key!==ticket.symbol)continue;
      if(packet.service==='LEVELONE_EQUITIES')send({type:'quote',symbol:ticket.symbol,source:'Schwab',delayed:item.delayed??null,bid:item['1']??null,ask:item['2']??null,last:item['3']??null,quoteTime:item['34']??null,tradeTime:item['35']??null,receivedAt:Date.now()});
      if(packet.service==='CHART_EQUITY')send({type:'candle',symbol:ticket.symbol,fields:item,receivedAt:Date.now()});
@@ -87,7 +91,18 @@ export async function openSchwabStream(request,env){
  upstream.addEventListener('error',()=>{send({type:'error',message:'Schwab streaming connection failed.'});terminate()});
  server.addEventListener('close',()=>terminate('Browser disconnected'));
  server.addEventListener('error',()=>terminate('Browser socket error'));
- server.addEventListener('message',()=>{}); // no client-originated trading or subscription commands
+ // Only a single validated option quote subscription is permitted; no trading commands.
+ server.addEventListener('message',event=>{
+  if(!ready||stopped||typeof event.data!=='string'||event.data.length>250)return;
+  try{
+   const data=JSON.parse(event.data),candidate=data.symbol;
+   if(data.type!=='watch_option'||typeof candidate!=='string'||!/^[A-Z0-9 .:_-]{2,90}$/.test(candidate))return;
+   if(!candidate.startsWith(ticket.symbol))return;
+   optionSymbol=candidate;
+   upstream.send(JSON.stringify({requests:[command('LEVELONE_OPTIONS','0,1,2,3,4',candidate)]}));
+   send({type:'option_selected',symbol:candidate});
+  }catch{}
+ });
  upstream.send(JSON.stringify(login));
  return new Response(null,{status:101,webSocket:client});
 }
