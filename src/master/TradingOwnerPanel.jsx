@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
-import TradingAiAssistant from './TradingAiAssistant';
+import TradingAiAssistant, {TradingAiBillingPanel} from './TradingAiAssistant';
 import './TradingTerminal.css';
 
 /* Owner-only market workstation. Public TradingView charts are for visual research
@@ -101,6 +101,7 @@ function readAutoStart(){
 }
 export default function TradingOwnerPanel(){
  const [tab,setTab]=useState('dashboard');
+ const [aiBillingState,setAiBillingState]=useState('not_checked');
  const [selected,setSelected]=useState(()=>{
   const s=new URLSearchParams(window.location.search).get('symbol')?.toUpperCase();
   return s&&Object.hasOwn(tvSymbols,s)?s:'SPY';
@@ -224,6 +225,7 @@ export default function TradingOwnerPanel(){
    <div className="itt-status-bar"><span className="itt-status itt-off"><span className="itt-status-dot"/> SCHWAB DISCONNECTED</span><span className="itt-status itt-off">SCANNER OFF</span><span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
+  <TradingAiBillingPanel billingState={aiBillingState} onStateChange={setAiBillingState}/>
   <nav className="itt-tabs" aria-label="Trading workspace views">
    <button type="button" className={tab==='dashboard'?'active':''} onClick={()=>setTab('dashboard')}>{icon('chart',16)} Trading Dashboard</button>
    <button type="button" className={tab==='ai'?'active':''} onClick={()=>setTab('ai')}>{icon('bot',16)} Ask ICA Trading AI</button>
@@ -250,6 +252,6 @@ export default function TradingOwnerPanel(){
     </aside>
    </div>
   </>}
-  {tab==='ai'&&<div className="itt-ai-wrapper"><TradingAiAssistant ranked={[]} report={null} rules={riskPlan} quotes={[]}/></div>}
+  {tab==='ai'&&<div className="itt-ai-wrapper"><TradingAiAssistant ranked={[]} report={null} rules={riskPlan} quotes={[]} creditBlocked={['credits_exhausted','billing_blocked','spend_limit'].includes(aiBillingState)} onBillingStateChange={setAiBillingState}/></div>}
  </section>;
 }
