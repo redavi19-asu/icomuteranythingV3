@@ -208,3 +208,16 @@
 .itt-flow-legend{display:flex;gap:16px;flex-wrap:wrap;color:#9fb9c6;font-size:11px}
 .itt-flow-legend span:first-child{color:#5ed6af}.itt-flow-legend span:nth-child(2){color:#e9bc6c}
 @media(max-width:700px){.itt-trade-mode{width:100%}.itt-trade-mode button{flex:1;padding:12px 8px;font-size:11px}}
+
+/* Interactive Schwab chart beneath TradingView, with clearly sourced candles. */
+.itt-schwab-interactive{min-width:0}.itt-schwab-chart-content{padding:0 14px 14px}
+.itt-schwab-quote{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:12px;color:#dbeff5}
+.itt-schwab-quote>span{font-size:11px;color:#9cb4c4}
+.itt-schwab-toolbar{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.itt-schwab-toolbar>div{display:flex;flex-wrap:wrap;gap:5px}
+.itt-schwab-toolbar button{background:#152b3b;border:1px solid #375268;border-radius:7px;color:#b6d4e0;padding:7px 10px;cursor:pointer;font-size:11px}
+.itt-schwab-toolbar button.selected{color:#b7ffdf;background:#175045;border-color:#55cda9}
+.itt-schwab-canvas{background:#0a101b;border:1px solid #324255;border-radius:9px;overflow:hidden}
+.itt-schwab-svg{display:block;width:100%;min-height:270px;touch-action:pan-y;cursor:crosshair;user-select:none}
+.itt-schwab-crosshair{display:flex;flex-wrap:wrap;gap:8px 18px;min-height:32px;padding:9px 12px;border-top:1px solid #283c4e;color:#bed4e3;font-size:11px}
+.itt-schwab-freshness{font-size:11px;color:#93afbd;line-height:1.6}
