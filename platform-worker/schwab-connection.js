@@ -183,3 +183,13 @@ export async function schwabMarket(request,env,owner,kind){
   return json({symbol,provider:'Schwab',receivedAt:new Date().toISOString(),delayed:typeof d.isDelayed==='boolean'?d.isDelayed:null,contracts:contracts.slice(0,500),realOrdersEnabled:false});
  }catch{return json({error:'Schwab data could not be loaded. Retry or check the connection.'},503)}
 }
+
+export async function schwabContractQuote(env,owner,symbol){
+ if(typeof symbol!=='string'||symbol.length>80)throw Error('Invalid contract.');
+ const auth=await accessToken(env,owner),url=new URL(MARKET_URL+'/quotes');url.searchParams.set('symbols',symbol);
+ const r=await fetch(url,{headers:{Authorization:'Bearer '+auth.token},redirect:'manual',signal:AbortSignal.timeout(12000)});
+ if(!r.ok)throw Error('Contract feed unavailable.');
+ const d=await boundedJson(r,100000),item=d[symbol],q=item?.quote;
+ if(item?.realtime!==true||!q)throw Error('A confirmed real-time contract quote is required.');
+ return {symbol,bid:q.bidPrice,ask:q.askPrice,quoteTime:q.quoteTime};
+}

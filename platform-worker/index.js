@@ -1,3 +1,4 @@
+import {paperApi,scheduledPaper} from './paper-runner.js';
 import {schwabMarket,schwabPreflight,schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabDisconnect,schwabQuotes} from './schwab-connection.js';
 import { saveFreeAccess, revokeFreeAccess, ensureAccessGrantSchema } from './access-grants.js';
 import { tradingAiStatus, tradingAiChat, tradingAiCreditCheck } from './trading-assistant.js';
@@ -1245,6 +1246,7 @@ async function platformHealth(request, env) {
 }
 
 export default {
+  async scheduled(event,env,ctx){ctx.waitUntil(scheduledPaper(env));},
   async fetch(request, env) {
     const cors = corsHeaders(request, env);
 
@@ -1270,6 +1272,9 @@ export default {
         response = owner
           ? json({ user: owner })
           : json({ error: "Unauthorized." }, 401);
+      } else if (url.pathname === '/platform/paper' && ['GET','POST'].includes(request.method)) {
+        const auth = await requireOwner(request,env);
+        response = auth.response || await paperApi(request,env,auth.owner);
       } else if (url.pathname === "/platform/schwab/callback" && request.method === "GET") {
         response = await schwabCallback(request,env);
       } else if (['/platform/schwab/history','/platform/schwab/options'].includes(url.pathname) && request.method === 'GET') {

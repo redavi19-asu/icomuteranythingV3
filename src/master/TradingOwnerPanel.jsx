@@ -185,7 +185,7 @@ export default function TradingOwnerPanel(){
  );
  const watchlistPanel=(
 <section className="itt-card itt-watchlist">
-      <div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('radar',18)}</span><div><div className="itt-eyebrow">MARKET RADAR</div><h3>Watchlist</h3></div></div><div className="itt-panel-buttons"><span className="itt-mini-dot">● OFF</span>{popButton('watchlist')}</div></div>
+      <div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('radar',18)}</span><div><div className="itt-eyebrow">MARKET RADAR</div><h3>Watchlist</h3></div></div><div className="itt-panel-buttons"><span className="itt-mini-dot">QUOTES</span>{popButton('watchlist')}</div></div>
       <div className="itt-watch-tabs">{Object.keys(tickerGroups).map(k=><button type="button" aria-pressed={group===k} key={k} className={group===k?'active':''} onClick={()=>{setGroup(k);if(!tickerGroups[k].includes(selected))setSelected(tickerGroups[k][0])}}>{k}</button>)}</div>
       <div className="itt-watch-labels"><span>SYMBOL</span><span>LAST</span><span>SCAN</span></div>
       <div className="itt-watch-rows">{tickerGroups[group].map(sym=><button type="button" className={sym===selected?'itt-selected':''} key={sym} onClick={()=>setSelected(sym)}><span><strong>{sym}</strong><small>{descriptions[sym]}</small></span><span className="itt-blank-price">{typeof watchQuotes.find(q=>q.symbol===sym)?.last==='number'?'$'+watchQuotes.find(q=>q.symbol===sym).last.toFixed(2):'—'}</span><span className="itt-ticker-state">WAIT</span></button>)}</div>
@@ -194,7 +194,7 @@ export default function TradingOwnerPanel(){
  );
  const scannerPanel=(
 <section className="itt-card itt-scan-panel"><div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('crosshair',18)}</span><div><div className="itt-eyebrow">SCANNER CONTROLS</div><h3>High-Probability Scan</h3></div></div>{popButton('scanner')}</div>
-      <div className="itt-scanner-center"><span className="itt-large-status"><i/> OFFLINE</span><p>Brokerage market-data connection pending.</p><button type="button" disabled className="itt-start-scan">{icon('radar',20)} START SCAN</button></div>
+      <div className="itt-scanner-center"><span className="itt-large-status"><i/> PAPER CONTROL CENTER</span><p>Use the Paper Money control center above to start or pause setup scanning.</p><button type="button" disabled className="itt-start-scan">{icon('radar',20)} START SCAN</button></div>
       <label className="itt-autostart"><span><strong>Auto-start at 9:30 AM ET</strong><small>Preference saved on this device. Activates when the server scanner is ready.</small></span><input type="checkbox" checked={autoStart} onChange={toggleAuto}/><span className="itt-switch" aria-hidden="true"/></label>
       <div className="itt-scan-note">{icon('clock',14)} Planned scanner runs server-side when connected, even if you close ICA Master.</div>
      </section>
@@ -226,7 +226,7 @@ export default function TradingOwnerPanel(){
     <span className="itt-brand-emblem">{icon('radar',27)}</span>
     <div><div className="itt-eyebrow">PRIVATE ICA MASTER / TRADING INTELLIGENCE</div><h2>ICA <span>PRIME</span></h2><p>High-Probability Trading Workstation</p></div>
    </div>
-   <div className="itt-status-bar"><span className="itt-status itt-off"><span className="itt-status-dot"/> {schwabStatus?.connected?'SCHWAB AUTHORIZED':'SCHWAB DISCONNECTED'}</span><span className="itt-status itt-off">SCANNER OFF</span><span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
+   <div className="itt-status-bar"><span className="itt-status itt-off"><span className="itt-status-dot"/> {schwabStatus?.connected?'SCHWAB AUTHORIZED':'SCHWAB DISCONNECTED'}</span><span className="itt-status itt-off">PAPER CONTROLS ABOVE</span><span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
   <SchwabConnection symbol={selected} onStatus={setSchwabStatus}/>
@@ -249,12 +249,9 @@ export default function TradingOwnerPanel(){
     <div className="itt-main">
      <SchwabChart symbol={selected} enabled={!!schwabStatus?.connected}/>
      {chartPanel}
-     {alertPanel}
-     {resultsPanel}
     </div>
     <aside className="itt-side">
      {watchlistPanel}
-     {scannerPanel}
      {chainPanel}
      {riskPanel}
     </aside>
