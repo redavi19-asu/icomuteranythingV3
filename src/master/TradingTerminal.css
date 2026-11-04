@@ -339,3 +339,18 @@
 .itt-opportunity-inline-feedback{border:1px solid #6590a0;background:#254556;border-radius:8px;padding:10px;font-size:12px;line-height:1.5;margin:10px 0;overflow-wrap:anywhere}
 @media(max-width:700px){.itt-opportunities-window{max-height:78dvh}.itt-opportunities-header{position:relative}.itt-opportunity-feedback{flex-wrap:wrap}.itt-opportunity-feedback strong{white-space:normal}.itt-opportunities-grid{grid-template-columns:1fr}}
 @media(max-height:650px){.itt-opportunities-window{max-height:92dvh}.itt-opportunities-header h2{margin:2px 0}}
+
+/* An open paper position remains reachable even after its opportunity card is dismissed. */
+.itt-open-position{padding:16px;background:#152538;border:1px solid #4e7c8c;border-radius:12px;margin:12px 0}
+.itt-open-position .itt-wide-button{margin:4px}
+.itt-position-bar{position:fixed;bottom:12px;left:14px;right:14px;z-index:12010;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:#102936;border:2px solid #64d8bd;border-radius:14px;box-shadow:0 8px 30px #000a;color:#eafff9}
+.itt-position-open{display:flex;flex-direction:column;gap:5px;min-width:0;text-align:left;border:0;background:transparent;color:inherit;cursor:pointer;font:inherit}
+.itt-position-open strong{font-size:13px;overflow-wrap:anywhere}.itt-position-open span{font-size:12px;color:#b6ded6}
+.itt-position-exit.itt-wide-button{background:#a5273d!important;border-color:#f0919f!important;color:#fff!important;font-weight:900;white-space:normal}
+.itt-position-overlay{z-index:12020;padding-bottom:110px}
+.itt-position-overlay .itt-opportunities-window{max-width:660px}
+.itt-position-details{overflow-y:auto;min-height:0;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.itt-position-details>.itt-position-exit{width:100%;padding:16px;font-size:16px;margin:12px 0}
+.itt-paper-exit-feedback{padding:12px;border:1px solid #75b5b4;background:#153e46;color:#eafffc;border-radius:9px}
+.itt-paper-compact:has(.itt-position-bar){padding-bottom:115px}
+@media(max-width:580px){.itt-position-bar{left:5px;right:5px;bottom:5px;padding:10px;gap:8px}.itt-position-bar .itt-wide-button{max-width:46%;padding:12px 9px}.itt-position-open strong{font-size:11px}.itt-position-open span{font-size:11px}.itt-position-overlay{padding-bottom:100px}.itt-position-overlay .itt-opportunities-header{flex-wrap:wrap}}

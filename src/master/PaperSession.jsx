@@ -24,6 +24,7 @@ export default function PaperSession({connected}){
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
  const lock=useRef(false);
  const [showAlerts,setShowAlerts]=useState(true);
+ const [showPosition,setShowPosition]=useState(false),[exitFeedback,setExitFeedback]=useState('');
  const [tradeFeedback,setTradeFeedback]=useState(null);
  const seenAlerts=useRef(null);
  const audioRef=useRef(null);
@@ -46,16 +47,19 @@ export default function PaperSession({connected}){
   if(lock.current&&!['pause','close'].includes(action))return;
   lock.current=true;setBusy(true);setError('');
   if(action==='accept')setTradeFeedback({id,message:'Refreshing contract quote and checking paper entry…',kind:'checking'});
+  if(action==='close')setExitFeedback('Requesting a fresh bid and simulated exit…');
   try{
    const data=await call(action,id);setS(data);
    if(action==='settings')setSettingsDirty(false);
-   if(action==='accept')setTradeFeedback({id,message:'Paper entry accepted. The simulated position is now being managed.',kind:'success'});
+   if(action==='accept'){setTradeFeedback({id,message:'Paper entry accepted. The simulated position is now being managed.',kind:'success'});setShowAlerts(false);setShowPosition(true);setExitFeedback('')}
+   if(action==='close')setExitFeedback(data.paper?.position?'Paper exit requested. '+(data.lastError||'Waiting for a valid fresh positive bid. Protective management continues.'):'Paper position closed. New setup scanning is paused.');
    if(action==='dismiss'||action==='skip')setTradeFeedback(current=>current?.id===id?null:current);
   }catch(e){
    setError(e.message);
    if(action==='accept')setTradeFeedback({id,message:e.message,kind:'error'});
+   if(action==='close')setExitFeedback('Exit request: '+e.message+' Check the position status and retry if needed.');
    if(e.serverState)setS(e.serverState);
-   else if(action==='accept'||action==='skip'){try{setS(await call())}catch{}}
+   else if(['accept','skip','close'].includes(action)){try{setS(await call())}catch{}}
   }finally{lock.current=false;setBusy(false)}
  }
  function saveSettings(){
@@ -125,7 +129,10 @@ export default function PaperSession({connected}){
 
  
  
- {p&&<div style={{padding:16,background:'#152538'}}><h3>{p.symbol} · 1 simulated contract</h3><p>Entry {money(p.fill)} · Bid {money(s.mark?.bid)} · Ask {money(s.mark?.ask)}</p><p>Stop {money(p.fill*0.8)} · Profit target {money(p.fill*1.3)} · Trailing {p.bestBid>=p.fill*1.15?money(p.bestBid*0.9):'activates at '+money(p.fill*1.15)}</p><p>Time exit: {time(p.time+30*60000)} ET · {s.closeRequested?'EMERGENCY CLOSE PENDING — waiting for a valid positive bid':'Protective exits active'}</p></div>}
+ {p&&<section className="itt-open-position" aria-label="Open paper position"><h3>{p.symbol} · 1 simulated contract</h3><p>Entry {money(p.fill)} · Bid {money(s.mark?.bid)} · Ask {money(s.mark?.ask)} · Unrealized paper P/L {money(s.mark?.pnl)}</p><button type="button" className="itt-wide-button" onClick={()=>setShowPosition(true)}>OPEN TRADE / EXIT CONTROLS</button><button type="button" className="itt-wide-button itt-position-exit" onClick={()=>act('close')}>EXIT PAPER TRADE NOW</button><p>Time exit: {time(p.time+30*60000)} ET · {s.closeRequested?'EMERGENCY CLOSE PENDING — waiting for a valid positive bid':'Protective exits active'}</p></section>}
+ {exitFeedback&&<p role="status" className="itt-paper-exit-feedback">{exitFeedback}</p>}
+ {p&&<aside className="itt-position-bar" aria-label="Always available paper exit"><button type="button" className="itt-position-open" onClick={()=>setShowPosition(true)}><strong>OPEN PAPER TRADE · {p.underlying||p.symbol}</strong><span>P/L {money(s.mark?.pnl)} · Tap to reopen</span></button><button type="button" className="itt-wide-button itt-position-exit" onClick={()=>act('close')}>{s.closeRequested?'PAPER EXIT PENDING · RETRY':'EXIT PAPER TRADE NOW'}</button></aside>}
+ {p&&showPosition&&<div className="itt-opportunities-overlay itt-position-overlay"><section className="itt-opportunities-window" role="dialog" aria-modal="true" aria-label="Open paper trade and emergency exit"><header className="itt-opportunities-header"><div><div className="itt-eyebrow">OPEN POSITION · PAPER ONLY</div><h2>{p.underlying||p.symbol} · Trade &amp; Exit</h2></div><button type="button" className="itt-opportunity-x" onClick={()=>setShowPosition(false)}>Minimize trade</button></header><div className="itt-position-details"><p>{p.symbol} · 1 simulated contract</p><h3>Unrealized paper P/L {money(s.mark?.pnl)}</h3><p>Entry {money(p.fill)} · Bid {money(s.mark?.bid)} · Ask {money(s.mark?.ask)}</p><p>Stop {money(p.fill*0.8)} · Profit target {money(p.fill*1.3)} · Trailing {p.bestBid>=p.fill*1.15?money(p.bestBid*0.9):'activates at '+money(p.fill*1.15)}</p><p>Quote {time(s.mark?.quoteTime)} ET · Time exit {time(p.time+30*60000)} ET</p><button type="button" className="itt-wide-button itt-position-exit" onClick={()=>act('close')}>{s.closeRequested?'PAPER EXIT PENDING · RETRY':'EXIT PAPER TRADE NOW'}</button><p role="status">{exitFeedback||(s.closeRequested?'Exit requested; waiting for a fresh positive bid.':'Protective exits active. You can request a manual paper exit at any time.')}</p><p>A paper exit pauses new setups and requests a simulated fill using a fresh positive bid. If a quote is unavailable, the request stays pending. No real-money order is sent.</p></div></section></div>}
  
 
  {(error||s?.lastError)&&<p role="alert" className="itt-paper-approval-error">{error||s.lastError}</p>}
@@ -150,7 +157,7 @@ export default function PaperSession({connected}){
      <div className="itt-opportunity-numbers"><span>Alert ask <strong>{money(c.ask)}</strong></span><span>Vol / OI <strong>{c.volume??'—'} / {c.openInterest??'—'}</strong></span><span>Delta <strong>{c.delta??'—'}</strong></span><span>Created <strong>{time(item.created)} ET</strong></span></div>
      <p className="itt-opportunity-expiry">{ready?'Approval expires '+time(item.expires)+' ET':'Review only — original approval is no longer available.'}</p>
      {tradeFeedback?.id===item.id&&<div role={tradeFeedback.kind==='error'?'alert':'status'} className={'itt-opportunity-inline-feedback '+tradeFeedback.kind}>{tradeFeedback.message}</div>}
-     <button className="itt-wide-button" type="button" disabled={busy||!connected||!s.enabled||stale||!!p||!ready} onClick={()=>act('accept',item.id)}>{ready?'TAKE IT — approve PAPER contract':state==='TAKEN'?'SIMULATED TRADE ACCEPTED':'NOT ACTIONABLE'}</button>
+     {p?.symbol===c.symbol&&state==='TAKEN'?<button className="itt-wide-button" type="button" onClick={()=>setShowPosition(true)}>OPEN POSITION / EXIT</button>:<button className="itt-wide-button" type="button" disabled={busy||!connected||!s.enabled||stale||!!p||!ready} onClick={()=>act('accept',item.id)}>{ready?'TAKE IT — approve PAPER contract':state==='TAKEN'?'SIMULATED TRADE ACCEPTED':'NOT ACTIONABLE'}</button>}
     </article>
    })}</div>
    <p className="itt-opportunity-help">Every entry rechecks market price, liquidity and simulated cash. One simulated position at a time. Email alerts require a configured sender and email delivery credentials; they are not automatically active.</p>

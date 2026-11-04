@@ -107,7 +107,10 @@ export async function paperApi(request,env,owner){
    s.paper=stepPaper(s.paper,{quote,enter:true,maxPremium:budget(s)});
    a.status='TAKEN';a.enteredAt=Date.now();event(s,'OWNER APPROVED simulated entry: '+c.symbol);
   }else throw Error('Unknown action.');
-  await save(env,owner.id,row);return response(view(s));
+  await save(env,owner.id,row);
+  // Persist emergency intent before any network request, then try the exit immediately.
+  if(action==='close'&&s.closeRequested)return response(await runPaperTick(env,owner));
+  return response(view(s));
  }catch(e){return response({error:e.message},409)}
 }
 export async function scheduledPaper(env){
