@@ -22,6 +22,7 @@ async function privateTradingRequest(path, payload=null){
   if(!response.ok){
     const error = new Error(data.error||'The private trading assistant is unavailable.');
     error.status=response.status;
+    error.billingState=data.billingState||null;
     throw error;
   }
   return data;
@@ -30,7 +31,76 @@ const darkPanel={background:'linear-gradient(130deg,#102638,#0a1a2f)',border:'1p
 const muted={fontSize:12,color:'#9fbacb',lineHeight:1.6};
 const btn={padding:'10px 14px',borderRadius:9,border:'1px solid #40889c',color:'#e9f9ff',background:'#17485e',fontSize:12,fontWeight:800,cursor:'pointer'};
 
-export default function TradingAiAssistant({ranked=[],report=null,rules={},quotes=[],barName='',quoteName=''}) {
+
+const API_BILLING_URL='https://platform.openai.com/settings/organization/billing/overview';
+const BILLING_LABELS={
+  active:'API REQUESTS WORKING',
+  credits_exhausted:'OUT OF API CREDITS',
+  billing_blocked:'BILLING / QUOTA ACTION REQUIRED',
+  spend_limit:'SPENDING LIMIT REACHED',
+  rate_limited:'TEMPORARILY RATE LIMITED',
+  auth_error:'API KEY NEEDS ATTENTION',
+  model_unavailable:'AI MODEL UNAVAILABLE',
+  unconfigured:'OPENAI API KEY NOT CONNECTED',
+  unavailable:'CREDIT STATUS UNAVAILABLE',
+  not_checked:'NOT VERIFIED'
+};
+const isBillingBlocked=state=>['credits_exhausted','billing_blocked','spend_limit'].includes(state);
+
+/** Owner-only. One small billable inference checks API availability, not dollar balance. */
+export function TradingAiBillingPanel({billingState,onStateChange}){
+  const [checking,setChecking]=useState(true);
+  const [configured,setConfigured]=useState(false);
+  const [detail,setDetail]=useState('Waiting for OpenAI API verification.');
+  const [checkedAt,setCheckedAt]=useState('');
+  const inFlight=useRef(false);
+  const check=async()=>{
+    if(inFlight.current)return;
+    inFlight.current=true;setChecking(true);
+    try{
+      const status=await privateTradingRequest('/platform/trading-ai/status');
+      setConfigured(status.configured===true);
+      if(!status.configured){
+        setDetail('Add OPENAI_API_KEY securely to the ICA Master Worker before checking credits.');
+        onStateChange('unconfigured');
+      }else{
+        const response=await privateTradingRequest('/platform/trading-ai/check-credits',{});
+        setDetail(response.message||'Credit availability could not be verified.');
+        setCheckedAt(response.checkedAt||'');
+        onStateChange(response.billingState||'unavailable');
+      }
+    }catch(error){
+      setDetail(error.message||'Could not verify API billing.');
+      onStateChange('unavailable');
+    }finally{setChecking(false);inFlight.current=false}
+  };
+  useEffect(()=>{check()},[]);
+  const state=billingState||'not_checked';
+  const blocked=isBillingBlocked(state);
+  return <section aria-label="OpenAI API billing and credit status" aria-live="polite" style={{
+    ...darkPanel,margin:'14px 0',background:blocked?'linear-gradient(130deg,#39212a,#192337)':'linear-gradient(130deg,#102738,#0a1a2f)',
+    borderColor:blocked?'#b86d68':'#31576a',display:'grid',gap:10
+  }}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
+      <div>
+        <p style={{margin:0,color:'#a9cadb',fontSize:10,fontWeight:850,letterSpacing:'.1em'}}>OPENAI API / TRADING AI CREDITS</p>
+        <strong style={{display:'block',marginTop:6,fontSize:15,color:blocked?'#ffbaa7':state==='active'?'#8ef5c8':'#dbecf9'}}>
+          {checking?'VERIFYING CREDITS…':BILLING_LABELS[state]||BILLING_LABELS.unavailable}
+        </strong>
+        <p style={{...muted,margin:'5px 0 0'}}>{detail}</p>
+      </div>
+      <div style={{display:'flex',gap:9,flexWrap:'wrap'}}>
+        <a href={API_BILLING_URL} target="_blank" rel="noopener noreferrer" style={{...btn,textDecoration:'none',display:'inline-flex',alignItems:'center'}}>Add / manage credits ↗</a>
+        <button type="button" onClick={check} disabled={checking} style={{...btn,background:'#142f42',opacity:checking?.5:1}}>Recheck credits</button>
+      </div>
+    </div>
+    <small style={{color:'#8eabba',fontSize:10,lineHeight:1.5}}>A credit check uses a small billable OpenAI API request. It confirms access at check time, not the remaining dollar balance. Billing is separate from ChatGPT Work. {checkedAt?'Checked '+new Date(checkedAt).toLocaleString():''}</small>
+    {blocked&&<strong style={{color:'#ffc2b2',fontSize:11}}>AI analysis and new AI-directed entries must remain blocked until billing is restored. Any existing position needs independent protective exits.</strong>}
+    {!configured&&!checking&&<small style={{color:'#9fbacb',fontSize:10}}>An API key must be configured securely on the server; do not paste it into this page.</small>}
+  </section>;
+}
+
+export default function TradingAiAssistant({ranked=[],report=null,rules={},quotes=[],barName='',quoteName='',creditBlocked=false,onBillingStateChange}) {
   const [status,setStatus]=useState(null);
   const [statusError,setStatusError]=useState('');
   const [question,setQuestion]=useState('');
@@ -74,7 +144,7 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
   const ask=async(event)=>{
     event?.preventDefault?.();
     const message=question.trim();
-    if(busy||inFlight.current||!status?.configured||!message||message.length>1800)return;
+    if(busy||inFlight.current||!status?.configured||creditBlocked||!message||message.length>1800)return;
     setBusy(true);inFlight.current=true;setError('');setQuestion('');
     setMessages(prev=>[...prev,{id:crypto.randomUUID(),role:'user',content:message}]);
     try{
@@ -82,12 +152,14 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
       const reply=await privateTradingRequest('/platform/trading-ai/chat',payload);
       setMessages(prev=>[...prev,{id:crypto.randomUUID(),role:'assistant',content:reply.answer}]);
       setVerified(true);
+      onBillingStateChange?.('active');
     }catch(err){
+      if(err.billingState)onBillingStateChange?.(err.billingState);
       setError(err.message);
       setQuestion(message);
     }finally{setBusy(false);inFlight.current=false}
   };
-  const ready=status?.configured===true;
+  const ready=status?.configured===true&&!creditBlocked;
   const hasData=Boolean(ranked.length||quotes.length||report);
   const examples=[
     'Help me refine our stop-loss and profit-target rules.',
@@ -108,7 +180,7 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
         </div>
         <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:7}}>
           <strong style={{color:ready?'#8ef5c8':'#f9c38c',fontSize:12}}>
-            {checking?'CHECKING CONNECTION…':ready?(verified?'AI RESPONSE VERIFIED':'API KEY CONFIGURED · SEND A TEST'):'AI CONNECTION PENDING'}
+            {checking?'CHECKING CONNECTION…':ready?(verified?'AI RESPONSE VERIFIED':'API KEY CONFIGURED · SEND A TEST'):(creditBlocked?'API BILLING / CREDITS REQUIRED':'AI CONNECTION PENDING')}
           </strong>
           <small style={{fontSize:10,color:'#a6c3d1'}}>NO LIVE DATA · NO REAL ORDERS</small>
           <button type="button" onClick={refresh} disabled={checking} style={{...btn,padding:'6px 11px'}}>Check connection</button>
