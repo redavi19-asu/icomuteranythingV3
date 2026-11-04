@@ -169,7 +169,7 @@ export async function schwabMarket(request,env,owner,kind){
  try{
   const auth=await accessToken(env,owner),url=new URL(MARKET_URL+(kind==='history'?'/pricehistory':'/chains'));
   url.searchParams.set('symbol',symbol);
-  const params=kind==='history'?{periodType:'day',period:'1',frequencyType:'minute',frequency:String(frequency),needExtendedHoursData:'true'}:{contractType:'ALL',strikeCount:'12',strategy:'SINGLE',range:'NTM',fromDate:new Date().toISOString().slice(0,10),toDate:new Date(Date.now()+14*86400000).toISOString().slice(0,10)};
+  const params=kind==='history'?{periodType:'day',startDate:String(Date.now()-2*86400000),endDate:String(Date.now()),frequencyType:'minute',frequency:String(frequency),needExtendedHoursData:'true'}:{contractType:'ALL',strikeCount:'12',strategy:'SINGLE',range:'NTM',fromDate:new Date().toISOString().slice(0,10),toDate:new Date(Date.now()+14*86400000).toISOString().slice(0,10)};
   for(const [k,v] of Object.entries(params))url.searchParams.set(k,v);
   const r=await fetch(url,{headers:{Authorization:'Bearer '+auth.token,Accept:'application/json'},signal:AbortSignal.timeout(12000),redirect:'manual'});
   if(!r.ok)return json({error:'Schwab market data unavailable.',providerStatus:r.status},503);

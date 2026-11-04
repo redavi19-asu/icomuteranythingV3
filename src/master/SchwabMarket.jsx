@@ -1,4 +1,4 @@
-import React,{useEffect,useState,useRef} from 'react';
+import React,{useEffect,useState} from 'react';
 import {request} from './SchwabConnection';
 const stamp=v=>v?new Date(v).toLocaleTimeString('en-US',{timeZone:'America/New_York'}):'Unavailable';
 const money=v=>typeof v==='number'?'$'+v.toFixed(2):'—';
@@ -27,13 +27,13 @@ export function SchwabChart({symbol,enabled}){
  {candles.map((c,i)=>{const x=10+i*710/candles.length,w=Math.max(2,500/candles.length),color=c.close>=c.open?'#32d5a0':'#ff6581';return <g key={c.time}><title>{stamp(c.time)} ET · O {c.open} H {c.high} L {c.low} C {c.close}</title><line x1={x} x2={x} y1={y(c.high)} y2={y(c.low)} stroke={color}/><rect x={x-w/2} y={Math.min(y(c.open),y(c.close))} width={w} height={Math.max(1,Math.abs(y(c.open)-y(c.close)))} fill={color}/></g>})}
  <text x="10" y="300" fill="#aabbd0" fontSize="11">{stamp(candles[0].time)} ET</text><text x="610" y="300" fill="#aabbd0" fontSize="11">{stamp(candles.at(-1).time)} ET</text>
  </svg>:<p>No candles returned for this session.</p>}
- {data&&<p style={{fontSize:11}}>Historical candles from Schwab · Last candle {stamp(candles.at(-1)?.time)} ET · Fetched {stamp(data.receivedAt)} ET. Candles refresh every 30 seconds; the current candle may be incomplete. Extended hours included.</p>}
+ {data&&<p style={{fontSize:11}}>Historical candles from Schwab · Last candle {candles.length?new Date(candles.at(-1).time).toLocaleString('en-US',{timeZone:'America/New_York'}):'Unavailable'} ET · Fetched {stamp(data.receivedAt)} ET. Candles refresh every 30 seconds; the current candle may be incomplete. Extended hours included.</p>}
  </div></section>;
 }
 export function SchwabOptions({symbol,side,enabled}){
  const {data,error,loading}=useMarket('options?symbol='+symbol,enabled,60000);
  const rows=(data?.contracts||[]).filter(c=>c.side===side);
- return <div style={{padding:12,overflowX:'auto'}}>{!enabled?<p>Connect Schwab to load contracts.</p>:error?<p role="alert">{error}</p>:loading?<p>Loading contracts…</p>:<>
+ return <div style={{padding:12,overflow:'auto',maxHeight:520}}>{!enabled?<p>Connect Schwab to load contracts.</p>:error?<p role="alert">{error}</p>:loading?<p>Loading contracts…</p>:<>
  <p style={{fontSize:11}}>Schwab · {data?.delayed===true?'Delayed':data?.delayed===false?'Provider reports no delay':'Delay status unconfirmed'} · Fetched {stamp(data?.receivedAt)} ET. Refreshes every 60 seconds. Contract timestamps appear below.</p>
  <table style={{width:'100%',fontSize:11,borderCollapse:'collapse'}}><thead><tr>{['Expiry / strike','Bid / ask','Δ','Vol / OI','Quote ET'].map(v=><th key={v} style={{textAlign:'left',padding:5}}>{v}</th>)}</tr></thead><tbody>{rows.map(c=><tr key={c.symbol} title={c.symbol} style={{borderTop:'1px solid #273347'}}><td>{c.expiration}<br/>{money(c.strike)}{c.nonStandard?' *':''}</td><td>{money(c.bid)}<br/>{money(c.ask)}</td><td>{c.delta?.toFixed(2)??'—'}</td><td>{c.volume??'—'} / {c.openInterest??'—'}</td><td>{stamp(c.quoteTime)}</td></tr>)}</tbody></table>
  {!rows.length&&<p>No contracts returned.</p>}<p style={{fontSize:11}}>Contract data for review; no trade recommendation. * Nonstandard contract.</p></>}</div>;
