@@ -357,6 +357,52 @@ function ProductCard({ product, health, onManageUsers, onOpenDcLiveAdmin }) {
   )
 }
 
+
+function PrivateTradingCard({ onOpen }) {
+  return (
+    <article className="master-product-card master-trading-card">
+      <div className="master-product-topline">
+        <span className="master-product-status">PRIVATE WORKSPACE</span>
+        <span>OWNER ACCESS</span>
+      </div>
+      <div className="master-product-health-strip" aria-label="Private trading features">
+        {[
+          ['PAPER', 'READY'],
+          ['SCHWAB', 'WAIT'],
+          ['ORDERS', 'OFF'],
+        ].map(([label, status]) => (
+          <span key={label}>
+            <i />
+            <b>{label}</b>
+            <small>{status}</small>
+          </span>
+        ))}
+      </div>
+      <h3>Trading Platform</h3>
+      <p>
+        Your private market research, options analysis and paper-trading workspace.
+        Schwab connectivity is pending; live brokerage orders are disabled.
+      </p>
+      <div className="master-product-metrics">
+        <div>
+          <strong>OWNER</strong>
+          <span>ACCESS</span>
+        </div>
+        <div>
+          <strong>PAPER</strong>
+          <span>TRADING MODE</span>
+        </div>
+      </div>
+      <div className="master-product-actions">
+        <button type="button" onClick={onOpen}>OPEN TRADING</button>
+        <a href="/master?view=trading" target="_blank" rel="noopener noreferrer" className="secondary">
+          NEW WINDOW
+        </a>
+      </div>
+    </article>
+  )
+}
+
 function MasterDashboard({ user, onLogout }) {
   const [summary, setSummary] = useState(null)
   const [users, setUsers] = useState([])
@@ -712,6 +758,7 @@ function MasterDashboard({ user, onLogout }) {
                   onOpenDcLiveAdmin={() => setView('dc-live-admin')}
                 />
               ))}
+              <PrivateTradingCard onOpen={() => setView('trading')} />
             </div>
 
             <section className="master-activity-panel">
