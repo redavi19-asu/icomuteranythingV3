@@ -28,7 +28,7 @@ function useSchwabQuoteStream(symbol,enabled){
       const m=JSON.parse(e.data);
       if(m.type==='connected'){attempt=0;setState(v=>({...v,status:'connected',error:''}))}
       else if(m.type==='quote'){
-       setState(v=>({status:'connected',error:'',lastMessage:Date.now(),quote:{symbol:m.symbol,bid:typeof m.bid==='number'?m.bid:v.quote?.bid??null,ask:typeof m.ask==='number'?m.ask:v.quote?.ask??null,last:typeof m.last==='number'?m.last:v.quote?.last??null,quoteTime:m.quoteTime||v.quote?.quoteTime||Date.now(),delayed:m.delayed,receivedAt:m.receivedAt}}));
+       setState(v=>({status:'connected',error:'',lastMessage:Date.now(),quote:{symbol:m.symbol,bid:typeof m.bid==='number'?m.bid:v.quote?.bid??null,ask:typeof m.ask==='number'?m.ask:v.quote?.ask??null,last:typeof m.last==='number'?m.last:v.quote?.last??null,quoteTime:m.quoteTime||v.quote?.quoteTime||null,delayed:m.delayed,receivedAt:m.receivedAt}}));
       }else if(m.type==='option_quote'){
        window.dispatchEvent(new CustomEvent('ica-option-quote-stream',{detail:m}));
       }else if(m.type==='error'||m.type==='disconnected')setState(v=>({...v,status:'error',error:m.message||'Stream disconnected.'}));
@@ -66,7 +66,7 @@ export function SchwabChart({symbol,enabled}){
  const clampedOffset=Math.min(offset,maxOffset);
  const endIndex=allCandles.length-clampedOffset;
  const candles=allCandles.slice(Math.max(0,endIndex-count),endIndex);
- const q=(stream.status==='connected'&&stream.quote)?{...quote.data?.quotes?.[0],...stream.quote,realtime:stream.quote.delayed===false}:quote.data?.quotes?.[0];
+ const q=(stream.status==='connected'&&stream.quote)?{...quote.data?.quotes?.[0],...stream.quote,realtime:typeof stream.quote.delayed==='boolean'?!stream.quote.delayed:null}:quote.data?.quotes?.[0];
  const values=candles.flatMap(c=>[c.low,c.high]),low=values.length?Math.min(...values):0,high=values.length?Math.max(...values):1;
  const pad=Math.max((high-low)*.08,high*.0001,.01),min=low-pad,max=high+pad,span=max-min||1;
  const y=p=>260-(p-min)/span*225;
@@ -108,7 +108,7 @@ export function SchwabOptions({symbol,side,enabled}){
  const {data,error,loading}=useMarket('options?symbol='+symbol,enabled,60000);
  const [watched,setWatched]=useState(''),[streamQuote,setStreamQuote]=useState(null);
  useEffect(()=>{setWatched('');setStreamQuote(null)},[symbol]);
- useEffect(()=>{const update=e=>{if(e.detail?.symbol===watched)setStreamQuote(v=>({...v,...e.detail}))};window.addEventListener('ica-option-quote-stream',update);return()=>window.removeEventListener('ica-option-quote-stream',update)},[watched]);
+ useEffect(()=>{const update=e=>{if(e.detail?.symbol===watched)setStreamQuote(v=>({...v,...e.detail,bid:e.detail.bid??v?.bid??null,ask:e.detail.ask??v?.ask??null,last:e.detail.last??v?.last??null}))};window.addEventListener('ica-option-quote-stream',update);return()=>window.removeEventListener('ica-option-quote-stream',update)},[watched]);
  const selectOption=contract=>{setWatched(contract);setStreamQuote(null);window.dispatchEvent(new CustomEvent('ica-watch-option-stream',{detail:{symbol:contract}}))};
  const rows=(data?.contracts||[]).filter(c=>c.side===side);
  return <div style={{padding:12,overflow:'auto',maxHeight:520}}>{!enabled?<p>Connect Schwab to load contracts.</p>:error?<p role="alert">{error}</p>:loading?<p>Loading contracts…</p>:<>
