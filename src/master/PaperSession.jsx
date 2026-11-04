@@ -82,6 +82,7 @@ export default function PaperSession({connected}){
  const marketMinute=Number(clockParts.hour)*60+Number(clockParts.minute);
  const marketWindow=!['Sat','Sun'].includes(clockParts.weekday)&&marketMinute>=575&&marketMinute<945;
  const scanActive=Boolean(s?.enabled&&!stale&&!p&&marketWindow);
+ const radarActive=Boolean(!stale&&!error&&!s?.lastError&&(p||scanActive));
  const scannedAt=latest?.time||null;
  const elapsed=scannedAt?Math.max(0,Math.floor((now-scannedAt)/1000)):null;
  const scanPhase=!s?'CONNECTING':p?'MANAGING POSITION':error||s?.lastError?'DATA HOLD':a?'AWAITING APPROVAL':!s.enabled?'PAUSED':stale?'SERVER STALE':!marketWindow?'OUTSIDE SESSION':scanActive?'MONITORING':'WAITING';
@@ -103,15 +104,15 @@ export default function PaperSession({connected}){
  <button className="itt-wide-button" type="button" onClick={()=>setShowAlerts(v=>!v)}>Trading opportunities · {alerts.length} saved · {liveAlerts.length} actionable · {showAlerts?'Hide window':'Show cards'}</button>
  </div>
  <aside className="itt-paper-radar" aria-label="Scanner live status and recent ticker checks">
-  <div className="itt-paper-radar-heading"><div><span className="itt-eyebrow">ICA MARKET RADAR</span><h3>Scanner Activity</h3></div><span className={'itt-radar-state '+(scanPhase==='MONITORING'?'active':scanPhase==='DATA HOLD'||scanPhase==='SERVER STALE'?'warning':'')}>{scanPhase}</span></div>
+  <div className="itt-paper-radar-heading"><div><span className="itt-eyebrow">ICA MARKET RADAR</span><h3>Scanner Activity</h3></div><span className={'itt-radar-state '+(radarActive?'active':scanPhase==='DATA HOLD'||scanPhase==='SERVER STALE'?'warning':'')}>{scanPhase}</span></div>
   <div className="itt-radar-dashboard">
-   <div className={'itt-radar-visual '+(scanActive?'running':'')} aria-hidden="true"><div className="itt-radar-rings"/><div className="itt-radar-sweep"/><div className="itt-radar-core">⌖</div></div>
+   <div className={'itt-radar-visual '+(radarActive?'running':'')} aria-hidden="true"><div className="itt-radar-rings"/><div className="itt-radar-sweep"/><div className="itt-radar-core">⌖</div></div>
    <div className="itt-radar-primary"><small>LAST RECORDED CHECK</small><strong>{latest?.symbol||'—'}</strong><span>{latest?.state?.replaceAll('_',' ')||'NO SCANS YET'}</span><p>{latest?.reason||'Waiting for the first market-data evaluation.'}</p></div>
   </div>
   <div className="itt-radar-metrics"><div><small>UNIVERSE</small><strong>{s?.scanUniverse?.length??'—'} tickers</strong></div><div><small>LAST CHECK</small><strong>{time(scannedAt)} ET</strong></div><div><small>SERVER</small><strong>{stale?'STALE':s?.heartbeat?'RESPONDING':'WAITING'}</strong></div></div>
-  <div className="itt-radar-cycle"><div className="itt-radar-cycle-title"><span>{scanEligible?'Next scheduled check (approx.)':scanPhase==='MONITORING'?'Waiting':'Scan cycle not running'}</span><span>{scanEligible&&elapsed!==null?Math.max(0,60-elapsed)+'s':'—'}</span></div><div className="itt-radar-track"><span style={{width:scanProgress+'%'}}/></div></div>
+  <div className="itt-radar-cycle"><div className="itt-radar-cycle-title"><span>{p?'Managing open paper position · new-entry scan waiting':scanEligible?'Next scheduled check (approx.)':scanPhase==='MONITORING'?'Waiting':'Scan cycle not running'}</span><span>{scanEligible&&elapsed!==null?Math.max(0,60-elapsed)+'s':'—'}</span></div><div className="itt-radar-track"><span style={{width:scanProgress+'%'}}/></div></div>
   <div className="itt-radar-recent"><strong>RECENT TICKER CHECKS</strong><div>{recent.slice(0,4).map((item,i)=><div className="itt-radar-recent-item" key={item.symbol+String(item.time)+i}><span>{item.symbol}</span><span>{(item.state||'WAIT').replaceAll('_',' ')}</span><time>{time(item.time)}</time></div>)}{!recent.length&&<p>No checks recorded. Start the scanner or use Check / manage now.</p>}</div></div>
-  <div className="itt-radar-foot">Radar animation means monitoring is enabled and the server heartbeat is fresh. It does not mean a quote request is continuously running.</div>
+  <div className="itt-radar-foot">The radar turns while scanning for setups or managing an open paper position with a fresh server heartbeat. The status above identifies the current activity; checks run approximately once per minute.</div>
  </aside></div>
   <details className="itt-scanner-settings"><summary>Scan coverage &amp; paper contract budget</summary>
   <div className="itt-scanner-settings-grid"><label>Maximum simulated contract premium ($)<input type="number" min="1" max="5000" step="1" value={budgetDraft} onChange={e=>{setBudgetDraft(e.target.value);setSettingsDirty(true)}}/></label>
