@@ -2,6 +2,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import TradingAiAssistant, {TradingAiBillingPanel} from './TradingAiAssistant';
 import './TradingTerminal.css';
 import SchwabConnection from './SchwabConnection';
+import PaperSession from './PaperSession';
 import {SchwabChart,SchwabOptions,SchwabWatchPrices} from './SchwabMarket';
 
 /* Owner-only market workstation. Public TradingView charts are for visual research
@@ -229,6 +230,7 @@ export default function TradingOwnerPanel(){
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
   <SchwabConnection symbol={selected} onStatus={setSchwabStatus}/>
+  <PaperSession connected={!!schwabStatus?.connected}/>
   <SchwabWatchPrices symbols={tickerGroups[group]} enabled={!!schwabStatus?.connected} onQuotes={setWatchQuotes}/>
   <TradingAiBillingPanel billingState={aiBillingState} onStateChange={setAiBillingState}/>
   <nav className="itt-tabs" aria-label="Trading workspace views">
