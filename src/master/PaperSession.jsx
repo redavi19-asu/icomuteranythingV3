@@ -22,7 +22,7 @@ export default function PaperSession({connected}){
  const clockParts=Object.fromEntries(marketClock.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
  const marketMinute=Number(clockParts.hour)*60+Number(clockParts.minute);
  const marketWindow=!['Sat','Sun'].includes(clockParts.weekday)&&marketMinute>=575&&marketMinute<945;
- const scanActive=Boolean(s?.enabled&&!stale&&!p&&!a&&marketWindow);
+ const scanActive=Boolean(s?.enabled&&!stale&&!p&&marketWindow);
  const scannedAt=latest?.time||null;
  const elapsed=scannedAt?Math.max(0,Math.floor((now-scannedAt)/1000)):null;
  const scanPhase=!s?'CONNECTING':p?'MANAGING POSITION':error||s?.lastError?'DATA HOLD':a?'AWAITING APPROVAL':!s.enabled?'PAUSED':stale?'SERVER STALE':!marketWindow?'OUTSIDE SESSION':scanActive?'MONITORING':'WAITING';
