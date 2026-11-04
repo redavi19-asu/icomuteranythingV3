@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import worker from './index.js';
-import {schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabQuotes,schwabDisconnect,sealTokens,openTokens,SCHWAB_CALLBACK_URL} from './schwab-connection.js';
+import {schwabPreflight,schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabQuotes,schwabDisconnect,sealTokens,openTokens,SCHWAB_CALLBACK_URL} from './schwab-connection.js';
 const owner={id:'test-owner',role:'owner'};
 const request=(path,method='GET',origin='https://icomputeranything.com')=>new Request('https://worker.invalid/platform/schwab/'+path,{method,headers:{Authorization:'Bearer artificial-session',Origin:origin}});
 async function fixture(){
@@ -25,7 +25,7 @@ test('callback rejects unsolicited codes without reflection or persistence',asyn
  const r=await worker.fetch(new Request(SCHWAB_CALLBACK_URL+'?code=private-test-code&state=untrusted'),{});
  assert.equal(r.status,400);assert.ok(!(await r.text()).includes('private-test-code'));assert.equal(r.headers.get('Cache-Control'),'no-store');assert.equal(r.headers.get('Referrer-Policy'),'no-referrer');
 });
-for(const [path,method] of [['status','GET'],['authorize','POST'],['quotes','GET'],['disconnect','POST']])test(path+' denies unauthenticated access',async()=>{
+for(const [path,method] of [['preflight','POST'],['status','GET'],['authorize','POST'],['quotes','GET'],['disconnect','POST']])test(path+' denies unauthenticated access',async()=>{
  assert.equal((await worker.fetch(new Request('https://worker.invalid/platform/schwab/'+path,{method}),{})).status,403);
 });
 test('credentials alone never claim an authorized data connection',async()=>{
@@ -74,4 +74,17 @@ test('token exchange records only safe diagnostic codes, never provider messages
  const {env,sqlite}=await fixture();const state=await begin(env);const original=globalThis.fetch;
  globalThis.fetch=async()=>Response.json({error:'invalid_client',error_description:'private-test-token'}, {status:401});
  try{const r=await schwabCallback(callback(state),env);assert.equal(r.status,502);const text=await r.text();assert.match(text,/HTTP 401, invalid_client/);assert.ok(!text.includes('private-test-token'));const row=sqlite.prepare('SELECT * FROM schwab_connection_diagnostics').get();assert.equal(row.stage,'token_exchange');assert.equal(row.error_code,'invalid_client');assert.ok(!JSON.stringify(row).includes('private-test-token'))}finally{globalThis.fetch=original}
+});
+
+test('preflight uses manual redirects and invalid code without storing tokens',async()=>{
+ const {env,sqlite}=await fixture();const original=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>{assert.equal(options.redirect,'manual');assert.equal(new URLSearchParams(options.body).get('code'),'ica-connection-test-invalid-code');return Response.json({error:'invalid_grant'},{status:400})};
+ try{const r=await schwabPreflight(request('preflight','POST'),env,owner);assert.equal(r.status,200);assert.equal((await r.json()).ready,true);assert.equal(sqlite.prepare('SELECT count(*) n FROM schwab_connections').get().n,0)}finally{globalThis.fetch=original}
+});
+test('preflight fails closed on redirects and bad client credentials',async()=>{
+ const {env}=await fixture();const original=globalThis.fetch;
+ for(const response of [new Response(null,{status:302,headers:{Location:'https://untrusted.invalid'}}),Response.json({error:'invalid_client'},{status:401})]){
+ globalThis.fetch=async(url,options)=>{assert.equal(options.redirect,'manual');return response};
+ try{assert.equal((await schwabPreflight(request('preflight','POST'),env,owner)).status,503)}finally{globalThis.fetch=original}
+ }
 });

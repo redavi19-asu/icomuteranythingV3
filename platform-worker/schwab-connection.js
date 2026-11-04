@@ -29,7 +29,7 @@ async function boundedJson(response,max=1000000){
  const bytes=new Uint8Array(size);let i=0;for(const c of chunks){bytes.set(c,i);i+=c.byteLength}return JSON.parse(new TextDecoder().decode(bytes));
 }
 async function exchange(env,body,previous=null){
- const r=await fetch(TOKEN_URL,{method:'POST',headers:{Authorization:'Basic '+btoa(clean(env.SCHWAB_APP_KEY)+':'+clean(env.SCHWAB_APP_SECRET)),'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body),signal:AbortSignal.timeout(15000),redirect:'error'});
+ const r=await fetch(TOKEN_URL,{method:'POST',headers:{Authorization:'Basic '+btoa(clean(env.SCHWAB_APP_KEY)+':'+clean(env.SCHWAB_APP_SECRET)),'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body),signal:AbortSignal.timeout(15000),redirect:'manual'});
  if(!r.ok){
   const error=Error('Schwab authorization was not completed. Reconnect from ICA Master.');error.providerStatus=r.status;error.safeCode='provider_http_error';
   try{const detail=await boundedJson(r,16000);if(['invalid_client','invalid_grant','invalid_request','unauthorized_client','unsupported_grant_type','invalid_scope','access_denied'].includes(detail?.error))error.safeCode=detail.error}catch{}
@@ -40,6 +40,19 @@ async function exchange(env,body,previous=null){
  const refresh=clean(t.refresh_token)||previous?.refresh_token;
  if(!refresh)throw Error('Refresh token not supplied');
  return {access_token:t.access_token,refresh_token:refresh,expires_at:Date.now()+expires*1000,authorized_at:previous?.authorized_at||Date.now()};
+}
+// A deliberately invalid code tests server reachability/client authentication only.
+// It cannot authorize an account, store tokens, or execute orders.
+export async function schwabPreflight(request,env,owner){
+ if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
+ if(!originAllowed(request))return json({error:'Unrecognized origin.'},403);
+ if(!configured(env))return json({error:'Schwab setup is incomplete.'},503);
+ try{await exchange(env,{grant_type:'authorization_code',code:'ica-connection-test-invalid-code',redirect_uri:SCHWAB_CALLBACK_URL})}
+ catch(error){
+  if(error.providerStatus===400&&error.safeCode==='invalid_grant')return json({ready:true,note:'Schwab token endpoint reached; invalid test code rejected as expected. Owner authorization is still required.'});
+  return json({error:'Schwab setup test failed.',providerStatus:error.providerStatus||null,errorCode:error.safeCode||'network_or_response_error'},503);
+ }
+ return json({error:'Unexpected provider test response.'},503);
 }
 export async function schwabConnectionStatus(env,owner){
  if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
@@ -129,7 +142,7 @@ export async function schwabQuotes(request,env,owner){
  try{
   const auth=await accessToken(env,owner);
   const url=new URL(MARKET_URL+'/quotes');url.searchParams.set('symbols',symbols.join(','));
-  const r=await fetch(url,{headers:{Authorization:'Bearer '+auth.token,Accept:'application/json'},signal:AbortSignal.timeout(12000),redirect:'error'});
+  const r=await fetch(url,{headers:{Authorization:'Bearer '+auth.token,Accept:'application/json'},signal:AbortSignal.timeout(12000),redirect:'manual'});
   if(r.status===401){await env.DB.prepare('UPDATE schwab_connections SET payload=NULL WHERE owner_id=? AND generation=?').bind(owner.id,auth.generation).run();return json({error:'Schwab authorization expired. Please reconnect.'},401)}
   if(!r.ok)return json({error:'Schwab market data unavailable.',providerStatus:r.status},503);
   const data=await boundedJson(r);

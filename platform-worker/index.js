@@ -1,4 +1,4 @@
-import {schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabDisconnect,schwabQuotes} from './schwab-connection.js';
+import {schwabPreflight,schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabDisconnect,schwabQuotes} from './schwab-connection.js';
 import { saveFreeAccess, revokeFreeAccess, ensureAccessGrantSchema } from './access-grants.js';
 import { tradingAiStatus, tradingAiChat, tradingAiCreditCheck } from './trading-assistant.js';
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
@@ -1275,6 +1275,9 @@ export default {
       } else if (url.pathname === "/platform/schwab/status" && request.method === "GET") {
         const auth = await requireOwner(request, env);
         response = auth.response || await schwabConnectionStatus(env,auth.owner);
+      } else if (url.pathname === "/platform/schwab/preflight" && request.method === "POST") {
+        const auth = await requireOwner(request,env);
+        response = auth.response || await schwabPreflight(request,env,auth.owner);
       } else if (url.pathname === "/platform/schwab/authorize" && request.method === "POST") {
         const auth = await requireOwner(request, env);
         response = auth.response || await schwabAuthorize(request,env,auth.owner);
