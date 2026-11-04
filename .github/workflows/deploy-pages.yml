@@ -35,7 +35,7 @@ jobs:
         run: node --test platform-worker/access-grants.test.js
 
       - name: Verify owner-only Trading AI and order-safety boundaries
-        run: node --test platform-worker/trading-assistant.test.js platform-worker/trading-router.test.js src/master/trading-paper-engine.test.js src/master/trading-approval-engine.test.js
+        run: node --test platform-worker/trading-assistant.test.js platform-worker/trading-router.test.js platform-worker/schwab-connection.test.js src/master/trading-paper-engine.test.js src/master/trading-approval-engine.test.js
 
       - name: Build
         env:

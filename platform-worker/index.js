@@ -1,3 +1,4 @@
+import {schwabConnectionStatus,schwabCallback} from './schwab-connection.js';
 import { saveFreeAccess, revokeFreeAccess, ensureAccessGrantSchema } from './access-grants.js';
 import { tradingAiStatus, tradingAiChat, tradingAiCreditCheck } from './trading-assistant.js';
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
@@ -1269,6 +1270,11 @@ export default {
         response = owner
           ? json({ user: owner })
           : json({ error: "Unauthorized." }, 401);
+      } else if (url.pathname === "/platform/schwab/callback" && request.method === "GET") {
+        response = schwabCallback();
+      } else if (url.pathname === "/platform/schwab/status" && request.method === "GET") {
+        const auth = await requireOwner(request, env);
+        response = auth.response || schwabConnectionStatus(env);
       } else if (url.pathname === "/platform/trading-ai/status" && request.method === "GET") {
         const auth = await requireOwner(request, env);
         response = auth.response || await tradingAiStatus(env);
