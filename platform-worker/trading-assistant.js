@@ -114,6 +114,68 @@ async function consumeRateLimit(env, ownerId){
   return r?.meta?.changes===1;
 }
 
+const API_BILLING_URL = 'https://platform.openai.com/settings/organization/billing/overview';
+function classifyProviderFailure(responseStatus, code='', type=''){
+  const reason=String(code||'');
+  const family=String(type||'');
+  if(reason==='credit_balance_exhausted')return {billingState:'credits_exhausted',message:'OpenAI API credits exhausted. Add credits in OpenAI API Billing.'};
+  if(['organization_spend_limit_exceeded','project_spend_limit_exceeded','organization_usage_limit_exceeded'].includes(reason))
+    return {billingState:'spend_limit',message:'OpenAI API usage or spending limit reached. Review API billing and limits.'};
+  if(reason==='insufficient_quota'||family==='insufficient_quota')
+    return {billingState:'billing_blocked',message:'OpenAI API credits or billing quota are unavailable. Review API billing and limits.'};
+  if(responseStatus===429)return {billingState:'rate_limited',message:'OpenAI API rate limit reached. Credits may still be available; try again later.'};
+  if(responseStatus===401||responseStatus===403)return {billingState:'auth_error',message:'OpenAI API credential or model access needs attention.'};
+  if(responseStatus===404)return {billingState:'model_unavailable',message:'Configured AI model is unavailable for this API project.'};
+  return {billingState:'unavailable',message:'Could not verify OpenAI API billing at this time.'};
+}
+async function readProviderFailure(response){
+  let code='',type='';
+  try{
+    const raw=await readBoundedBody(response,16000);
+    const details=raw?JSON.parse(raw):null;
+    code=text(details?.error?.code).slice(0,100);
+    type=text(details?.error?.type).slice(0,100);
+  }catch{} // Provider response bodies can contain private details; never log or return them.
+  return classifyProviderFailure(response.status,code,type);
+}
+/**
+ * Owner-only, on-demand credit availability probe. A minimal Responses API call
+ * verifies that the configured key can perform a billable inference; it does NOT
+ * return a dollar balance or guarantee that later requests will succeed.
+ */
+export async function tradingAiCreditCheck(request,env,owner){
+  if(!owner?.id||owner.role!=='owner')return reply({error:'Owner access required.'},403);
+  const origin=request.headers.get('Origin');
+  const permittedOrigins=new Set(['https://icomputeranything.com','https://www.icomputeranything.com','https://redavi19-asu.github.io']);
+  if(origin&&!permittedOrigins.has(origin))return reply({error:'Unrecognized trading console origin.'},403);
+  if(request.method!=='POST')return reply({error:'Expected POST.'},405);
+  if(!text(env.OPENAI_API_KEY))return reply({billingState:'unconfigured',message:'ICA Master OpenAI API key is not configured.',billingUrl:API_BILLING_URL});
+  if(!env.DB)return reply({billingState:'unavailable',message:'AI usage guard is offline; credit check not attempted.',billingUrl:API_BILLING_URL});
+  let permitted;
+  try{permitted=await consumeRateLimit(env,owner.id)}catch{
+    return reply({billingState:'unavailable',message:'AI usage guard is offline; credit check not attempted.',billingUrl:API_BILLING_URL});
+  }
+  if(!permitted)return reply({billingState:'rate_limited',message:'ICA hourly AI request limit reached. Try again in a later hour.',billingUrl:API_BILLING_URL});
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort('credit_check_timeout'),18000);
+  try{
+    const model=secureModelName(text(env.TRADING_AI_MODEL)||MODEL_DEFAULT);
+    const response=await fetch(API_URL,{
+      method:'POST',
+      headers:{Authorization:'Bearer '+text(env.OPENAI_API_KEY),'Content-Type':'application/json'},
+      body:JSON.stringify({model,store:false,max_output_tokens:64,reasoning:{effort:'low'},input:'Reply with only the word OK.'}),
+      signal:controller.signal
+    });
+    if(!response.ok){
+      const failure=await readProviderFailure(response);
+      return reply({...failure,billingUrl:API_BILLING_URL,checkedAt:new Date().toISOString()});
+    }
+    return reply({billingState:'active',message:'OpenAI accepted a small AI request. Exact remaining credits must be checked in OpenAI API Billing.',billingUrl:API_BILLING_URL,checkedAt:new Date().toISOString()});
+  }catch{
+    return reply({billingState:'unavailable',message:'Could not reach OpenAI to verify credits. Do not assume the account is funded.',billingUrl:API_BILLING_URL});
+  }finally{clearTimeout(timer)}
+}
+
 export async function tradingAiStatus(env){
   const configured=Boolean(text(env.OPENAI_API_KEY));
   return reply({
@@ -182,22 +244,13 @@ export async function tradingAiChat(request,env,owner) {
     });
     if(!response.ok) {
       console.error('TRADING_AI_PROVIDER_ERROR',response.status);
-      let providerCode='';
-      try {
-        const rawError=await readBoundedBody(response,16000);
-        const details=rawError?JSON.parse(rawError):null;
-        providerCode=details?.error?.code||details?.error?.type||'';
-      }catch{} // Never return or log the provider's raw error body.
-      const message=response.status===429
-        ? (providerCode==='insufficient_quota'
-          ? 'OpenAI API credits or billing quota are unavailable. Add API credits or review billing at platform.openai.com; ChatGPT subscriptions do not include API credits.'
-          : 'OpenAI API request or quota limit reached. Check API billing and limits, then try again later.')
-        : response.status===401||response.status===403
-          ? 'OpenAI API credential or model access needs attention.'
-          : response.status===404
-            ? 'The configured OpenAI model is unavailable for this API project. Review model access.'
-            : 'OpenAI provider temporarily unavailable.';
-      return reply({error:message,code:response.status},502);
+      const failure=await readProviderFailure(response);
+      const message=failure.billingState==='credits_exhausted'
+        ? 'OpenAI API credits exhausted. Add credits in OpenAI API Billing before requesting new AI analysis.'
+        : failure.billingState==='billing_blocked'
+          ? 'OpenAI API credits or billing quota are unavailable. Add credits or review limits in OpenAI API Billing.'
+          : failure.message;
+      return reply({error:message,code:response.status,billingState:failure.billingState,billingUrl:API_BILLING_URL},502);
     }
     const result=await response.json().catch(()=>null);
     const output=(Array.isArray(result?.output)?result.output:[]).flatMap(x=>
