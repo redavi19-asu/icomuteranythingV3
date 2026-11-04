@@ -1,4 +1,5 @@
 import {paperApi,scheduledPaper} from './paper-runner.js';
+import {issueStreamTicket,openSchwabStream} from './schwab-stream.js';
 import {schwabMarket,schwabPreflight,schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabDisconnect,schwabQuotes} from './schwab-connection.js';
 import { saveFreeAccess, revokeFreeAccess, ensureAccessGrantSchema } from './access-grants.js';
 import { tradingAiStatus, tradingAiChat, tradingAiCreditCheck } from './trading-assistant.js';
@@ -1272,6 +1273,12 @@ export default {
         response = owner
           ? json({ user: owner })
           : json({ error: "Unauthorized." }, 401);
+      } else if (url.pathname === '/platform/schwab/stream' && request.method === 'GET') {
+        // WebSocket upgrade response must be returned unchanged (never rewrap status 101).
+        return await openSchwabStream(request,env);
+      } else if (url.pathname === '/platform/schwab/stream-ticket' && request.method === 'GET') {
+        const auth=await requireOwner(request,env);
+        response=auth.response || await issueStreamTicket(request,env,auth.owner);
       } else if (url.pathname === '/platform/paper' && ['GET','POST'].includes(request.method)) {
         const auth = await requireOwner(request,env);
         response = auth.response || await paperApi(request,env,auth.owner);
