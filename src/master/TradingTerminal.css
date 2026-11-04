@@ -239,3 +239,7 @@
 .itt-scanner-settings .itt-wide-button{margin-top:12px}
 .itt-scanner-activity p{border-top:1px solid #274153;padding:8px 0;margin:6px 0;line-height:1.5}
 @media(max-width:650px){.itt-scanner-summary{grid-template-columns:1fr 1fr}.itt-scanner-settings-grid{grid-template-columns:1fr}}
+
+/* Read-only Schwab market streaming status. No broker order connection implied. */
+.itt-stream-state{font-size:11px;font-weight:850;color:#f0c087;border:1px solid #775b39;background:#31291e;border-radius:8px;padding:9px 12px;margin:8px 0 10px}
+.itt-stream-state.itt-stream-on{color:#8ef5ca;border-color:#2c9b7f;background:#14392e}
