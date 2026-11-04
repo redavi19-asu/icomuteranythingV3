@@ -7,6 +7,7 @@ export default function PaperSession({connected}){
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
  const lock=useRef(false);
  const [showAlerts,setShowAlerts]=useState(true);
+ const seenAlerts=useRef(null);
  async function call(action,id){const token=localStorage.getItem('ica_master_token');const r=await fetch(API+'/platform/paper',{method:action?'POST':'GET',headers:{Authorization:'Bearer '+token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify({action,...(action==='settings'&&id&&typeof id==='object'?id:{id})})}:{})});const d=await r.json();if(!r.ok){const ex=Error(d.error||'Paper server unavailable.');ex.code=d.code||null;ex.serverState=d.status||null;throw ex;}return d}
  async function act(action,id){if(lock.current&&!['pause','close'].includes(action))return;lock.current=true;setBusy(true);setError('');try{setS(await call(action,id));if(action==='settings')setSettingsDirty(false)}catch(e){setError(e.message);if(e.serverState)setS(e.serverState);else if(action==='accept'||action==='skip'){try{setS(await call())}catch{}}}finally{lock.current=false;setBusy(false)}}
  function saveSettings(){
@@ -17,6 +18,7 @@ export default function PaperSession({connected}){
  }
  useEffect(()=>{let active=true,t;async function refresh(){if(!lock.current){try{const data=await call();if(active){setS(data);setError('')}}catch(e){if(active)setError(e.message)}}if(active){setNow(Date.now());t=setTimeout(refresh,5000)}}refresh();return()=>{active=false;clearTimeout(t)}},[]);
  const p=s?.paper?.position,alerts=s?.alerts||[],liveAlerts=alerts.filter(x=>x.status==='PENDING'&&x.expires>now),a=liveAlerts.length>0,stale=!s?.heartbeat||now-s.heartbeat>150000;
+ useEffect(()=>{if(!s?.alerts)return;const ids=new Set(s.alerts.map(x=>x.id));if(seenAlerts.current&&s.alerts.some(x=>x.status==='PENDING'&&!seenAlerts.current.has(x.id)))setShowAlerts(true);seenAlerts.current=ids;},[s?.alerts]);
  const recent=s?.scanHistory||[],latest=recent[0]||(s?.lastScan?{symbol:s.lastScan.symbol,time:s.lastScan.time,state:s.lastScan.signal?.state||'WAIT',reason:s.lastScan.signal?.reason||s.lastScan.note}:null);
  const marketClock=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now);
  const clockParts=Object.fromEntries(marketClock.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
