@@ -7,15 +7,15 @@ function ringOpportunityBell(ctx){
  if(!ctx||ctx.state!=='running')return;
  const start=ctx.currentTime+0.02;
  [0,0.34,0.68].forEach((offset,i)=>{
-  const note=start+offset;
+  const note=start+offset/2;
   [[740,0.45],[1120,0.26],[1660,0.10]].forEach(([frequency,volume])=>{
    const oscillator=ctx.createOscillator(),gain=ctx.createGain();
    oscillator.type='sine';oscillator.frequency.setValueAtTime(frequency*(i===1?1.018:1),note);
    gain.gain.setValueAtTime(0,note);
-   gain.gain.linearRampToValueAtTime(volume*0.22,note+0.014);
-   gain.gain.exponentialRampToValueAtTime(0.0001,note+1.1);
+   gain.gain.linearRampToValueAtTime(volume*0.22,note+0.007);
+   gain.gain.exponentialRampToValueAtTime(0.0001,note+0.55);
    oscillator.connect(gain);gain.connect(ctx.destination);
-   oscillator.start(note);oscillator.stop(note+1.12);
+   oscillator.start(note);oscillator.stop(note+0.56);
   });
  });
 }
@@ -46,7 +46,12 @@ export default function PaperSession({connected}){
  }
  function playAlertBell(){
   const ctx=audioRef.current;if(!ctx||ctx.state!=='running'){setSoundWarning('Sound is paused. Tap Test Bell to resume it.');return}
-  if(bellBuffer.current){const source=ctx.createBufferSource();source.buffer=bellBuffer.current;source.connect(ctx.destination);source.start()}else ringOpportunityBell(ctx);
+  if(bellBuffer.current){
+   const source=ctx.createBufferSource(),gain=ctx.createGain(),start=ctx.currentTime,duration=bellBuffer.current.duration/2;
+   source.buffer=bellBuffer.current;source.connect(gain);gain.connect(ctx.destination);
+   gain.gain.setValueAtTime(1,start);gain.gain.setValueAtTime(1,start+Math.max(0,duration-0.06));gain.gain.linearRampToValueAtTime(0,start+duration);
+   source.onended=()=>{source.disconnect();gain.disconnect()};source.start(start,0,duration);
+  }else ringOpportunityBell(ctx);
  }
  async function testAlertBell(){try{await audioRef.current?.resume();playAlertBell()}catch{setSoundWarning('Tap Enable Alert Bell again and check device volume.')}}
  useEffect(()=>()=>{audioRef.current?.close().catch(()=>{});audioRef.current=null},[]);
