@@ -1,6 +1,6 @@
 import {paperApi,scheduledPaper} from './paper-runner.js';
 import {issueStreamTicket,openSchwabStream} from './schwab-stream.js';
-import {schwabMarket,schwabPreflight,schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabDisconnect,schwabQuotes} from './schwab-connection.js';
+import {schwabMarket,schwabPreflight,schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabDisconnect,schwabQuotes,schwabAccountSnapshot} from './schwab-connection.js';
 import { saveFreeAccess, revokeFreeAccess, ensureAccessGrantSchema } from './access-grants.js';
 import { tradingAiStatus, tradingAiChat, tradingAiCreditCheck } from './trading-assistant.js';
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
@@ -1276,6 +1276,9 @@ export default {
       } else if (url.pathname === '/platform/schwab/stream' && request.method === 'GET') {
         // WebSocket upgrade response must be returned unchanged (never rewrap status 101).
         return await openSchwabStream(request,env);
+      } else if (url.pathname === '/platform/schwab/account-snapshot' && request.method === 'GET') {
+        const auth=await requireOwner(request,env);
+        response=auth.response||await schwabAccountSnapshot(request,env,auth.owner);
       } else if (url.pathname === '/platform/schwab/stream-ticket' && request.method === 'GET') {
         const auth=await requireOwner(request,env);
         response=auth.response || await issueStreamTicket(request,env,auth.owner);
