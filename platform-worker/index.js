@@ -1,5 +1,5 @@
 import { saveFreeAccess, revokeFreeAccess, ensureAccessGrantSchema } from './access-grants.js';
-import { tradingAiStatus, tradingAiChat } from './trading-assistant.js';
+import { tradingAiStatus, tradingAiChat, tradingAiCreditCheck } from './trading-assistant.js';
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const PASSWORD_ITERATIONS = 100000;
@@ -1275,6 +1275,9 @@ export default {
       } else if (url.pathname === "/platform/trading-ai/chat" && request.method === "POST") {
         const auth = await requireOwner(request, env);
         response = auth.response || await tradingAiChat(request, env, auth.owner);
+      } else if (url.pathname === "/platform/trading-ai/check-credits" && request.method === "POST") {
+        const auth = await requireOwner(request, env);
+        response = auth.response || await tradingAiCreditCheck(request, env, auth.owner);
       } else if (url.pathname === "/platform/control-report" && request.method === "POST") {
         response = await ingestControlReport(request, env);
       } else if (url.pathname === "/platform/free-access" && ["GET", "POST", "PATCH"].includes(request.method)) {
