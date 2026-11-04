@@ -93,7 +93,7 @@ jobs:
           echo "ICA Control → ICA Master report bridge synchronized."
 
   deploy:
-    needs: build
+    needs: [build, deploy-worker]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
