@@ -32,7 +32,8 @@ async function exchange(env,body,previous=null){
  const r=await fetch(TOKEN_URL,{method:'POST',headers:{Authorization:'Basic '+btoa(clean(env.SCHWAB_APP_KEY)+':'+clean(env.SCHWAB_APP_SECRET)),'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body),signal:AbortSignal.timeout(15000),redirect:'manual'});
  if(!r.ok){
   const error=Error('Schwab authorization was not completed. Reconnect from ICA Master.');error.providerStatus=r.status;error.safeCode='provider_http_error';
-  try{const detail=await boundedJson(r,16000);if(['invalid_client','invalid_grant','invalid_request','unauthorized_client','unsupported_grant_type','invalid_scope','access_denied'].includes(detail?.error))error.safeCode=detail.error}catch{}
+  error.providerFormat=(r.headers.get('Content-Type')||'').includes('json')?'json':'non_json';
+  try{const detail=await boundedJson(r,16000);error.responseShape=['error','errors','message','fault'].filter(k=>Object.hasOwn(detail||{},k)).join(',')||'other';if(['invalid_client','invalid_grant','invalid_request','unauthorized_client','unsupported_grant_type','invalid_scope','access_denied'].includes(detail?.error))error.safeCode=detail.error}catch(parseError){error.responseShape=parseError.name==='SyntaxError'?'invalid_json':'unreadable_response'}
   throw error;
  }
  const t=await boundedJson(r,32000);const expires=Number(t.expires_in);
@@ -50,7 +51,7 @@ export async function schwabPreflight(request,env,owner){
  try{await exchange(env,{grant_type:'authorization_code',code:'ica-connection-test-invalid-code',redirect_uri:SCHWAB_CALLBACK_URL})}
  catch(error){
   if(error.providerStatus===400&&error.safeCode==='invalid_grant')return json({ready:true,note:'Schwab token endpoint reached; invalid test code rejected as expected. Owner authorization is still required.'});
-  return json({error:'Schwab setup test failed.',providerStatus:error.providerStatus||null,errorCode:error.safeCode||'network_or_response_error'},503);
+  return json({error:'Schwab setup test failed.',providerStatus:error.providerStatus||null,errorCode:error.safeCode||'network_or_response_error',providerFormat:error.providerFormat||null,responseShape:error.responseShape||null},503);
  }
  return json({error:'Unexpected provider test response.'},503);
 }
