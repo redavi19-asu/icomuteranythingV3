@@ -324,3 +324,18 @@
 
 .itt-bell-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:12px 0}
 .itt-bell-controls small{display:block;flex-basis:100%;color:#a7c7d5;font-size:11px;line-height:1.5}
+
+/* Keep actionable feedback in view, including on small iPad and iPhone screens. */
+.itt-opportunities-overlay{align-items:center}
+.itt-opportunities-window{max-height:min(82dvh,730px);display:flex;flex-direction:column;overflow:hidden}
+.itt-opportunities-header{flex-shrink:0}
+.itt-opportunities-grid{overflow-y:auto;min-height:0;overscroll-behavior:contain;align-content:start;padding:2px 3px 8px}
+.itt-opportunity-feedback{display:flex;align-items:center;gap:12px;flex-shrink:0;padding:12px 14px;border-radius:10px;background:#203e4c;border:1px solid #5d8595;line-height:1.45;font-size:13px}
+.itt-opportunity-feedback strong{white-space:nowrap}
+.itt-opportunity-feedback span{flex:1;overflow-wrap:anywhere}
+.itt-opportunity-feedback.error,.itt-opportunity-inline-feedback.error{background:#532a35;border-color:#d07c89;color:#ffe4df}
+.itt-opportunity-feedback.success,.itt-opportunity-inline-feedback.success{background:#164b3c;border-color:#6dcdac;color:#e1fff4}
+.itt-opportunity-feedback .itt-opportunity-x{margin-left:auto}
+.itt-opportunity-inline-feedback{border:1px solid #6590a0;background:#254556;border-radius:8px;padding:10px;font-size:12px;line-height:1.5;margin:10px 0;overflow-wrap:anywhere}
+@media(max-width:700px){.itt-opportunities-window{max-height:78dvh}.itt-opportunities-header{position:relative}.itt-opportunity-feedback{flex-wrap:wrap}.itt-opportunity-feedback strong{white-space:normal}.itt-opportunities-grid{grid-template-columns:1fr}}
+@media(max-height:650px){.itt-opportunities-window{max-height:92dvh}.itt-opportunities-header h2{margin:2px 0}}
