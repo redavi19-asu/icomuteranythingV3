@@ -102,7 +102,7 @@ test('Close All persists an unavailable exit while closing the other contracts i
 test('a feed failure on one open contract cannot block a protective target exit on another',async()=>{
  const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();
  try{const {env}=await portfolioFixture(2);await acceptPortfolio(env,2);globalThis.fetch=portfolioFeed({'OPTION 0':'unavailable','OPTION 1':{bidPrice:2.7,askPrice:2.75}});
-  const state=await runPaperTick(env,owner,{scan:false});assert.equal(state.paper.positions.length,1);assert.equal(state.paper.positions[0].symbol,'OPTION 0');assert.equal(state.paper.trades[0].symbol,'OPTION 1');assert.equal(state.paper.trades[0].reason,'PROFIT_TARGET');
+  const state=await runPaperTick(env,owner,{scan:false});assert.equal(state.paper.positions.length,1);assert.equal(state.paper.positions[0].symbol,'OPTION 0');assert.equal(state.paper.trades[0].symbol,'OPTION 1');assert.equal(state.paper.trades[0].reason,'PROFIT_TARGET');assert.equal(state.lastCheck.positionsChecked,2);assert.equal(state.lastCheck.positionsUpdated,1);assert.equal(state.lastCheck.positionsClosed,1);assert.equal(state.lastCheck.holds.length,1);
  }finally{Date.now=date;globalThis.fetch=fetcher}
 });
 test('legacy open position, cash and closed history migrate without reset',async()=>{
@@ -119,7 +119,7 @@ test('available paper cash still gates additional contracts without losing accep
 });
 test('the scanner continues checking new symbols while a paper contract is open',async()=>{
  const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;const feed=portfolioFeed();let histories=0;globalThis.fetch=async(url,options)=>{if(String(url).includes('/pricehistory'))histories++;return feed(url,options)};
- try{const {env}=await portfolioFixture(1);await acceptPortfolio(env,1);const state=await runPaperTick(env,owner);assert.equal(state.paper.positions.length,1);assert.equal(histories,3);assert.equal(state.scanHistory.length,3)}finally{Date.now=date;globalThis.fetch=fetcher}
+ try{const {env}=await portfolioFixture(1);await acceptPortfolio(env,1);const state=await runPaperTick(env,owner);assert.equal(state.paper.positions.length,1);assert.equal(histories,3);assert.equal(state.scanHistory.length,3);assert.equal(state.lastCheck.positionsChecked,1);assert.equal(state.lastCheck.positionsUpdated,1);assert.equal(state.lastCheck.scannedSymbols.length,3);assert.equal(state.lastCheck.completedAt,now);const restored=await(await paperApi(req(),env,owner)).json();assert.equal(restored.lastCheck.id,state.lastCheck.id)}finally{Date.now=date;globalThis.fetch=fetcher}
 });
 test('Close All wins an in-flight approval and invalidates approvals queued under an older epoch',async()=>{
  const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();

@@ -27,17 +27,28 @@ export default function PaperSession({connected}){
  const [showWindow,setShowWindow]=useState(false),[windowTab,setWindowTab]=useState('opportunities'),[selected,setSelected]=useState(null);
  const [feedback,setFeedback]=useState({}),[queued,setQueued]=useState({}),[exitFeedback,setExitFeedback]=useState('');
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
- const [soundOn,setSoundOn]=useState(false),[soundWarning,setSoundWarning]=useState('');
- const audioRef=useRef(null),seenAlerts=useRef(null),requests=useRef(0),queue=useRef(Promise.resolve()),queueEpoch=useRef(0),latestRevision=useRef(-1),pendingAccepts=useRef(new Set());
+ const [soundOn,setSoundOn]=useState(false),[soundWarning,setSoundWarning]=useState(''),[soundLoading,setSoundLoading]=useState(false);
+ const [scanStatus,setScanStatus]=useState({phase:'idle'}),[operationNotice,setOperationNotice]=useState('');
+ const audioRef=useRef(null),bellBuffer=useRef(null),scanRequested=useRef(false),seenAlerts=useRef(null),requests=useRef(0),queue=useRef(Promise.resolve()),queueEpoch=useRef(0),latestRevision=useRef(-1),pendingAccepts=useRef(new Set());
  function applyState(data){const revision=data.revision??0;if(revision>=latestRevision.current){latestRevision.current=revision;setS(data)}}
  async function toggleAlertSound(){
-  if(soundOn){setSoundOn(false);return}
+  if(soundOn){setSoundOn(false);setSoundWarning('');return}
+  if(soundLoading)return;setSoundLoading(true);
   try{const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)throw Error('Audio is unavailable in this browser.');
    if(!audioRef.current)audioRef.current=new Constructor();await audioRef.current.resume();
    if(audioRef.current.state!=='running')throw Error('Tap Enable Alert Bell again and check device volume.');
-   setSoundOn(true);setSoundWarning('');ringOpportunityBell(audioRef.current);
-  }catch(e){setSoundOn(false);setSoundWarning(e.message)}
+   try{
+    if(!bellBuffer.current){const response=await fetch('/audio/nyse-opening-bell.wav');if(!response.ok)throw Error('Bell recording unavailable');bellBuffer.current=await audioRef.current.decodeAudioData(await response.arrayBuffer())}
+    setSoundWarning('');
+   }catch{setSoundWarning('Recorded bell could not load; using backup bell.')}
+   setSoundOn(true);playAlertBell();
+  }catch(e){setSoundOn(false);setSoundWarning(e.message)}finally{setSoundLoading(false)}
  }
+ function playAlertBell(){
+  const ctx=audioRef.current;if(!ctx||ctx.state!=='running'){setSoundWarning('Sound is paused. Tap Test Bell to resume it.');return}
+  if(bellBuffer.current){const source=ctx.createBufferSource();source.buffer=bellBuffer.current;source.connect(ctx.destination);source.start()}else ringOpportunityBell(ctx);
+ }
+ async function testAlertBell(){try{await audioRef.current?.resume();playAlertBell()}catch{setSoundWarning('Tap Enable Alert Bell again and check device volume.')}}
  useEffect(()=>()=>{audioRef.current?.close().catch(()=>{});audioRef.current=null},[]);
  async function call(action,id,epoch){
   const token=localStorage.getItem('ica_master_token');
@@ -46,6 +57,8 @@ export default function PaperSession({connected}){
   const data=await r.json();if(!r.ok){const e=Error(data.error||'Paper server unavailable.');e.code=data.code;e.serverState=data.status;throw e}return data;
  }
  function act(action,id){
+  if(action==='tick'&&scanRequested.current)return;
+  if(action==='tick'){scanRequested.current=true;setScanStatus({phase:'queued',message:'Scan request received — starting…'})}
   if(action==='accept'&&pendingAccepts.current.has(id))return;
   if(action==='accept')pendingAccepts.current.add(id);
   const epoch=queueEpoch.current,serverEpoch=s?.entryEpoch??0;
@@ -54,6 +67,7 @@ export default function PaperSession({connected}){
   async function run(){
    if(action==='accept'&&epoch!==queueEpoch.current){pendingAccepts.current.delete(id);setQueued(v=>({...v,[id]:false}));setFeedback(v=>({...v,[id]:{kind:'error',message:'Approval cancelled by Close All. Review and accept again if wanted.'}}));return}
    requests.current++;setBusy(true);setError('');
+   if(action==='tick')setScanStatus({phase:'checking',message:s?.enabled?'Checking fresh quotes and the next scanner batch…':'Updating open paper trades — scanner is paused…'});
    if(action==='close'||action==='close_all')setExitFeedback('Close requested. Checking fresh bids…');
    try{
     let data;
@@ -61,14 +75,21 @@ export default function PaperSession({connected}){
      try{data=await call(action,id,action==='accept'?serverEpoch:undefined);break}catch(e){if(e.code!=='STATE_CHANGED'||attempt===2)throw e;applyState(await call())}
     }
     applyState(data);
+    if(action==='tick'){
+     const check=data.lastCheck;
+     setScanStatus({phase:check?.holds?.length?'warning':'done',message:check?.holds?.length?'Check finished — some quotes need attention':'Check complete',check,completedAt:check?.completedAt||Date.now()});
+    }
+    if(action==='start')setOperationNotice('Scanner started. Scheduled setup checks are enabled.');
+    if(action==='pause')setOperationNotice('Scanner paused. Open paper trades remain under protective management.');
+    if(action==='settings')setOperationNotice('Scan settings saved.');
     if(action==='accept')setFeedback(v=>({...v,[id]:{kind:'success',message:'Accepted into Open Trades. Select Open Trade to see profit/loss and close controls.'}}));
     if(action==='settings')setSettingsDirty(false);
     if(action==='close'||action==='close_all'){
      const left=positionsOf(data).filter(p=>action==='close_all'||p.id===id);
      setExitFeedback(left.length?'Close pending for '+left.length+' contract(s). '+(left.map(p=>p.lastError).filter(Boolean).join(' · ')||'Waiting for fresh positive bids.'):'Paper close completed. See Closed Trades for final profit/loss.');
     }
-   }catch(e){setError(e.message);if(action==='accept')setFeedback(v=>({...v,[id]:{kind:'error',message:e.message}}));if(action==='close'||action==='close_all')setExitFeedback(e.message);if(e.serverState)applyState(e.serverState);else try{applyState(await call())}catch{}}
-   finally{requests.current--;setBusy(requests.current>0);if(action==='accept'){pendingAccepts.current.delete(id);setQueued(v=>({...v,[id]:false}))}}
+   }catch(e){setError(e.message);if(action==='tick')setScanStatus({phase:'error',message:'Check failed: '+e.message});if(action==='accept')setFeedback(v=>({...v,[id]:{kind:'error',message:e.message}}));if(action==='close'||action==='close_all')setExitFeedback(e.message);if(e.serverState)applyState(e.serverState);else try{applyState(await call())}catch{}}
+   finally{if(action==='tick')scanRequested.current=false;requests.current--;setBusy(requests.current>0);if(action==='accept'){pendingAccepts.current.delete(id);setQueued(v=>({...v,[id]:false}))}}
   }
   if(['close','close_all','pause'].includes(action))return run();
   queue.current=queue.current.then(run,run);return queue.current;
@@ -80,7 +101,7 @@ export default function PaperSession({connected}){
  function openWindow(tab=positions.length?'open':liveAlerts.length?'opportunities':history.length?'closed':'opportunities',id=null){setWindowTab(tab);setSelected(id);setShowWindow(true)}
  useEffect(()=>{
   if(!s?.alerts)return;const ids=new Set(s.alerts.map(a=>a.id));
-  if(seenAlerts.current&&s.alerts.some(a=>a.status==='PENDING'&&a.expires>Date.now()&&!seenAlerts.current.has(a.id))){openWindow('opportunities');if(soundOn&&document.visibilityState==='visible')ringOpportunityBell(audioRef.current)}seenAlerts.current=ids;
+  if(seenAlerts.current&&s.alerts.some(a=>a.status==='PENDING'&&a.expires>Date.now()&&!seenAlerts.current.has(a.id))){openWindow('opportunities');if(soundOn&&document.visibilityState==='visible')playAlertBell()}seenAlerts.current=ids;
  },[s?.alerts,soundOn]);
  useEffect(()=>{if(s&&!settingsDirty){setBudgetDraft(String(s.maxPremium??350));setSymbolsDraft((s.extraSymbols||[]).join(', '))}},[s,settingsDirty]);
  const clock=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
@@ -102,11 +123,13 @@ export default function PaperSession({connected}){
  </article>}
  return <section className="itt-card itt-paper-compact" aria-label="Paper trading control center">
   <div className="itt-paper-top-grid"><div className="itt-paper-command"><div className="itt-eyebrow">ICA MASTER · PAPER TRADING</div><h3>Scanner &amp; paper trades</h3>
-   <div className="itt-scan-buttons"><button type="button" className="itt-wide-button" disabled={busy||!connected||s?.enabled} onClick={()=>act('start')}>START SCAN</button><button type="button" className="itt-wide-button" disabled={!s?.enabled} onClick={()=>act('pause')}>PAUSE SCAN</button><button type="button" className="itt-wide-button" disabled={busy} onClick={()=>act('tick')}>RUN SCAN &amp; UPDATE TRADES NOW</button></div>
+   <div className="itt-scan-buttons"><button type="button" className="itt-wide-button" disabled={busy||!connected||s?.enabled} onClick={()=>act('start')}>START SCAN</button><button type="button" className="itt-wide-button" disabled={!s?.enabled} onClick={()=>act('pause')}>PAUSE SCAN</button><button type="button" className={'itt-wide-button itt-run-now '+(['queued','checking'].includes(scanStatus.phase)?'checking':'')} disabled={busy||['queued','checking'].includes(scanStatus.phase)} aria-busy={['queued','checking'].includes(scanStatus.phase)} onClick={()=>act('tick')}>{['queued','checking'].includes(scanStatus.phase)?<><span className="itt-action-spinner" aria-hidden="true"/> CHECKING…</>:'RUN SCAN & UPDATE TRADES NOW'}</button></div>
+   {scanStatus.phase!=='idle'&&<div className={'itt-check-feedback '+scanStatus.phase} role={scanStatus.phase==='error'?'alert':'status'} aria-live="polite"><strong>{scanStatus.message}</strong>{scanStatus.check&&<><span>Updated {scanStatus.check.positionsUpdated} of {scanStatus.check.positionsChecked} open contracts · Checked {scanStatus.check.scannedSymbols?.length||0} tickers{scanStatus.check.scannedSymbols?.length?' ('+scanStatus.check.scannedSymbols.join(', ')+')':''} · {scanStatus.check.newAlerts} new opportunities</span>{scanStatus.check.positionsClosed>0&&<span>{scanStatus.check.positionsClosed} paper contract(s) closed by exit rules.</span>}{!scanStatus.check.scannedSymbols?.length&&<span>{s?.enabled?'No ticker scans were due during this check.':'Scanner paused; only open trades were checked.'}</span>}{scanStatus.check.holds?.length>0&&<details><summary>Quote holds ({scanStatus.check.holds.length})</summary>{scanStatus.check.holds.map((h,i)=><p key={i}>{h.symbol||'Check'}: {h.reason}</p>)}</details>}</>}{scanStatus.completedAt&&<small>Completed {time(scanStatus.completedAt)} ET</small>}</div>}
+   {operationNotice&&<p role="status" className="itt-operation-notice">{operationNotice}</p>}
    <p><strong>{s?.enabled?'SCANNER ENABLED':'SCANNER PAUSED'} · {positions.length} OPEN PAPER CONTRACT{positions.length===1?'':'S'}</strong></p>
    <div className="itt-paper-summary"><div><small>PAPER BUYING POWER</small><strong>{money(s?.paper?.cash)}</strong></div><div><small>REALIZED PROFIT / LOSS</small><strong>{signed(s?.paper?.realized)}</strong></div><div><small>OPEN PROFIT / LOSS</small><strong>{signed(totalPnl)}</strong><small>{marked.length!==positions.length?'Some quotes unavailable; see each trade':''}</small></div></div>
    <p className="itt-scanner-disclaimer">Scheduled checks manage every open contract and scan the next three tickers, approximately once per minute. Run Now performs that same check early; it does not analyze every stock at once. Pausing the scanner leaves open-trade protection running.</p>
-   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} aria-pressed={soundOn}>{soundOn?'🔔 Alert Bell ON · Turn Off':'🔕 Enable Alert Bell'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={()=>ringOpportunityBell(audioRef.current)}>Test Bell</button><small>{soundWarning||'Tap Enable Alert Bell after opening or reloading on each device. Keep the page active for sound; background push alerts are not configured.'}</small></div>
+   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Loading bell…':soundOn?'🔔 Alert Bell ON · Turn Off':'🔕 Enable Alert Bell'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Test Bell</button><small>{soundWarning||'Tap Enable Alert Bell after opening or reloading on each device. Keep the page active for sound; background push alerts are not configured.'}</small></div>
    <button type="button" className="itt-wide-button itt-trade-center-button" onClick={()=>openWindow()}>TRADING OPPORTUNITIES &amp; TRADES · {liveAlerts.length} awaiting · {positions.length} open · {history.length} closed</button>
   </div><aside className="itt-paper-radar" aria-label="Scanner live status and recent ticker checks"><div className="itt-paper-radar-heading"><div><span className="itt-eyebrow">ICA MARKET RADAR</span><h3>Scanner Activity</h3></div><span className={'itt-radar-state '+(radarActive?'active':'')}>{phase}</span></div>
    <div className="itt-radar-dashboard"><div className={'itt-radar-visual '+(radarActive?'running':'')} aria-hidden="true"><div className="itt-radar-rings"/><div className="itt-radar-sweep"/><div className="itt-radar-core">⌖</div></div><div className="itt-radar-primary"><small>LAST RECORDED SCAN</small><strong>{latest?.symbol||'—'}</strong><span>{latest?.state?.replaceAll('_',' ')||'NO SCANS YET'}</span><p>{latest?.reason||'Waiting for the next scheduled scan.'}</p></div></div>
@@ -118,14 +141,14 @@ export default function PaperSession({connected}){
   {(error||s?.lastError)&&<p role="alert" className="itt-paper-approval-error">{error||s.lastError}</p>}
   {exitFeedback&&<p role="status" className="itt-paper-exit-feedback">{exitFeedback}</p>}
   <details className="itt-paper-details"><summary>Server checks and trade history</summary><p>Server check {time(s?.heartbeat)} ET. Paper controls only.</p>{s?.events?.slice(0,12).map((e,i)=><p key={i}>{time(e.time)} ET · {e.text}</p>)}</details>
-  {history.slice(-5).reverse().map((t,i)=><button type="button" className="itt-history-link" key={t.id||t.symbol+t.exitTime+i} onClick={()=>openWindow('closed',t.id||t.symbol+t.exitTime)}>{t.symbol} · {t.reason} · Final paper P/L {signed(t.pnl)} · View trade</button>)}
+  <details className="itt-closed-history"><summary>Completed paper trades · History / Archive ({history.length})</summary><p>Completed trades stay saved here. They are hidden from the main trading screen.</p><button type="button" className="itt-wide-button" onClick={()=>openWindow('closed')}>OPEN COMPLETE TRADE HISTORY</button></details>
   {positions.length>0&&<aside className="itt-position-bar" aria-label="Always available paper trade controls"><button type="button" className="itt-position-open" onClick={()=>openWindow('open')}><strong>OPEN PAPER TRADES · {positions.length}</strong><span>Profit / loss {signed(totalPnl)} · Tap to reopen</span></button><button type="button" className="itt-wide-button itt-position-exit" onClick={()=>act('close_all')}>CLOSE ALL PAPER TRADES</button></aside>}
   {showWindow&&<div className="itt-opportunities-overlay"><section className="itt-opportunities-window itt-trade-center" role="dialog" aria-modal="true" aria-label="Trading opportunities and paper trades"><header className="itt-opportunities-header"><div><div className="itt-eyebrow">ICA MASTER · PAPER ONLY</div><h2>Trading Opportunities &amp; Trades</h2></div><button type="button" className="itt-opportunity-x" onClick={()=>setShowWindow(false)}>Minimize</button></header>
    <nav className="itt-trade-tabs" aria-label="Trade window tabs">{[['opportunities','Opportunities',liveAlerts.length],['open','Open Trades',positions.length],['closed','Closed Trades',history.length]].map(([key,label,count])=><button type="button" key={key} aria-pressed={windowTab===key} onClick={()=>{setWindowTab(key);setSelected(null)}}>{label} ({count})</button>)}</nav>
    {positions.length>0&&<div className="itt-trade-window-summary"><span>{positions.length} open · Estimated net P/L {signed(totalPnl)}</span><button type="button" className="itt-wide-button itt-position-exit" onClick={()=>act('close_all')}>CLOSE ALL PAPER TRADES</button></div>}
    {exitFeedback&&<p role="status" className="itt-paper-exit-feedback">{exitFeedback}</p>}
    <div className="itt-opportunities-grid">
-    {windowTab==='opportunities'&&<>{!alerts.length&&<p>No saved opportunities. Accepted contracts remain in Open Trades; completed contracts remain in Closed Trades.</p>}{alerts.map(item=>{const c=item.contract,ready=item.status==='PENDING'&&item.expires>now,open=positions.find(p=>p.alertId===item.id||p.id===item.id),state=item.status==='PENDING'&&!ready?'EXPIRED':item.status;return <article className="itt-opportunity-card" key={item.id}><div className="itt-opportunity-top"><div><span className="itt-eyebrow">{c.underlying} · {c.side}</span><h3>{money(c.strike)} <small>{c.expiration}</small></h3></div><button type="button" className="itt-opportunity-x" disabled={queued[item.id]} aria-label={'Dismiss '+c.symbol} onClick={()=>act('dismiss',item.id)}>✕</button></div><p className="itt-opportunity-symbol">{c.symbol}</p><span className={'itt-opportunity-status '+(ready?'ready':'inactive')}>{open?'ACCEPTED · OPEN TRADE':state}</span><p>{item.signal?.reason||'Rules-qualified paper setup.'}</p><p>Alert ask {money(c.ask)} · Volume {c.volume??'—'} · OI {c.openInterest??'—'} · Delta {c.delta??'—'}</p><p>Approval expires {time(item.expires)} ET. Price and simulated cash are rechecked.</p>{feedback[item.id]&&<p role={feedback[item.id].kind==='error'?'alert':'status'} className={'itt-opportunity-inline-feedback '+feedback[item.id].kind}>{feedback[item.id].message}</p>}{open?<button type="button" className="itt-wide-button" onClick={()=>openWindow('open',open.id)}>OPEN TRADE · P/L &amp; CLOSE</button>:item.status==='TAKEN'?<button type="button" className="itt-wide-button" onClick={()=>openWindow('closed',item.id)}>VIEW CLOSED TRADE</button>:<button type="button" className="itt-wide-button" disabled={queued[item.id]||!ready||!connected||!s?.enabled} onClick={()=>act('accept',item.id)}>{queued[item.id]?'ACCEPTANCE QUEUED…':ready?'ACCEPT PAPER CONTRACT':'EXPIRED · NOT ACTIONABLE'}</button>}</article>})}</>}
+    {windowTab==='opportunities'&&<>{!alerts.length&&<p>No saved opportunities. Accepted contracts remain in Open Trades; completed contracts remain in Closed Trades.</p>}{alerts.map(item=>{const c=item.contract,ready=item.status==='PENDING'&&item.expires>now,open=positions.find(p=>p.alertId===item.id||p.id===item.id),state=item.status==='PENDING'&&!ready?'EXPIRED':item.status;return <article className="itt-opportunity-card" key={item.id}><div className="itt-opportunity-top"><div><span className="itt-eyebrow">{c.underlying} · {c.side}</span><h3>{money(c.strike)} <small>{c.expiration}</small></h3></div><button type="button" className="itt-opportunity-x" disabled={queued[item.id]} aria-label={'Dismiss '+c.symbol} onClick={()=>act('dismiss',item.id)}>✕</button></div><p className="itt-opportunity-symbol">{c.symbol}</p><span className={'itt-opportunity-status '+(ready?'ready':'inactive')}>{open?'ACCEPTED · OPEN TRADE':state}</span><p>{item.signal?.reason||'Rules-qualified paper setup.'}</p><p>Alert ask {money(c.ask)} · Volume {c.volume??'—'} · OI {c.openInterest??'—'} · Delta {c.delta??'—'}</p><p>Approval expires {time(item.expires)} ET. Price and simulated cash are rechecked.</p>{feedback[item.id]&&<p role={feedback[item.id].kind==='error'?'alert':'status'} className={'itt-opportunity-inline-feedback '+feedback[item.id].kind}>{feedback[item.id].message}</p>}{open?<button type="button" className="itt-wide-button" onClick={()=>openWindow('open',open.id)}>OPEN TRADE · P/L &amp; CLOSE</button>:item.status==='TAKEN'?<button type="button" className="itt-wide-button" onClick={()=>openWindow('closed',item.id)}>VIEW CLOSED TRADE</button>:<button type="button" className="itt-wide-button" disabled={queued[item.id]||!ready||!connected||!s?.enabled} aria-busy={!!queued[item.id]} onClick={()=>act('accept',item.id)}>{queued[item.id]?'ACCEPTANCE QUEUED…':ready?'ACCEPT PAPER CONTRACT':'EXPIRED · NOT ACTIONABLE'}</button>}</article>})}</>}
     {windowTab==='open'&&<>{!positions.length&&<p>No open paper contracts. Accepted trades appear here automatically and remain here until closed.</p>}{positions.map(positionCard)}</>}
     {windowTab==='closed'&&<>{!history.length&&<p>No closed paper trades yet.</p>}{history.slice().reverse().map((t,i)=>{const id=t.id||t.symbol+t.exitTime;return <article className="itt-opportunity-card" key={id+i}><span className="itt-eyebrow">CLOSED PAPER TRADE · {t.reason?.replaceAll('_',' ')}</span><button type="button" className="itt-trade-symbol" onClick={()=>setSelected(selected===id?null:id)}>{t.symbol} · View trade details</button>{pnlBlock(t,true)}<p>Entry cost {money(t.cost)} · Entry fill {money(t.fill)} · Exit fill {money(t.exitFill)}</p><p>Opened {time(t.time)} ET · Closed {time(t.exitTime)} ET</p>{selected===id&&<p>Strike {money(t.strike)} · Expiration {t.expiration||'—'} · Exit reason {t.reason?.replaceAll('_',' ')}. This contract is closed; there is no open position to exit.</p>}</article>})}</>}
    </div><p className="itt-opportunity-help">Minimize keeps trades open. Close Contract exits one; Close All exits every open paper contract and cancels queued approvals. A fresh positive bid is required. Paper only.</p>

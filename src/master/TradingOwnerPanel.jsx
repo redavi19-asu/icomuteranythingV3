@@ -120,6 +120,7 @@ export default function TradingOwnerPanel(){
  const removeTicker=ticker=>{const next=extraTickers.filter(x=>x!==ticker);setExtraTickers(next);try{localStorage.setItem('ica_trading_extra_tickers',JSON.stringify(next))}catch{}if(selected===ticker)setSelected('SPY')};
  const [interval,setIntervalValue]=useState('5');
  const [chainSide,setChainSide]=useState('CALL');
+ const [chainOpen,setChainOpen]=useState(()=>new URLSearchParams(window.location.search).get('panel')==='chain');
  const [autoStart,setAutoStart]=useState(readAutoStart);
  const [expanded,setExpanded]=useState(()=>{try{return localStorage.getItem('ica_trading_fullscreen')==='true'}catch{return false}});
  const [popPanel]=useState(()=>{
@@ -208,9 +209,9 @@ export default function TradingOwnerPanel(){
      </section>
  );
  const chainPanel=(
-<section className="itt-card itt-chain-panel"><div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('bolt',17)}</span><div><div className="itt-eyebrow">OPTIONS INTELLIGENCE</div><h3>{selected} Contracts</h3></div></div><div className="itt-panel-buttons"><span className="itt-muted-badge">{schwabStatus?.connected?'SCHWAB':'NO CHAIN'}</span>{popButton('chain')}</div></div>
-      <div className="itt-chain-tabs"><button type="button" className={chainSide==='CALL'?'active':''} aria-pressed={chainSide==='CALL'} onClick={()=>setChainSide('CALL')}>CALLS</button><button type="button" className={chainSide==='PUT'?'active':''} aria-pressed={chainSide==='PUT'} onClick={()=>setChainSide('PUT')}>PUTS</button></div>
-      <SchwabOptions symbol={selected} side={chainSide} enabled={!!schwabStatus?.connected}/>
+<section className="itt-card itt-chain-panel"><div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('bolt',17)}</span><div><div className="itt-eyebrow">OPTIONS INTELLIGENCE</div><h3>{selected} Contracts</h3></div></div><div className="itt-panel-buttons"><span className="itt-muted-badge">{schwabStatus?.connected?'SCHWAB':'NO CHAIN'}</span><button type="button" className="itt-popout-button" aria-expanded={chainOpen} onClick={()=>setChainOpen(v=>!v)}>{chainOpen?'Collapse':'Show contracts'}</button>{popButton('chain')}</div></div>
+      {(chainOpen)&&<><div className="itt-chain-tabs"><button type="button" className={chainSide==='CALL'?'active':''} aria-pressed={chainSide==='CALL'} onClick={()=>setChainSide('CALL')}>CALLS</button><button type="button" className={chainSide==='PUT'?'active':''} aria-pressed={chainSide==='PUT'} onClick={()=>setChainSide('PUT')}>PUTS</button></div>
+      <SchwabOptions symbol={selected} side={chainSide} enabled={!!schwabStatus?.connected}/></>}
      </section>
  );
  const riskPanel=(

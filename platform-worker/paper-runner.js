@@ -33,10 +33,11 @@ function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100
 async function data(env,owner,kind,symbol){const r=await schwabMarket(new Request('https://internal/platform/schwab/'+kind+'?symbol='+symbol+'&frequency=1'),env,owner,kind);if(!r.ok)throw Error('Market feed unavailable.');return r.json()}
 export async function runPaperTick(env,owner,{scan=true}={}){
  const row=await load(env,owner.id),s=row.state;s.heartbeat=Date.now();s.lastError=null;
+ const check={id:crypto.randomUUID(),startedAt:Date.now(),completedAt:null,positionsChecked:0,positionsUpdated:0,positionsClosed:0,scannedSymbols:[],newAlerts:0,holds:[]};
  expireAlerts(s);
  try{
   // Fetch independently so one unavailable contract cannot block another exit.
-  const positions=[...s.paper.positions];
+  const positions=[...s.paper.positions];check.positionsChecked=positions.length;
   for(let offset=0;offset<positions.length;offset+=8){
    const results=await Promise.all(positions.slice(offset,offset+8).map(async p=>{
     try{return {id:p.id,quote:{...p,...await schwabContractQuote(env,owner,p.symbol)}}}catch(error){return {id:p.id,error}}
@@ -45,9 +46,9 @@ export async function runPaperTick(env,owner,{scan=true}={}){
     const position=s.paper.positions.find(p=>p.id===result.id);if(!position)continue;
     try{
      if(result.error)throw result.error;
-     const open=managePaperPosition(s,result.id,result.quote,{maxPremium:budget(s)});
-     if(!open)event(s,'SIMULATED EXIT '+position.symbol+': '+s.paper.trades.at(-1).reason);
-    }catch(error){position.lastError=error.message;s.lastError=position.symbol+': '+error.message;event(s,'POSITION HOLD '+position.symbol+': '+error.message)}
+     const open=managePaperPosition(s,result.id,result.quote,{maxPremium:budget(s)});check.positionsUpdated++;
+     if(!open){check.positionsClosed++;event(s,'SIMULATED EXIT '+position.symbol+': '+s.paper.trades.at(-1).reason)}
+    }catch(error){check.holds.push({symbol:position.symbol,reason:error.message});position.lastError=error.message;s.lastError=position.symbol+': '+error.message;event(s,'POSITION HOLD '+position.symbol+': '+error.message)}
    }
   }
   if(scan&&s.enabled){
@@ -55,7 +56,7 @@ export async function runPaperTick(env,owner,{scan=true}={}){
    if(!['Sat','Sun'].includes(session.weekday)&&session.minute>=575&&session.minute<945){
     const universe=scannerUniverse(s),attempts=Math.min(3,universe.length);
    for(let i=0;i<attempts;i++){
-    const symbol=universe[(s.scanIndex++%universe.length)],checkedAt=Date.now();
+    const symbol=universe[(s.scanIndex++%universe.length)],checkedAt=Date.now();check.scannedSymbols.push(symbol);
     try{
      const history=await data(env,owner,'history',symbol);
      const bars=(history.candles||[]).filter(c=>c.time+60000<=checkedAt&&Number.isFinite(c.volume));
@@ -69,19 +70,20 @@ export async function runPaperTick(env,owner,{scan=true}={}){
      const contract=candidates[0],id=symbol+'|'+signal.asOf;
      if(contract&&!s.seen.includes(id)){
       const alert={id,created:checkedAt,expires:checkedAt+120000,contract:{...contract,underlying:symbol},signal,status:'PENDING'};
-      alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);s.seen=[...s.seen,id].slice(-200);
+      check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);s.seen=[...s.seen,id].slice(-200);
       event(s,'SETUP awaiting owner approval: '+contract.symbol);
       try{await notifyPaperOpportunity(env,owner,alert)}catch(e){event(s,'Email notification unavailable: '+e.message)}
      }
     }catch(error){
-     s.lastError=error.message;
+     check.holds.push({symbol,reason:error.message});s.lastError=error.message;
      s.scanHistory=[{symbol,time:checkedAt,state:'DATA_HOLD',reason:error.message},...(s.scanHistory||[])].slice(0,30);
      event(s,'SCAN HOLD '+symbol+': '+error.message);
     }
    }
    }else s.lastScan={time:now,note:'Outside paper entry session (9:35 AM–3:45 PM ET weekdays).'};
   }
- }catch(e){s.lastError=e.message;event(s,'Data/risk hold: '+e.message)}
+ }catch(e){s.lastError=e.message;check.holds.push({reason:e.message});event(s,'Data/risk hold: '+e.message)}
+ check.completedAt=Date.now();s.lastCheck=check;
  await save(env,owner.id,row);return view(s);
 }
 export async function paperApi(request,env,owner){

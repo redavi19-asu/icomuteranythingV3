@@ -378,3 +378,13 @@
 .itt-managed-trade>.itt-position-exit{width:100%;padding:14px;margin-top:12px}
 .itt-history-link{display:block;width:100%;border:1px solid #456374;border-radius:8px;padding:11px;margin:8px 0;background:#142d3d;color:#d7f0f5;text-align:left;cursor:pointer;font:inherit;font-size:12px;overflow-wrap:anywhere}
 @media(max-width:580px){.itt-paper-summary{grid-template-columns:1fr}.itt-paper-summary strong{font-size:25px}.itt-trade-tabs{gap:5px}.itt-trade-tabs button{padding:9px 7px;font-size:11px}.itt-trade-center .itt-opportunities-header h2{font-size:19px}.itt-trade-center .itt-opportunity-help{font-size:10px}.itt-trade-window-summary{font-size:12px}.itt-trade-window-summary>.itt-wide-button{width:100%}.itt-trade-pnl>strong{font-size:27px}}
+
+.itt-run-now.checking,.itt-wide-button[aria-busy=true]{background:#176b77!important;color:white!important;border-color:#8bf1ed!important;opacity:1;cursor:progress;box-shadow:0 0 0 2px #60ddd738}
+.itt-action-spinner{display:inline-block;width:14px;height:14px;border:2px solid #c5fffb60;border-top-color:#e7fffe;border-radius:50%;vertical-align:middle;margin-right:7px;animation:itt-action-spin .8s linear infinite}
+@keyframes itt-action-spin{to{transform:rotate(360deg)}}
+.itt-check-feedback{display:flex;flex-direction:column;gap:7px;width:100%;padding:13px 15px;margin:12px 0;border:1px solid #68aaba;border-radius:10px;background:#173b4a;color:#e6fbff;font-size:12px;line-height:1.5}
+.itt-check-feedback.done{border-color:#64bc94;background:#153f31}.itt-check-feedback.warning{border-color:#bf9a59;background:#453620}.itt-check-feedback.error{border-color:#d7788a;background:#4d2531}
+.itt-check-feedback small{color:#bdd8df}.itt-check-feedback details p{margin:5px 0}.itt-operation-notice{color:#a6f1d3;font-size:12px;line-height:1.5}
+.itt-closed-history{margin-top:12px;border:1px solid #38566b;border-radius:10px;padding:12px;color:#bdd6df;font-size:12px}
+.itt-closed-history summary{cursor:pointer;font-weight:800}.itt-closed-history p{line-height:1.5}.itt-chain-panel .itt-card-heading{flex-wrap:wrap}
+@media(prefers-reduced-motion:reduce){.itt-action-spinner{animation:none;border-style:dotted}}
