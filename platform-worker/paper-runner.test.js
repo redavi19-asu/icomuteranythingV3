@@ -10,7 +10,7 @@ test('approval is single use, state survives reload, emergency close persists',a
  await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
  assert.equal((await paperApi(req('accept','setup'),env,owner)).status,200);assert.equal((await paperApi(req('accept','setup'),env,owner)).status,409);
  const restored=await(await paperApi(req(),env,owner)).json();assert.ok(restored.paper.position);assert.equal(restored.paper.dayTrades,1);
- const immediate=await(await paperApi(req('close'),env,owner)).json();assert.equal(immediate.paper.position,null);await paperApi(req('close'),env,owner);const closed=await(await paperApi(req(),env,owner)).json();assert.equal(closed.enabled,false);assert.equal(closed.paper.position,null);assert.equal(closed.paper.trades[0].reason,'MANUAL_CLOSE');assert.equal(closed.paper.trades.length,1);
+ const immediate=await(await paperApi(req('close'),env,owner)).json();assert.equal(immediate.paper.position,null);await paperApi(req('close'),env,owner);const closed=await(await paperApi(req(),env,owner)).json();assert.equal(closed.enabled,true);assert.equal(closed.paper.position,null);assert.equal(closed.paper.trades[0].reason,'MANUAL_CLOSE');assert.equal(closed.paper.trades.length,1);
  }finally{Date.now=date;globalThis.fetch=fetcher}});
 test('stale quote leaves emergency request pending and never fabricates fill',async()=>{const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});try{await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));await paperApi(req('accept','setup'),env,owner);globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now-120000}}});const held=await(await paperApi(req('close'),env,owner)).json();assert.ok(held.paper.position);assert.equal(held.closeRequested,true);assert.match(held.lastError,/fresh/)}finally{Date.now=date;globalThis.fetch=fetcher}});
 test('cross-origin controls and expired approval fail closed',async()=>{const {db,env}=await fixture();assert.equal((await paperApi(new Request('https://test',{method:'POST',body:'{}'}),env,owner)).status,403);await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending={...pending(),expires:0};db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));assert.equal((await paperApi(req('accept','setup'),env,owner)).status,409)});
@@ -58,5 +58,73 @@ test('approving one alert preserves other opportunities and keeps single positio
   assert.equal(state.alerts.find(a=>a.id==='first').status,'TAKEN');
   assert.equal(state.alerts.find(a=>a.id==='second').status,'PENDING');
   assert.equal((await paperApi(req('accept','second'),env,owner)).status,409);
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
+
+// Portfolio regressions: real quotes are replaced only inside this in-memory fixture.
+async function portfolioFixture(count=3){
+ const f=await fixture();await paperApi(req(),f.env,owner);
+ const state=freshRunner();state.enabled=true;state.paper.day='2026-11-04';state.paper.dayPnl=75.7;state.paper.realized=75.7;state.paper.dayTrades=8;
+ state.alerts=Array.from({length:count},(_,i)=>({...pending(),id:'alert-'+i,status:'PENDING',contract:{...pending().contract,symbol:'OPTION '+i,underlying:'STOCK'+i}}));
+ f.db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));return f;
+}
+function portfolioFeed(overrides={}){return async url=>{
+ const u=new URL(url);if(u.pathname.endsWith('/pricehistory'))return Response.json({candles:[]});
+ const symbol=u.searchParams.get('symbols');
+ const q=overrides[symbol];if(q==='unavailable')return Response.json({error:'fixture unavailable'},{status:503});
+ return Response.json({[symbol]:{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now,...q}}});
+}}
+async function acceptPortfolio(env,count=3){for(let i=0;i<count;i++)assert.equal((await paperApi(req('accept','alert-'+i),env,owner)).status,200)}
+test('three accepted contracts persist with separate marks and shared buying power beyond old cutoffs',async()=>{
+ const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();
+ try{const {env}=await portfolioFixture();await acceptPortfolio(env);const state=await(await paperApi(req(),env,owner)).json();
+  assert.equal(state.paper.positions.length,3);assert.equal(state.paper.cash,895.05);assert.equal(state.paper.dayTrades,11);assert.equal(state.paper.dayPnl,75.7);
+  assert.equal(state.alerts.filter(a=>a.status==='TAKEN').length,3);assert.ok(state.paper.positions.every(p=>p.mark.pnl===-8.3));
+  assert.equal((await paperApi(req('accept','alert-0'),env,owner)).status,409);
+  for(let i=0;i<3;i++)await paperApi(req('dismiss','alert-'+i),env,owner);
+  const restored=await(await paperApi(req(),env,owner)).json();assert.equal(restored.alerts.length,0);assert.equal(restored.paper.positions.length,3);assert.equal(restored.paper.cash,895.05);
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
+test('close one contract leaves the others open and scanning enabled without duplicate fills',async()=>{
+ const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();
+ try{const {env}=await portfolioFixture();await acceptPortfolio(env);const closed=await(await paperApi(req('close','alert-1'),env,owner)).json();
+  assert.deepEqual(closed.paper.positions.map(p=>p.id),['alert-0','alert-2']);assert.equal(closed.paper.trades.length,1);assert.equal(closed.paper.trades[0].symbol,'OPTION 1');assert.equal(closed.paper.trades[0].reason,'MANUAL_CLOSE');assert.equal(closed.enabled,true);
+  assert.equal((await paperApi(req('close','alert-1'),env,owner)).status,409);assert.equal((await(await paperApi(req(),env,owner)).json()).paper.trades.length,1);
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
+test('Close All persists an unavailable exit while closing the other contracts independently',async()=>{
+ const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();
+ try{const {env}=await portfolioFixture();await acceptPortfolio(env);globalThis.fetch=portfolioFeed({'OPTION 1':{quoteTime:now-120000}});
+  const partial=await(await paperApi(req('close_all'),env,owner)).json();assert.equal(partial.paper.positions.length,1);assert.equal(partial.paper.positions[0].symbol,'OPTION 1');assert.equal(partial.paper.positions[0].closeRequested,true);assert.match(partial.paper.positions[0].lastError,/fresh/);assert.equal(partial.paper.trades.length,2);assert.equal(partial.entryEpoch,1);
+  globalThis.fetch=portfolioFeed();const final=await runPaperTick(env,owner,{scan:false});assert.equal(final.paper.positions.length,0);assert.equal(final.paper.trades.length,3);assert.equal(final.closeRequested,false);assert.equal(final.paper.cash,1475.1);
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
+test('a feed failure on one open contract cannot block a protective target exit on another',async()=>{
+ const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();
+ try{const {env}=await portfolioFixture(2);await acceptPortfolio(env,2);globalThis.fetch=portfolioFeed({'OPTION 0':'unavailable','OPTION 1':{bidPrice:2.7,askPrice:2.75}});
+  const state=await runPaperTick(env,owner,{scan:false});assert.equal(state.paper.positions.length,1);assert.equal(state.paper.positions[0].symbol,'OPTION 0');assert.equal(state.paper.trades[0].symbol,'OPTION 1');assert.equal(state.paper.trades[0].reason,'PROFIT_TARGET');
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
+test('legacy open position, cash and closed history migrate without reset',async()=>{
+ const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();
+ try{const {env,db}=await portfolioFixture(1);const legacy=freshRunner();legacy.paper=stepPaper(newPaper(),{quote:pending().contract,enter:true,now});legacy.paper.realized=91.7;legacy.paper.trades=[{symbol:'OLD CLOSED',pnl:91.7}];legacy.closeRequested=true;legacy.mark={bid:1.95,ask:2,quoteTime:now,pnl:-8.3};
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(legacy));const migrated=await(await paperApi(req(),env,owner)).json();assert.equal(migrated.paper.positions.length,1);assert.equal(migrated.paper.cash,1298.35);assert.equal(migrated.paper.realized,91.7);assert.equal(migrated.paper.trades[0].symbol,'OLD CLOSED');assert.equal(migrated.paper.positions[0].closeRequested,true);assert.equal(migrated.paper.positions[0].mark.pnl,-8.3);
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
+test('available paper cash still gates additional contracts without losing accepted trades',async()=>{
+ const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();
+ try{const {env,db}=await portfolioFixture(2);const state=JSON.parse(db.prepare('SELECT payload FROM paper_runners').get().payload);state.paper.cash=300;db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));await acceptPortfolio(env,1);
+  const rejected=await paperApi(req('accept','alert-1'),env,owner);assert.equal(rejected.status,409);assert.match((await rejected.json()).error,/Insufficient paper cash/);const after=await(await paperApi(req(),env,owner)).json();assert.equal(after.paper.positions.length,1);assert.equal(after.paper.cash,98.35);
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
+test('the scanner continues checking new symbols while a paper contract is open',async()=>{
+ const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;const feed=portfolioFeed();let histories=0;globalThis.fetch=async(url,options)=>{if(String(url).includes('/pricehistory'))histories++;return feed(url,options)};
+ try{const {env}=await portfolioFixture(1);await acceptPortfolio(env,1);const state=await runPaperTick(env,owner);assert.equal(state.paper.positions.length,1);assert.equal(histories,3);assert.equal(state.scanHistory.length,3)}finally{Date.now=date;globalThis.fetch=fetcher}
+});
+test('Close All wins an in-flight approval and invalidates approvals queued under an older epoch',async()=>{
+ const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();
+ try{const {env}=await portfolioFixture(2);await acceptPortfolio(env,1);let interrupted=false;const feed=portfolioFeed();globalThis.fetch=async(url,options)=>{if(!interrupted&&String(url).includes('OPTION+1')){interrupted=true;assert.equal((await paperApi(req('close_all'),env,owner)).status,200)}return feed(url,options)};
+  assert.equal((await paperApi(req('accept','alert-1'),env,owner)).status,409);assert.equal(interrupted,true);const state=await(await paperApi(req(),env,owner)).json();assert.equal(state.paper.positions.length,0);assert.equal(state.paper.trades.length,1);
+  const oldApproval=new Request('https://test/platform/paper',{method:'POST',headers:{Origin:'https://icomputeranything.com'},body:JSON.stringify({action:'accept',id:'alert-1',epoch:0})});const rejected=await paperApi(oldApproval,env,owner);assert.equal(rejected.status,409);assert.match((await rejected.json()).error,/Close All/);
  }finally{Date.now=date;globalThis.fetch=fetcher}
 });

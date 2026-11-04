@@ -354,3 +354,27 @@
 .itt-paper-exit-feedback{padding:12px;border:1px solid #75b5b4;background:#153e46;color:#eafffc;border-radius:9px}
 .itt-paper-compact:has(.itt-position-bar){padding-bottom:115px}
 @media(max-width:580px){.itt-position-bar{left:5px;right:5px;bottom:5px;padding:10px;gap:8px}.itt-position-bar .itt-wide-button{max-width:46%;padding:12px 9px}.itt-position-open strong{font-size:11px}.itt-position-open span{font-size:11px}.itt-position-overlay{padding-bottom:100px}.itt-position-overlay .itt-opportunities-header{flex-wrap:wrap}}
+
+/* Paper trade center: scanner controls and contract exit controls have distinct jobs. */
+.itt-scan-buttons{display:flex;flex-wrap:wrap;gap:9px}
+.itt-scan-buttons .itt-wide-button:nth-child(3){background:#183b4c;color:#e4f7fa;border-color:#5e8494}
+.itt-paper-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;width:100%;margin:12px 0}
+.itt-paper-summary>div{padding:12px;background:#112b39;border:1px solid #385b6e;border-radius:10px;min-width:0}
+.itt-paper-summary small{display:block;color:#a6c7d1;font-size:10px;line-height:1.5}.itt-paper-summary strong{display:block;font-size:23px;color:#eafff5;margin:5px 0;overflow-wrap:anywhere}
+.itt-trade-center-button{width:100%;white-space:normal!important;text-align:left}
+.itt-trade-tabs{display:flex;gap:8px;flex-wrap:wrap;padding:12px 0;flex-shrink:0}
+.itt-trade-tabs button{padding:11px 14px;color:#c5dce6;background:#183245;border:1px solid #4b7188;border-radius:8px;cursor:pointer;font-weight:850}
+.itt-trade-tabs button[aria-pressed=true]{background:#17684f;color:white;border-color:#80e5bb}
+.itt-trade-window-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;flex-shrink:0;font-size:13px;font-weight:800}
+.itt-trade-center .itt-opportunities-grid{margin:10px 0;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
+.itt-opportunities-overlay:has(.itt-trade-center){padding-bottom:100px}
+.itt-trade-center .itt-paper-exit-feedback{flex-shrink:0;max-height:85px;overflow:auto;margin:6px 0}
+.itt-trade-center .itt-opportunity-help{margin:6px 0;font-size:11px;flex-shrink:0}
+.itt-trade-symbol{display:block;width:100%;padding:10px 0;background:transparent;border:0;color:#d3f7f5;text-align:left;cursor:pointer;font-size:13px;font-weight:800;overflow-wrap:anywhere}
+.itt-managed-trade.selected{border-color:#83f6ca;box-shadow:inset 0 0 0 1px #83f6ca}
+.itt-trade-pnl{display:grid;grid-template-columns:1fr auto;gap:6px;margin:12px 0;padding:13px;border:1px solid #537484;border-radius:10px;background:#1a3443}
+.itt-trade-pnl>small{grid-column:1/-1;font-size:10px;color:#c4dce4;line-height:1.5}.itt-trade-pnl>strong{font-size:30px;overflow-wrap:anywhere}.itt-trade-pnl>span{font-size:19px;font-weight:900;align-self:center}
+.itt-trade-pnl.gain{color:#a0f8c6;border-color:#4fbb8e;background:#153d32}.itt-trade-pnl.loss{color:#ffb6bf;border-color:#cc6a7e;background:#4a2330}
+.itt-managed-trade>.itt-position-exit{width:100%;padding:14px;margin-top:12px}
+.itt-history-link{display:block;width:100%;border:1px solid #456374;border-radius:8px;padding:11px;margin:8px 0;background:#142d3d;color:#d7f0f5;text-align:left;cursor:pointer;font:inherit;font-size:12px;overflow-wrap:anywhere}
+@media(max-width:580px){.itt-paper-summary{grid-template-columns:1fr}.itt-paper-summary strong{font-size:25px}.itt-trade-tabs{gap:5px}.itt-trade-tabs button{padding:9px 7px;font-size:11px}.itt-trade-center .itt-opportunities-header h2{font-size:19px}.itt-trade-center .itt-opportunity-help{font-size:10px}.itt-trade-window-summary{font-size:12px}.itt-trade-window-summary>.itt-wide-button{width:100%}.itt-trade-pnl>strong{font-size:27px}}

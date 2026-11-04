@@ -1,4 +1,5 @@
-import {newPaper,stepPaper,paperRules} from '../src/master/paper-session.js';
+import {normalizePaperPortfolio,enterPaperPosition,managePaperPosition} from '../src/master/paper-portfolio.js';
+import {newPaper,paperRules} from '../src/master/paper-session.js';
 import {evaluateSymbol,eligiblePaperQuote,marketTime} from '../src/master/trading-paper-engine.js';
 import {schwabMarket,schwabContractQuote} from './schwab-connection.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
@@ -13,7 +14,7 @@ function alertList(s){
 }
 const liveAlert=(a,now=Date.now())=>a.status==='PENDING'&&a.expires>now;
 function expireAlerts(s,now=Date.now()){for(const a of alertList(s))if(a.status==='PENDING'&&a.expires<=now){a.status='EXPIRED';event(s,'Approval expired: '+a.contract.symbol);}}
-const view=s=>({...s,pending:null,alerts:alertList(s),scanUniverse:scannerUniverse(s),mode:'PAPER_ONLY',realOrdersEnabled:false});
+const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),scanUniverse:scannerUniverse(s),mode:'PAPER_ONLY',realOrdersEnabled:false});
 // Optional outbound notification. Requires sender domain and API key in server secrets.
 async function notifyPaperOpportunity(env,owner,alert){
  const api=String(env.RESEND_API_KEY||'').trim(),from=String(env.ICA_TRADING_ALERT_FROM||'').trim();
@@ -26,17 +27,30 @@ async function notifyPaperOpportunity(env,owner,alert){
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
 export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],maxPremium:paperRules.premiumBudget,extraSymbols:[]});
-async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:JSON.parse(row.payload)}}
-async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');}
+async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
+async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
 async function data(env,owner,kind,symbol){const r=await schwabMarket(new Request('https://internal/platform/schwab/'+kind+'?symbol='+symbol+'&frequency=1'),env,owner,kind);if(!r.ok)throw Error('Market feed unavailable.');return r.json()}
-export async function runPaperTick(env,owner){
+export async function runPaperTick(env,owner,{scan=true}={}){
  const row=await load(env,owner.id),s=row.state;s.heartbeat=Date.now();s.lastError=null;
  expireAlerts(s);
  try{
-  if(s.paper.position){const p=s.paper.position,q={...p,...await schwabContractQuote(env,owner,p.symbol)};const next=stepPaper(s.paper,{quote:q,close:s.closeRequested,maxPremium:budget(s)});s.mark={bid:q.bid,ask:q.ask,quoteTime:q.quoteTime,pnl:Math.round(((q.bid-0.01)*100-0.65-p.cost)*100)/100};
-   if(!next.position){event(s,'SIMULATED EXIT: '+next.trades.at(-1).reason);s.closeRequested=false;s.mark=null}s.paper=next;
-  }else if(s.enabled){
+  // Fetch independently so one unavailable contract cannot block another exit.
+  const positions=[...s.paper.positions];
+  for(let offset=0;offset<positions.length;offset+=8){
+   const results=await Promise.all(positions.slice(offset,offset+8).map(async p=>{
+    try{return {id:p.id,quote:{...p,...await schwabContractQuote(env,owner,p.symbol)}}}catch(error){return {id:p.id,error}}
+   }));
+   for(const result of results){
+    const position=s.paper.positions.find(p=>p.id===result.id);if(!position)continue;
+    try{
+     if(result.error)throw result.error;
+     const open=managePaperPosition(s,result.id,result.quote,{maxPremium:budget(s)});
+     if(!open)event(s,'SIMULATED EXIT '+position.symbol+': '+s.paper.trades.at(-1).reason);
+    }catch(error){position.lastError=error.message;s.lastError=position.symbol+': '+error.message;event(s,'POSITION HOLD '+position.symbol+': '+error.message)}
+   }
+  }
+  if(scan&&s.enabled){
    const now=Date.now(),session=marketTime(now);
    if(!['Sat','Sun'].includes(session.weekday)&&session.minute>=575&&session.minute<945){
     const universe=scannerUniverse(s),attempts=Math.min(3,universe.length);
@@ -80,7 +94,7 @@ export async function paperApi(request,env,owner){
   const row=await load(env,owner.id),s=row.state;expireAlerts(s);
   if(action==='start'){s.enabled=true;event(s,'Owner enabled paper setup scanning.')}
   else if(action==='settings'){
-   if(s.paper.position)throw Error('Change paper scan settings only when no position is active.');
+   if(s.paper.positions.length)throw Error('Change paper scan settings only when no positions are active.');
    const input=JSON.parse(body),amount=Number(input.maxPremium);
    if(!Number.isFinite(amount)||amount<1||amount>5000)throw Error('Paper max premium must be between $1 and $5,000.');
    if(!Array.isArray(input.extraSymbols)||input.extraSymbols.length>20||!input.extraSymbols.every(v=>typeof v==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(v)))throw Error('Up to 20 valid uppercase symbols are allowed.');
@@ -88,7 +102,13 @@ export async function paperApi(request,env,owner){
    event(s,'Paper scan settings updated.');
   }
     else if(action==='pause'){s.enabled=false;event(s,'Owner paused new setups. Existing position protection continues.')}
-  else if(action==='close'){s.enabled=false;s.closeRequested=!!s.paper.position;event(s,'Owner requested emergency simulated close. Awaiting valid bid.')}
+  else if(action==='close'||action==='close_all'){
+   const selected=action==='close'&&id?s.paper.positions.filter(p=>p.id===id):s.paper.positions;
+   if(action==='close'&&id&&!selected.length)throw Error('This contract is already closed. See Closed Trades.');
+   if(action==='close_all'||!id)s.entryEpoch++;
+   for(const position of selected)position.closeRequested=true;
+   normalizePaperPortfolio(s);event(s,selected.length?'Owner requested simulated close: '+selected.map(p=>p.symbol).join(', '):'No open paper contracts to close.');
+  }
   else if(action==='skip'||action==='dismiss'){
    const alerts=alertList(s),a=alerts.find(x=>x.id===id);
    if(!a)throw Error('Alert already dismissed or changed.');
@@ -96,7 +116,10 @@ export async function paperApi(request,env,owner){
   }
   else if(action==='accept'){
    const a=alertList(s).find(x=>x.id===id);
-   if(!s.enabled||s.paper.position||!a||!liveAlert(a))throw Error('Setup expired, changed, paused or position already open.');
+   if(!s.enabled)throw Error('Scanner is paused. Start Scan before accepting a new paper setup.');
+   const input=JSON.parse(body);
+   if(input.epoch!==undefined&&input.epoch!==s.entryEpoch)throw Error('Approval cancelled by Close All. Review the opportunity again before accepting.');
+   if(!a||!liveAlert(a))throw Error('This opportunity is expired or already accepted. Check Open Trades and Closed Trades.');
    const c=a.contract,quote={...c,...await schwabContractQuote(env,owner,c.symbol)};
    if(a.expires<Date.now())throw Error('Setup expired during quote refresh.');
    if(!Number.isFinite(quote.ask)||quote.ask<=0||Math.abs(quote.ask/c.ask-1)>0.02){
@@ -104,14 +127,14 @@ export async function paperApi(request,env,owner){
     await save(env,owner.id,row);
     return response({error:'Contract price moved over 2%. This alert was marked repriced. Wait for a fresh setup.',code:'CONTRACT_REPRICED',status:view(s)},409);
    }
-   s.paper=stepPaper(s.paper,{quote,enter:true,maxPremium:budget(s)});
+   enterPaperPosition(s,a,quote,{maxPremium:budget(s)});
    a.status='TAKEN';a.enteredAt=Date.now();event(s,'OWNER APPROVED simulated entry: '+c.symbol);
   }else throw Error('Unknown action.');
   await save(env,owner.id,row);
   // Persist emergency intent before any network request, then try the exit immediately.
-  if(action==='close'&&s.closeRequested)return response(await runPaperTick(env,owner));
+  if(['close','close_all'].includes(action)&&s.closeRequested)return response(await runPaperTick(env,owner,{scan:false}));
   return response(view(s));
- }catch(e){return response({error:e.message},409)}
+ }catch(e){return response({error:e.message,code:e.message==='State changed; refresh and retry.'?'STATE_CHANGED':'PAPER_ACTION_REJECTED'},409)}
 }
 export async function scheduledPaper(env){
  const rows=await env.DB.prepare("SELECT p.owner_id FROM paper_runners p JOIN users u ON u.id=p.owner_id WHERE u.role='owner' AND u.status='active'").all();
