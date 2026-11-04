@@ -143,6 +143,19 @@ async function accessToken(env,owner){
   throw error;
  }finally{await env.DB.prepare('UPDATE schwab_connections SET refresh_lock_until=0,refresh_lock_id=NULL WHERE owner_id=? AND refresh_lock_id=?').bind(owner.id,lease).run()}
 }
+// Server-side streaming credentials. Never return the Schwab OAuth token to a browser.
+export async function schwabStreamerSession(env,owner){
+ if(!owner?.id||owner.role!=='owner')throw Error('Owner access required.');
+ const auth=await accessToken(env,owner);
+ const r=await fetch('https://api.schwabapi.com/trader/v1/userPreference',{headers:{Authorization:'Bearer '+auth.token,Accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(12000)});
+ if(!r.ok)throw Error('Schwab streaming preferences unavailable ('+r.status+').');
+ const prefs=await boundedJson(r,250000);
+ const root=Array.isArray(prefs)?prefs[0]:prefs,info=Array.isArray(root?.streamerInfo)?root.streamerInfo[0]:null;
+ const url=info?.streamerSocketUrl,customer=info?.schwabClientCustomerId,correl=info?.schwabClientCorrelId;
+ if(typeof url!=='string'||!url.startsWith('wss://')||typeof customer!=='string'||typeof correl!=='string')throw Error('Schwab streaming credentials not present in account preferences.');
+ const parsed=new URL(url);if(!parsed.hostname.endsWith('.schwab.com')&&!parsed.hostname.endsWith('.schwabapi.com'))throw Error('Unexpected streaming host.');
+ return {url,token:auth.token,customer,correl,channel:info.schwabClientChannel||'N9',functionId:info.schwabClientFunctionId||'APIAPP'};
+}
 export async function schwabQuotes(request,env,owner){
  if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
  const symbols=(new URL(request.url).searchParams.get('symbols')||'SPY').split(',').map(x=>x.trim().toUpperCase());
