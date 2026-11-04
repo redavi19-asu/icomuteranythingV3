@@ -55,8 +55,15 @@ export async function paperApi(request,env,owner){
   if(action==='tick')return response(await runPaperTick(env,owner));
   const row=await load(env,owner.id),s=row.state;
   if(action==='start'){s.enabled=true;event(s,'Owner enabled paper setup scanning.')}
-   else if(action==='settings'){\n    if(s.paper.position||s.pending)throw Error('Change paper scan settings only when no position or setup is active.');\n    const amount=Number(JSON.parse(body).maxPremium);if(!Number.isFinite(amount)||amount<1||amount>5000)throw Error('Paper max premium must be $1–$5,000.');\n    const input=JSON.parse(body).extraSymbols;if(!Array.isArray(input)||input.length>20||!input.every(v=>typeof v==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(v)))throw Error('Add up to 20 valid uppercase symbols.');\n    s.maxPremium=Math.round(amount*100)/100;s.extraSymbols=[...new Set(input)];event(s,'Paper settings updated; max premium 
-  else if(action==='pause'){s.enabled=false;event(s,'Owner paused new setups. Existing position protection continues.')}
+  else if(action==='settings'){
+   if(s.paper.position||s.pending)throw Error('Change paper scan settings only when no position or setup is active.');
+   const input=JSON.parse(body),amount=Number(input.maxPremium);
+   if(!Number.isFinite(amount)||amount<1||amount>5000)throw Error('Paper max premium must be between $1 and $5,000.');
+   if(!Array.isArray(input.extraSymbols)||input.extraSymbols.length>20||!input.extraSymbols.every(v=>typeof v==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(v)))throw Error('Up to 20 valid uppercase symbols are allowed.');
+   s.maxPremium=Math.round(amount*100)/100;s.extraSymbols=[...new Set(input.extraSymbols)];
+   event(s,'Paper scan settings updated.');
+  }
+    else if(action==='pause'){s.enabled=false;event(s,'Owner paused new setups. Existing position protection continues.')}
   else if(action==='close'){s.enabled=false;s.closeRequested=!!s.paper.position;event(s,'Owner requested emergency simulated close. Awaiting valid bid.')}
   else if(action==='skip'){if(!s.pending||s.pending.id!==id)throw Error('Setup changed.');s.seen=[...s.seen,s.pending.id].slice(-200);s.pending=null;event(s,'Owner skipped setup.')}
   else if(action==='accept'){
@@ -67,24 +74,6 @@ export async function paperApi(request,env,owner){
    s.paper=stepPaper(s.paper,{quote,enter:true,maxPremium:budget(s)});s.seen=[...s.seen,id].slice(-200);s.pending=null;event(s,'OWNER APPROVED simulated entry: '+c.symbol);
   }else throw Error('Unknown action.');
   await save(env,owner.id,row);return response({...s,scanUniverse:scannerUniverse(s),mode:'PAPER_ONLY',realOrdersEnabled:false});
- }catch(e){return response({error:e.message},409)}
-}
-export async function scheduledPaper(env){
- const rows=await env.DB.prepare("SELECT p.owner_id FROM paper_runners p JOIN users u ON u.id=p.owner_id WHERE u.role='owner' AND u.status='active'").all();
- for(const row of rows.results||[])try{await runPaperTick(env,{id:row.owner_id,role:'owner'})}catch{}
-}
-+s.maxPremium+'.');\n   }
-  else if(action==='pause'){s.enabled=false;event(s,'Owner paused new setups. Existing position protection continues.')}
-  else if(action==='close'){s.enabled=false;s.closeRequested=!!s.paper.position;event(s,'Owner requested emergency simulated close. Awaiting valid bid.')}
-  else if(action==='skip'){if(!s.pending||s.pending.id!==id)throw Error('Setup changed.');s.seen=[...s.seen,s.pending.id].slice(-200);s.pending=null;event(s,'Owner skipped setup.')}
-  else if(action==='accept'){
-   if(!s.enabled||s.paper.position||!s.pending||s.pending.id!==id||s.pending.expires<Date.now())throw Error('Setup expired, changed, paused or position already open.');
-   const c=s.pending.contract,quote={...c,...await schwabContractQuote(env,owner,c.symbol)};
-   if(s.pending.expires<Date.now())throw Error('Setup expired during quote refresh.');
-   if(quote.ask>c.ask*1.02||quote.ask<c.ask*0.98)throw Error('Contract moved over 2%; skip and wait for a fresh setup.');
-   s.paper=stepPaper(s.paper,{quote,enter:true});s.seen=[...s.seen,id].slice(-200);s.pending=null;event(s,'OWNER APPROVED simulated entry: '+c.symbol);
-  }else throw Error('Unknown action.');
-  await save(env,owner.id,row);return response(s);
  }catch(e){return response({error:e.message},409)}
 }
 export async function scheduledPaper(env){
