@@ -28,8 +28,9 @@ function useSchwabQuoteStream(symbol,enabled){
       const m=JSON.parse(e.data);
       if(m.type==='connected'){attempt=0;setState(v=>({...v,status:'connected',error:''}))}
       else if(m.type==='quote'){
-       const previous=state.quote;
        setState(v=>({status:'connected',error:'',lastMessage:Date.now(),quote:{symbol:m.symbol,bid:typeof m.bid==='number'?m.bid:v.quote?.bid??null,ask:typeof m.ask==='number'?m.ask:v.quote?.ask??null,last:typeof m.last==='number'?m.last:v.quote?.last??null,quoteTime:m.quoteTime||v.quote?.quoteTime||Date.now(),delayed:m.delayed,receivedAt:m.receivedAt}}));
+      }else if(m.type==='option_quote'){
+       window.dispatchEvent(new CustomEvent('ica-option-quote-stream',{detail:m}));
       }else if(m.type==='error'||m.type==='disconnected')setState(v=>({...v,status:'error',error:m.message||'Stream disconnected.'}));
      }catch{}
     };
@@ -45,8 +46,10 @@ function useSchwabQuoteStream(symbol,enabled){
     retry=setTimeout(connect,Math.min(20000,3000*2**Math.min(3,attempt++)));
    }
   }
+  function watchOption(e){if(!active||!socket||socket.readyState!==WebSocket.OPEN||typeof e.detail?.symbol!=='string')return;socket.send(JSON.stringify({type:'watch_option',symbol:e.detail.symbol}))}
+  window.addEventListener('ica-watch-option-stream',watchOption);
   if(enabled)connect();
-  return()=>{active=false;clearTimeout(retry);if(socket)socket.close()};
+  return()=>{active=false;clearTimeout(retry);window.removeEventListener('ica-watch-option-stream',watchOption);if(socket)socket.close()};
  },[symbol,enabled]);
  return state;
 }
@@ -103,10 +106,15 @@ export function SchwabChart({symbol,enabled}){
 }
 export function SchwabOptions({symbol,side,enabled}){
  const {data,error,loading}=useMarket('options?symbol='+symbol,enabled,60000);
+ const [watched,setWatched]=useState(''),[streamQuote,setStreamQuote]=useState(null);
+ useEffect(()=>{setWatched('');setStreamQuote(null)},[symbol]);
+ useEffect(()=>{const update=e=>{if(e.detail?.symbol===watched)setStreamQuote(v=>({...v,...e.detail}))};window.addEventListener('ica-option-quote-stream',update);return()=>window.removeEventListener('ica-option-quote-stream',update)},[watched]);
+ const selectOption=contract=>{setWatched(contract);setStreamQuote(null);window.dispatchEvent(new CustomEvent('ica-watch-option-stream',{detail:{symbol:contract}}))};
  const rows=(data?.contracts||[]).filter(c=>c.side===side);
  return <div style={{padding:12,overflow:'auto',maxHeight:520}}>{!enabled?<p>Connect Schwab to load contracts.</p>:error?<p role="alert">{error}</p>:loading?<p>Loading contracts…</p>:<>
  <p style={{fontSize:11}}>Schwab · {data?.delayed===true?'Delayed':data?.delayed===false?'Provider reports no delay':'Delay status unconfirmed'} · Fetched {stamp(data?.receivedAt)} ET. Refreshes every 60 seconds. Contract timestamps appear below.</p>
- <table style={{width:'100%',fontSize:11,borderCollapse:'collapse'}}><thead><tr>{['Expiry / strike','Bid / ask','Δ','Vol / OI','Quote ET'].map(v=><th key={v} style={{textAlign:'left',padding:5}}>{v}</th>)}</tr></thead><tbody>{rows.map(c=><tr key={c.symbol} title={c.symbol} style={{borderTop:'1px solid #273347'}}><td>{c.expiration}<br/>{money(c.strike)}{c.nonStandard?' *':''}</td><td>{money(c.bid)}<br/>{money(c.ask)}</td><td>{c.delta?.toFixed(2)??'—'}</td><td>{c.volume??'—'} / {c.openInterest??'—'}</td><td>{stamp(c.quoteTime)}</td></tr>)}</tbody></table>
+ {watched&&<div className="itt-live-option"><strong>Selected option · {watched}</strong><span>{streamQuote?'STREAM RECEIVED':'Awaiting stream quote — polling chain remains available'}</span><div>Bid {money(streamQuote?.bid)} · Ask {money(streamQuote?.ask)} · Last {money(streamQuote?.last)}</div><small>{streamQuote?.delayed===true?'Provider marked DELAYED':streamQuote?.delayed===false?'Provider marked non-delayed':'Data status unconfirmed'} · Received {stamp(streamQuote?.receivedAt)} ET</small></div>}
+ <table style={{width:'100%',fontSize:11,borderCollapse:'collapse'}}><thead><tr>{['Expiry / strike','Bid / ask','Δ','Vol / OI','Quote ET'].map(v=><th key={v} style={{textAlign:'left',padding:5}}>{v}</th>)}</tr></thead><tbody>{rows.map(c=><tr key={c.symbol} title={'Select '+c.symbol+' for streaming'} onClick={()=>selectOption(c.symbol)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')selectOption(c.symbol)}} className={watched===c.symbol?'itt-selected-contract':''} style={{borderTop:'1px solid #273347',cursor:'pointer'}}><td>{c.expiration}<br/>{money(c.strike)}{c.nonStandard?' *':''}</td><td>{money(c.bid)}<br/>{money(c.ask)}</td><td>{c.delta?.toFixed(2)??'—'}</td><td>{c.volume??'—'} / {c.openInterest??'—'}</td><td>{stamp(c.quoteTime)}</td></tr>)}</tbody></table>
  {!rows.length&&<p>No contracts returned.</p>}<p style={{fontSize:11}}>Contract data for review; no trade recommendation. * Nonstandard contract.</p></>}</div>;
 }
 export function SchwabWatchPrices({symbols,enabled,onQuotes}){
