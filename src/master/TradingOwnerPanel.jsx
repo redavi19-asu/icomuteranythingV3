@@ -113,6 +113,11 @@ export default function TradingOwnerPanel(){
   return s&&Object.hasOwn(tvSymbols,s)?s:'SPY';
  });
  const [group,setGroup]=useState('Favorites');
+ const [extraTickers,setExtraTickers]=useState(()=>{try{const v=JSON.parse(localStorage.getItem('ica_trading_extra_tickers')||'[]');return Array.isArray(v)?v.filter(x=>/^[A-Z][A-Z0-9.-]{0,9}$/.test(x)).slice(0,12):[]}catch{return []}});
+ const [newTicker,setNewTicker]=useState(''),[tickerError,setTickerError]=useState('');
+ const groups={...tickerGroups,Favorites:[...new Set([...tickerGroups.Favorites,...extraTickers])]};
+ const addTicker=e=>{e.preventDefault();const ticker=newTicker.trim().toUpperCase();if(!/^[A-Z][A-Z0-9.-]{0,9}$/.test(ticker)){setTickerError('Use a valid stock/ETF symbol.');return;}if(groups.Favorites.includes(ticker)){setTickerError('Ticker is already in Favorites.');return;}if(extraTickers.length>=12){setTickerError('12 additional symbols maximum.');return;}const next=[...extraTickers,ticker];setExtraTickers(next);try{localStorage.setItem('ica_trading_extra_tickers',JSON.stringify(next))}catch{}setGroup('Favorites');setSelected(ticker);setNewTicker('');setTickerError('')};
+ const removeTicker=ticker=>{const next=extraTickers.filter(x=>x!==ticker);setExtraTickers(next);try{localStorage.setItem('ica_trading_extra_tickers',JSON.stringify(next))}catch{}if(selected===ticker)setSelected('SPY')};
  const [interval,setIntervalValue]=useState('5');
  const [chainSide,setChainSide]=useState('CALL');
  const [autoStart,setAutoStart]=useState(readAutoStart);
@@ -187,10 +192,12 @@ export default function TradingOwnerPanel(){
  const watchlistPanel=(
 <section className="itt-card itt-watchlist">
       <div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('radar',18)}</span><div><div className="itt-eyebrow">MARKET RADAR</div><h3>Watchlist</h3></div></div><div className="itt-panel-buttons"><span className="itt-mini-dot">QUOTES</span>{popButton('watchlist')}</div></div>
-      <div className="itt-watch-tabs">{Object.keys(tickerGroups).map(k=><button type="button" aria-pressed={group===k} key={k} className={group===k?'active':''} onClick={()=>{setGroup(k);if(!tickerGroups[k].includes(selected))setSelected(tickerGroups[k][0])}}>{k}</button>)}</div>
-      <div className="itt-watch-labels"><span>SYMBOL</span><span>LAST</span><span>SCAN</span></div>
-      <div className="itt-watch-rows">{tickerGroups[group].map(sym=><button type="button" className={sym===selected?'itt-selected':''} key={sym} onClick={()=>setSelected(sym)}><span><strong>{sym}</strong><small>{descriptions[sym]}</small></span><span className="itt-blank-price">{typeof watchQuotes.find(q=>q.symbol===sym)?.last==='number'?'$'+watchQuotes.find(q=>q.symbol===sym).last.toFixed(2):'—'}</span><span className="itt-ticker-state">WAIT</span></button>)}</div>
-      <div className="itt-watch-foot">Schwab quotes refresh every 15 seconds. Select a symbol to update both charts. SCAN remains inactive.</div>
+      <div className="itt-watch-tabs">{Object.keys(groups).map(k=><button type="button" aria-pressed={group===k} key={k} className={group===k?'active':''} onClick={()=>{setGroup(k);if(!groups[k].includes(selected))setSelected(groups[k][0])}}>{k}</button>)}</div>
+      <form className="itt-add-ticker" onSubmit={addTicker}><input value={newTicker} onChange={e=>setNewTicker(e.target.value.toUpperCase())} maxLength={10} aria-label="Add ticker" placeholder="Add ticker, e.g. NVDA"/><button type="submit">＋ ADD</button></form>{tickerError&&<p role="alert" className="itt-watch-error">{tickerError}</p>}
+       <div className="itt-watch-labels"><span>SYMBOL</span><span>LAST</span><span>SCAN</span></div>
+      <div className="itt-watch-rows">{groups[group].map(sym=><button type="button" className={sym===selected?'itt-selected':''} key={sym} onClick={()=>setSelected(sym)}><span><strong>{sym}</strong><small>{descriptions[sym]||"Custom ticker"}</small></span><span className="itt-blank-price">{typeof watchQuotes.find(q=>q.symbol===sym)?.last==='number'?'$'+watchQuotes.find(q=>q.symbol===sym).last.toFixed(2):'—'}</span><span className="itt-ticker-state">WAIT</span></button>)}</div>
+      {group==='Favorites'&&extraTickers.length>0&&<div className="itt-custom-tickers">{extraTickers.map(t=><button type="button" onClick={()=>removeTicker(t)} key={t} title={'Remove '+t}>Remove {t} ×</button>)}</div>}
+       <div className="itt-watch-foot">Schwab quotes poll every 15 seconds when connected. Select a symbol to update both charts and the options chain.</div>
      </section>
  );
  const scannerPanel=(
@@ -231,7 +238,7 @@ export default function TradingOwnerPanel(){
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
   <PaperSession connected={!!schwabStatus?.connected}/>
-  <SchwabWatchPrices symbols={tickerGroups[group]} enabled={!!schwabStatus?.connected} onQuotes={setWatchQuotes}/>
+  <SchwabWatchPrices symbols={groups[group]} enabled={!!schwabStatus?.connected} onQuotes={setWatchQuotes}/>
   <button type="button" className="itt-diagnostics-toggle" onClick={()=>setShowDiagnostics(v=>!v)} aria-expanded={showDiagnostics}>{showDiagnostics?'Hide connections and diagnostics':'Connections and advanced settings'} ▾</button>
   <div className={showDiagnostics?'itt-diagnostics':'itt-diagnostics itt-hidden'}><SchwabConnection symbol={selected} onStatus={setSchwabStatus}/><TradingAiBillingPanel billingState={aiBillingState} onStateChange={setAiBillingState}/></div>
   <nav className="itt-tabs" aria-label="Trading workspace views">
