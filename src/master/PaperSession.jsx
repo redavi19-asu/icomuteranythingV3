@@ -2,12 +2,44 @@ import React,{useEffect,useRef,useState} from 'react';
 const API=import.meta.env.VITE_ICA_MASTER_API_URL||'https://ica-master-platform.ryanedavis.workers.dev';
 const money=n=>Number.isFinite(n)?'$'+n.toFixed(2):'—';
 const time=n=>n?new Date(n).toLocaleTimeString('en-US',{timeZone:'America/New_York'}):'Not checked yet';
+// Original three-strike exchange-style bell (no downloaded sound or copyrighted recording).
+function ringOpportunityBell(ctx){
+ if(!ctx||ctx.state!=='running')return;
+ const start=ctx.currentTime+0.02;
+ [0,0.34,0.68].forEach((offset,i)=>{
+  const note=start+offset;
+  [[740,0.45],[1120,0.26],[1660,0.10]].forEach(([frequency,volume])=>{
+   const oscillator=ctx.createOscillator(),gain=ctx.createGain();
+   oscillator.type='sine';oscillator.frequency.setValueAtTime(frequency*(i===1?1.018:1),note);
+   gain.gain.setValueAtTime(0,note);
+   gain.gain.linearRampToValueAtTime(volume*0.22,note+0.014);
+   gain.gain.exponentialRampToValueAtTime(0.0001,note+1.1);
+   oscillator.connect(gain);gain.connect(ctx.destination);
+   oscillator.start(note);oscillator.stop(note+1.12);
+  });
+ });
+}
 export default function PaperSession({connected}){
  const [s,setS]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[now,setNow]=useState(Date.now());
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
  const lock=useRef(false);
  const [showAlerts,setShowAlerts]=useState(true);
  const seenAlerts=useRef(null);
+ const audioRef=useRef(null);
+ const [soundOn,setSoundOn]=useState(false);
+ const [soundWarning,setSoundWarning]=useState('');
+ async function toggleAlertSound(){
+  if(soundOn){setSoundOn(false);setSoundWarning('');return;}
+  try{
+   const Constructor=window.AudioContext||window.webkitAudioContext;
+   if(!Constructor)throw Error('This browser does not support audio alerts.');
+   if(!audioRef.current)audioRef.current=new Constructor();
+   await audioRef.current.resume();
+   if(audioRef.current.state!=='running')throw Error('Sound blocked. Tap Enable Bell again and check device volume.');
+   setSoundOn(true);setSoundWarning('');ringOpportunityBell(audioRef.current);
+  }catch(e){setSoundOn(false);setSoundWarning(e.message||'Could not enable audio.');}
+ }
+ useEffect(()=>()=>{audioRef.current?.close().catch(()=>{});audioRef.current=null},[]);
  async function call(action,id){const token=localStorage.getItem('ica_master_token');const r=await fetch(API+'/platform/paper',{method:action?'POST':'GET',headers:{Authorization:'Bearer '+token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify({action,...(action==='settings'&&id&&typeof id==='object'?id:{id})})}:{})});const d=await r.json();if(!r.ok){const ex=Error(d.error||'Paper server unavailable.');ex.code=d.code||null;ex.serverState=d.status||null;throw ex;}return d}
  async function act(action,id){if(lock.current&&!['pause','close'].includes(action))return;lock.current=true;setBusy(true);setError('');try{setS(await call(action,id));if(action==='settings')setSettingsDirty(false)}catch(e){setError(e.message);if(e.serverState)setS(e.serverState);else if(action==='accept'||action==='skip'){try{setS(await call())}catch{}}}finally{lock.current=false;setBusy(false)}}
  function saveSettings(){
@@ -18,7 +50,16 @@ export default function PaperSession({connected}){
  }
  useEffect(()=>{let active=true,t;async function refresh(){if(!lock.current){try{const data=await call();if(active){setS(data);setError('')}}catch(e){if(active)setError(e.message)}}if(active){setNow(Date.now());t=setTimeout(refresh,5000)}}refresh();return()=>{active=false;clearTimeout(t)}},[]);
  const p=s?.paper?.position,alerts=s?.alerts||[],liveAlerts=alerts.filter(x=>x.status==='PENDING'&&x.expires>now),a=liveAlerts.length>0,stale=!s?.heartbeat||now-s.heartbeat>150000;
- useEffect(()=>{if(!s?.alerts)return;const ids=new Set(s.alerts.map(x=>x.id));if(seenAlerts.current&&s.alerts.some(x=>x.status==='PENDING'&&!seenAlerts.current.has(x.id)))setShowAlerts(true);seenAlerts.current=ids;},[s?.alerts]);
+ useEffect(()=>{
+  if(!s?.alerts)return;
+  const ids=new Set(s.alerts.map(x=>x.id));
+  const fresh=seenAlerts.current&&s.alerts.some(x=>x.status==='PENDING'&&x.expires>Date.now()&&!seenAlerts.current.has(x.id));
+  if(fresh){
+   setShowAlerts(true);
+   if(soundOn&&document.visibilityState==='visible')ringOpportunityBell(audioRef.current);
+  }
+  seenAlerts.current=ids;
+ },[s?.alerts,soundOn]);
  const recent=s?.scanHistory||[],latest=recent[0]||(s?.lastScan?{symbol:s.lastScan.symbol,time:s.lastScan.time,state:s.lastScan.signal?.state||'WAIT',reason:s.lastScan.signal?.reason||s.lastScan.note}:null);
  const marketClock=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now);
  const clockParts=Object.fromEntries(marketClock.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
@@ -42,6 +83,7 @@ export default function PaperSession({connected}){
  <p><strong>{s?.enabled?'SCANNER ENABLED':'NEW SETUPS PAUSED'} · {p?'SIMULATED POSITION OPEN':'NO SIMULATED POSITION'}</strong></p>
  <p className="itt-paper-balance">Paper cash <strong>{money(s?.paper?.cash)}</strong> · Realized paper P/L <strong>{money(s?.paper?.realized)}</strong> · Daily paper P/L <strong>{money(s?.paper?.dayPnl)}</strong> · Unrealized <strong>{money(s?.mark?.pnl)}</strong></p>
  <p className="itt-scanner-disclaimer">Checks up to three symbols per scheduled server tick (approximately one minute). No fabricated alerts or guaranteed outcomes.</p>
+ <div className="itt-bell-controls"><button className="itt-wide-button" type="button" onClick={toggleAlertSound} aria-pressed={soundOn}>{soundOn?'🔔 Alert Bell ON · Turn Off':'🔕 Enable Alert Bell'}</button><button className="itt-wide-button" type="button" disabled={!soundOn} onClick={()=>ringOpportunityBell(audioRef.current)}>Test Bell</button><small>{soundWarning||'Tap Enable Alert Bell once on each device. Plays when a new setup arrives while this page is open and active; background or locked-screen alerts require push notifications.'}</small></div>
  <button className="itt-wide-button" type="button" onClick={()=>setShowAlerts(v=>!v)}>Trading opportunities · {alerts.length} saved · {liveAlerts.length} actionable · {showAlerts?'Hide window':'Show cards'}</button>
  </div>
  <aside className="itt-paper-radar" aria-label="Scanner live status and recent ticker checks">
