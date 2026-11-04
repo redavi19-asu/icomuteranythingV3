@@ -78,7 +78,7 @@ test('token exchange records only safe diagnostic codes, never provider messages
 
 test('preflight uses manual redirects and invalid code without storing tokens',async()=>{
  const {env,sqlite}=await fixture();const original=globalThis.fetch;
- globalThis.fetch=async(url,options)=>{assert.equal(options.redirect,'manual');assert.equal(new URLSearchParams(options.body).get('code'),'ica-connection-test-invalid-code');return Response.json({error:'invalid_grant'},{status:400})};
+ globalThis.fetch=async(url,options)=>{assert.equal(options.redirect,'manual');assert.equal(new URLSearchParams(options.body).get('refresh_token'),'ica-connection-test-invalid-refresh-token');return Response.json({error:'invalid_grant'},{status:400})};
  try{const r=await schwabPreflight(request('preflight','POST'),env,owner);assert.equal(r.status,200);assert.equal((await r.json()).ready,true);assert.equal(sqlite.prepare('SELECT count(*) n FROM schwab_connections').get().n,0)}finally{globalThis.fetch=original}
 });
 test('preflight fails closed on redirects and bad client credentials',async()=>{

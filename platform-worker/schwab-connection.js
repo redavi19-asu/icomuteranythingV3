@@ -33,7 +33,14 @@ async function exchange(env,body,previous=null){
  if(!r.ok){
   const error=Error('Schwab authorization was not completed. Reconnect from ICA Master.');error.providerStatus=r.status;error.safeCode='provider_http_error';
   error.providerFormat=(r.headers.get('Content-Type')||'').includes('json')?'json':'non_json';
-  try{const detail=await boundedJson(r,16000);error.responseShape=['error','errors','message','fault'].filter(k=>Object.hasOwn(detail||{},k)).join(',')||'other';if(['invalid_client','invalid_grant','invalid_request','unauthorized_client','unsupported_grant_type','invalid_scope','access_denied'].includes(detail?.error))error.safeCode=detail.error}catch(parseError){error.responseShape=parseError.name==='SyntaxError'?'invalid_json':'unreadable_response'}
+  try{
+   const detail=await boundedJson(r,16000);
+   error.responseShape='error_'+typeof detail?.error;
+   // Recognize only fixed OAuth categories, including nested/vendor formatting.
+   const categories=['invalid_client','invalid_grant','invalid_request','unauthorized_client','unsupported_grant_type','invalid_scope','access_denied'];
+   const values=[];const visit=(v,depth=0)=>{if(depth>3)return;if(typeof v==='string')values.push(v.toLowerCase().replace(/[^a-z]/g,''));else if(v&&typeof v==='object')for(const x of Object.values(v))visit(x,depth+1)};visit(detail);
+   for(const category of categories)if(values.some(v=>v.includes(category.replaceAll('_','')))){error.safeCode=category;break}
+  }catch(parseError){error.responseShape=parseError.name==='SyntaxError'?'invalid_json':'unreadable_response'}
   throw error;
  }
  const t=await boundedJson(r,32000);const expires=Number(t.expires_in);
@@ -48,9 +55,9 @@ export async function schwabPreflight(request,env,owner){
  if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
  if(!originAllowed(request))return json({error:'Unrecognized origin.'},403);
  if(!configured(env))return json({error:'Schwab setup is incomplete.'},503);
- try{await exchange(env,{grant_type:'authorization_code',code:'ica-connection-test-invalid-code',redirect_uri:SCHWAB_CALLBACK_URL})}
+ try{await exchange(env,{grant_type:'refresh_token',refresh_token:'ica-connection-test-invalid-refresh-token'})}
  catch(error){
-  if(error.providerStatus===400&&error.safeCode==='invalid_grant')return json({ready:true,note:'Schwab token endpoint reached; invalid test code rejected as expected. Owner authorization is still required.'});
+  if(error.providerStatus===400&&error.safeCode==='invalid_grant')return json({ready:true,note:'Schwab token endpoint reached; invalid test token rejected as expected. Owner authorization is still required.'});
   return json({error:'Schwab setup test failed.',providerStatus:error.providerStatus||null,errorCode:error.safeCode||'network_or_response_error',providerFormat:error.providerFormat||null,responseShape:error.responseShape||null},503);
  }
  return json({error:'Unexpected provider test response.'},503);
