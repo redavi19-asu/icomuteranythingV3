@@ -47,7 +47,7 @@ test('independent paper alerts survive reload, expire and can be dismissed one a
   assert.equal(after.alerts[1].status,'EXPIRED');
  }finally{Date.now=date}
 });
-test('approving one alert preserves other opportunities and keeps single position',async()=>{
+test('distinct approvals for the same contract create independent paper lots without duplicate approval',async()=>{
  const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
  globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});
  try{
@@ -57,7 +57,7 @@ test('approving one alert preserves other opportunities and keeps single positio
   const state=await entry.json();assert.ok(state.paper.position);
   assert.equal(state.alerts.find(a=>a.id==='first').status,'TAKEN');
   assert.equal(state.alerts.find(a=>a.id==='second').status,'PENDING');
-  assert.equal((await paperApi(req('accept','second'),env,owner)).status,409);
+  assert.equal((await paperApi(req('accept','second'),env,owner)).status,200);const lots=await(await paperApi(req(),env,owner)).json();assert.equal(lots.paper.positions.length,2);assert.equal((await paperApi(req('accept','second'),env,owner)).status,409);
  }finally{Date.now=date;globalThis.fetch=fetcher}
 });
 
