@@ -1,6 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import TradingAiAssistant, {TradingAiBillingPanel} from './TradingAiAssistant';
 import './TradingTerminal.css';
+import SchwabConnection from './SchwabConnection';
 
 /* Owner-only market workstation. Public TradingView charts are for visual research
  * and are NOT a Schwab data feed, execution signal or options chain.
@@ -101,6 +102,7 @@ function readAutoStart(){
 }
 export default function TradingOwnerPanel(){
  const [tab,setTab]=useState('dashboard');
+ const [schwabStatus,setSchwabStatus]=useState(null);
  const [aiBillingState,setAiBillingState]=useState('not_checked');
  const [selected,setSelected]=useState(()=>{
   const s=new URLSearchParams(window.location.search).get('symbol')?.toUpperCase();
@@ -222,9 +224,10 @@ export default function TradingOwnerPanel(){
     <span className="itt-brand-emblem">{icon('radar',27)}</span>
     <div><div className="itt-eyebrow">PRIVATE ICA MASTER / TRADING INTELLIGENCE</div><h2>ICA <span>PRIME</span></h2><p>High-Probability Trading Workstation</p></div>
    </div>
-   <div className="itt-status-bar"><span className="itt-status itt-off"><span className="itt-status-dot"/> SCHWAB DISCONNECTED</span><span className="itt-status itt-off">SCANNER OFF</span><span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
+   <div className="itt-status-bar"><span className="itt-status itt-off"><span className="itt-status-dot"/> {schwabStatus?.connected?'SCHWAB AUTHORIZED':'SCHWAB DISCONNECTED'}</span><span className="itt-status itt-off">SCANNER OFF</span><span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
+  <SchwabConnection symbol={selected} onStatus={setSchwabStatus}/>
   <TradingAiBillingPanel billingState={aiBillingState} onStateChange={setAiBillingState}/>
   <nav className="itt-tabs" aria-label="Trading workspace views">
    <button type="button" className={tab==='dashboard'?'active':''} onClick={()=>setTab('dashboard')}>{icon('chart',16)} Trading Dashboard</button>

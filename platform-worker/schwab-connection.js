@@ -1,28 +1,126 @@
-// Market-data connection bootstrap. No account or order API routes.
+// Owner-only Schwab market-data adapter. No account, position or order endpoints.
 export const SCHWAB_CALLBACK_URL='https://ica-master-platform.ryanedavis.workers.dev/platform/schwab/callback';
-const headers={
- 'Cache-Control':'no-store',
- 'Referrer-Policy':'no-referrer',
- 'X-Content-Type-Options':'nosniff',
- 'Content-Security-Policy':"default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
-};
-export function schwabConnectionStatus(env){
- return new Response(JSON.stringify({
-  service:'schwab-market-data',
-  appCredentialsConfigured:Boolean(env.SCHWAB_APP_KEY?.trim()&&env.SCHWAB_APP_SECRET?.trim()),
-  callbackUrl:SCHWAB_CALLBACK_URL,
-  authorizationReady:false,
-  connected:false,
-  marketDataConnected:false,
-  realOrdersEnabled:false,
-  stage:'APP_REGISTRATION',
-  note:'App registration and provider activation must finish before the protected OAuth flow is enabled.'
- }),{headers:{...headers,'Content-Type':'application/json; charset=utf-8'}});
+const TOKEN_URL='https://api.schwabapi.com/v1/oauth/token';
+const AUTH_URL='https://api.schwabapi.com/v1/oauth/authorize';
+const MARKET_URL='https://api.schwabapi.com/marketdata/v1';
+const headers={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"};
+const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{...headers,'Content-Type':'application/json; charset=utf-8'}});
+const clean=v=>typeof v==='string'?v.trim():'';
+const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
+const sha=async v=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v))),b=>b.toString(16).padStart(2,'0')).join('');
+const to64=b=>btoa(String.fromCharCode(...b));
+const from64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const configured=env=>Boolean(clean(env.SCHWAB_APP_KEY)&&clean(env.SCHWAB_APP_SECRET)&&clean(env.SCHWAB_TOKEN_ENCRYPTION_KEY)&&env.DB);
+function originAllowed(request){return ['https://icomputeranything.com','https://www.icomputeranything.com','https://redavi19-asu.github.io'].includes(request.headers.get('Origin'));}
+async function cipherKey(env){const bytes=from64(clean(env.SCHWAB_TOKEN_ENCRYPTION_KEY));if(bytes.length!==32)throw Error('Invalid encryption configuration');return crypto.subtle.importKey('raw',bytes,'AES-GCM',false,['encrypt','decrypt']);}
+export async function sealTokens(env,ownerId,value){
+ const iv=crypto.getRandomValues(new Uint8Array(12));
+ const data=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode(ownerId)},await cipherKey(env),new TextEncoder().encode(JSON.stringify(value)));
+ return JSON.stringify({v:1,iv:to64(iv),data:to64(new Uint8Array(data))});
 }
-export function schwabCallback(){
- // Reject unsolicited callbacks. Never display, persist or log an authorization
- // code. Successful exchange will require one-time owner/session-bound state.
- return new Response('Schwab connection is not active yet. Return to ICA Master and start the connection there after app activation.',{
-  status:400,headers:{...headers,'Content-Type':'text/plain; charset=utf-8'}
- });
+export async function openTokens(env,ownerId,value){
+ const blob=JSON.parse(value);if(blob.v!==1)throw Error('Unsupported token format');
+ const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:from64(blob.iv),additionalData:new TextEncoder().encode(ownerId)},await cipherKey(env),from64(blob.data));
+ return JSON.parse(new TextDecoder().decode(bytes));
+}
+async function boundedJson(response,max=1000000){
+ if(!response.body)throw Error('Empty provider response');const reader=response.body.getReader();let size=0;const chunks=[];
+ try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>max){await reader.cancel();throw Error('Provider response too large')}chunks.push(value)}}finally{reader.releaseLock()}
+ const bytes=new Uint8Array(size);let i=0;for(const c of chunks){bytes.set(c,i);i+=c.byteLength}return JSON.parse(new TextDecoder().decode(bytes));
+}
+async function exchange(env,body,previous=null){
+ const r=await fetch(TOKEN_URL,{method:'POST',headers:{Authorization:'Basic '+btoa(clean(env.SCHWAB_APP_KEY)+':'+clean(env.SCHWAB_APP_SECRET)),'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body),signal:AbortSignal.timeout(15000),redirect:'error'});
+ if(!r.ok){const error=Error('Schwab authorization was not completed. Reconnect from ICA Master.');error.providerStatus=r.status;throw error;}
+ const t=await boundedJson(r,32000);const expires=Number(t.expires_in);
+ if(!clean(t.access_token)||!Number.isFinite(expires)||expires<=0||expires>86400)throw Error('Invalid authorization response');
+ const refresh=clean(t.refresh_token)||previous?.refresh_token;
+ if(!refresh)throw Error('Refresh token not supplied');
+ return {access_token:t.access_token,refresh_token:refresh,expires_at:Date.now()+expires*1000,authorized_at:previous?.authorized_at||Date.now()};
+}
+export async function schwabConnectionStatus(env,owner){
+ if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
+ const hasKeys=Boolean(clean(env.SCHWAB_APP_KEY)&&clean(env.SCHWAB_APP_SECRET));
+ let connected=false,expiresAt=null;
+ if(configured(env)){
+  try{const row=await env.DB.prepare('SELECT payload FROM schwab_connections WHERE owner_id=?').bind(owner.id).first();if(row?.payload){const t=await openTokens(env,owner.id,row.payload);connected=Boolean(t.refresh_token);expiresAt=new Date(t.expires_at).toISOString()}}
+  catch{return json({error:'Schwab connection storage unavailable. Please try again later.'},503)}
+ }
+ return json({service:'schwab-market-data',appCredentialsConfigured:hasKeys,callbackUrl:SCHWAB_CALLBACK_URL,authorizationReady:configured(env),connected,accessExpiresAt:expiresAt,marketDataConnected:connected,realOrdersEnabled:false,stage:connected?'AUTHORIZED':configured(env)?'OWNER_AUTHORIZATION_REQUIRED':'CONFIGURATION_PENDING'});
+}
+export async function schwabAuthorize(request,env,owner){
+ if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
+ if(!originAllowed(request))return json({error:'Unrecognized origin.'},403);
+ if(!configured(env))return json({error:'Schwab connection is not configured yet.'},503);
+ const bearer=request.headers.get('Authorization')||'';if(!bearer.startsWith('Bearer '))return json({error:'Owner session required.'},403);
+ const now=Date.now(),state=random(),stateHash=await sha(state),sessionHash=await sha(bearer.slice(7));
+ await env.DB.batch([
+  env.DB.prepare('DELETE FROM schwab_oauth_states WHERE owner_id=? OR expires_at<?').bind(owner.id,now),
+  env.DB.prepare('INSERT INTO schwab_oauth_states(state_hash,owner_id,session_hash,expires_at) VALUES(?,?,?,?)').bind(stateHash,owner.id,sessionHash,now+600000),
+  env.DB.prepare('INSERT INTO schwab_connections(owner_id,generation,payload,updated_at) VALUES(?,?,NULL,?) ON CONFLICT(owner_id) DO UPDATE SET generation=excluded.generation,payload=NULL,updated_at=excluded.updated_at,refresh_lock_until=0,refresh_lock_id=NULL').bind(owner.id,stateHash,now)
+ ]);
+ const url=new URL(AUTH_URL);url.searchParams.set('response_type','code');url.searchParams.set('client_id',clean(env.SCHWAB_APP_KEY));url.searchParams.set('redirect_uri',SCHWAB_CALLBACK_URL);url.searchParams.set('scope','readonly');url.searchParams.set('state',state);
+ return json({authorizationUrl:url.toString(),realOrdersEnabled:false});
+}
+export async function schwabCallback(request,env){
+ const url=new URL(request.url),state=url.searchParams.get('state')||'',code=url.searchParams.get('code')||'';
+ const fail=(msg='Schwab authorization could not be verified. Start again from ICA Master.',status=400)=>new Response(msg,{status,headers:{...headers,'Content-Type':'text/plain; charset=utf-8'}});
+ if(!configured(env)||!/^\w{64}$/.test(state))return fail();
+ const hash=await sha(state);
+ // Atomic single-use state consumption. A still-active owner session is checked
+ // again at callback time. Codes, state, secrets and tokens are never logged.
+ const pending=await env.DB.prepare('DELETE FROM schwab_oauth_states WHERE state_hash=? RETURNING owner_id,session_hash,expires_at').bind(hash).first();
+ if(!pending||pending.expires_at<Date.now())return fail();
+ const owner=await env.DB.prepare("SELECT u.id FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.user_id=? AND s.expires_at>? AND u.role='owner' AND u.status='active'").bind(pending.session_hash,pending.owner_id,Date.now()).first();
+ if(!owner||url.searchParams.has('error')||!code||code.length>4096)return fail();
+ try{
+  const tokens=await exchange(env,{grant_type:'authorization_code',code,redirect_uri:SCHWAB_CALLBACK_URL});
+  const encrypted=await sealTokens(env,pending.owner_id,tokens);
+  const saved=await env.DB.prepare('UPDATE schwab_connections SET payload=?,updated_at=? WHERE owner_id=? AND generation=?').bind(encrypted,Date.now(),pending.owner_id,hash).run();
+  if(saved.meta?.changes!==1)return fail('The connection was cancelled or replaced. Return to ICA Master.',409);
+  return new Response(null,{status:303,headers:{...headers,Location:'https://icomputeranything.com/master?view=trading&schwab=connected'}});
+ }catch{return fail('Schwab did not complete the connection. Return to ICA Master and reconnect; newly created apps may take time to activate.',502)}
+}
+export async function schwabDisconnect(request,env,owner){
+ if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
+ if(!originAllowed(request))return json({error:'Unrecognized origin.'},403);
+ await env.DB.batch([
+  env.DB.prepare('DELETE FROM schwab_oauth_states WHERE owner_id=?').bind(owner.id),
+  env.DB.prepare('UPDATE schwab_connections SET payload=NULL,generation=?,refresh_lock_until=0,refresh_lock_id=NULL,updated_at=? WHERE owner_id=?').bind(random(),Date.now(),owner.id)
+ ]);
+ return json({connected:false,realOrdersEnabled:false,note:'Local authorization removed. Provider access can also be revoked in Schwab.'});
+}
+async function accessToken(env,owner){
+ const row=await env.DB.prepare('SELECT payload,generation FROM schwab_connections WHERE owner_id=?').bind(owner.id).first();
+ if(!row?.payload)throw Error('Connect Schwab market data first.');
+ const t=await openTokens(env,owner.id,row.payload);
+ if(t.expires_at>Date.now()+60000)return {token:t.access_token,generation:row.generation};
+ const lease=random(),now=Date.now();
+ const lock=await env.DB.prepare('UPDATE schwab_connections SET refresh_lock_id=?,refresh_lock_until=? WHERE owner_id=? AND generation=? AND refresh_lock_until<?').bind(lease,now+20000,owner.id,row.generation,now).run();
+ if(lock.meta?.changes!==1)throw Error('Schwab authorization is refreshing. Try again shortly.');
+ try{
+  const fresh=await exchange(env,{grant_type:'refresh_token',refresh_token:t.refresh_token},t);
+  const encrypted=await sealTokens(env,owner.id,fresh);
+  const saved=await env.DB.prepare('UPDATE schwab_connections SET payload=?,updated_at=? WHERE owner_id=? AND generation=? AND refresh_lock_id=?').bind(encrypted,Date.now(),owner.id,row.generation,lease).run();
+  if(saved.meta?.changes!==1)throw Error('Connection changed. Please reconnect.');
+  return {token:fresh.access_token,generation:row.generation};
+ }catch(error){
+  if([400,401,403].includes(error.providerStatus))await env.DB.prepare('UPDATE schwab_connections SET payload=NULL WHERE owner_id=? AND generation=? AND refresh_lock_id=?').bind(owner.id,row.generation,lease).run();
+  throw error;
+ }finally{await env.DB.prepare('UPDATE schwab_connections SET refresh_lock_until=0,refresh_lock_id=NULL WHERE owner_id=? AND refresh_lock_id=?').bind(owner.id,lease).run()}
+}
+export async function schwabQuotes(request,env,owner){
+ if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
+ const symbols=(new URL(request.url).searchParams.get('symbols')||'SPY').split(',').map(x=>x.trim().toUpperCase());
+ if(symbols.length>8||symbols.some(x=>! /^[A-Z][A-Z0-9.\-]{0,9}$/.test(x)))return json({error:'Use 1–8 valid stock symbols.'},400);
+ try{
+  const auth=await accessToken(env,owner);
+  const url=new URL(MARKET_URL+'/quotes');url.searchParams.set('symbols',symbols.join(','));
+  const r=await fetch(url,{headers:{Authorization:'Bearer '+auth.token,Accept:'application/json'},signal:AbortSignal.timeout(12000),redirect:'error'});
+  if(r.status===401){await env.DB.prepare('UPDATE schwab_connections SET payload=NULL WHERE owner_id=? AND generation=?').bind(owner.id,auth.generation).run();return json({error:'Schwab authorization expired. Please reconnect.'},401)}
+  if(!r.ok)return json({error:'Schwab market data unavailable.',providerStatus:r.status},503);
+  const data=await boundedJson(r);
+  const num=n=>typeof n==='number'&&Number.isFinite(n)?n:null;
+  const quotes=symbols.flatMap(symbol=>{const item=data[symbol],q=item?.quote;if(!q)return [];return [{symbol,last:num(q.lastPrice),bid:num(q.bidPrice),ask:num(q.askPrice),mark:num(q.mark),netChange:num(q.netChange),totalVolume:num(q.totalVolume),quoteTime:num(q.quoteTime),tradeTime:num(q.tradeTime),realtime:typeof item.realtime==='boolean'?item.realtime:null}]});
+  return json({provider:'Schwab',receivedAt:new Date().toISOString(),quotes,realOrdersEnabled:false});
+ }catch{return json({error:'Schwab market data is not ready. Connect or reconnect the owner session, then retry.'},503)}
 }
