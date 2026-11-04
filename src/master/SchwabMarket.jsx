@@ -10,19 +10,60 @@ function useMarket(path,enabled,period=30000){
   if(enabled)load();return()=>{cancelled=true;clearTimeout(timer)};
  },[path,enabled,period]);return state;
 }
+function useSchwabQuoteStream(symbol,enabled){
+ const [state,setState]=useState({status:'offline',quote:null,lastMessage:0,error:''});
+ useEffect(()=>{
+  let active=true,socket=null,retry=null,attempt=0;
+  setState({status:enabled?'connecting':'offline',quote:null,lastMessage:0,error:''});
+  async function connect(){
+   try{
+    const ticket=await request('stream-ticket?symbol='+encodeURIComponent(symbol));
+    if(!active)return;
+    const endpoint=(import.meta.env.VITE_ICA_MASTER_API_URL||'https://ica-master-platform.ryanedavis.workers.dev').replace(/^http/,'ws');
+    socket=new WebSocket(endpoint+'/platform/schwab/stream?ticket='+encodeURIComponent(ticket.ticket));
+    socket.onopen=()=>{if(active)setState(v=>({...v,status:'authenticating',error:''}))};
+    socket.onmessage=e=>{
+     if(!active)return;
+     try{
+      const m=JSON.parse(e.data);
+      if(m.type==='connected'){attempt=0;setState(v=>({...v,status:'connected',error:''}))}
+      else if(m.type==='quote'){
+       const previous=state.quote;
+       setState(v=>({status:'connected',error:'',lastMessage:Date.now(),quote:{symbol:m.symbol,bid:typeof m.bid==='number'?m.bid:v.quote?.bid??null,ask:typeof m.ask==='number'?m.ask:v.quote?.ask??null,last:typeof m.last==='number'?m.last:v.quote?.last??null,quoteTime:m.quoteTime||v.quote?.quoteTime||Date.now(),delayed:m.delayed,receivedAt:m.receivedAt}}));
+      }else if(m.type==='error'||m.type==='disconnected')setState(v=>({...v,status:'error',error:m.message||'Stream disconnected.'}));
+     }catch{}
+    };
+    socket.onerror=()=>{if(active)setState(v=>({...v,status:'error',error:'Streaming transport error.'}))};
+    socket.onclose=()=>{
+     if(!active)return;
+     setState(v=>({...v,status:'reconnecting'}));
+     retry=setTimeout(connect,Math.min(15000,1500*2**Math.min(4,attempt++)));
+    };
+   }catch(e){
+    if(!active)return;
+    setState(v=>({...v,status:'unavailable',error:e.message||'Streaming unavailable.'}));
+    retry=setTimeout(connect,Math.min(20000,3000*2**Math.min(3,attempt++)));
+   }
+  }
+  if(enabled)connect();
+  return()=>{active=false;clearTimeout(retry);if(socket)socket.close()};
+ },[symbol,enabled]);
+ return state;
+}
 export function SchwabChart({symbol,enabled}){
  const [frequency,setFrequency]=useState(5),[expanded,setExpanded]=useState(false);
  const [visibleBars,setVisibleBars]=useState(65),[offset,setOffset]=useState(0),[hover,setHover]=useState(null);
  const [dragStart,setDragStart]=useState(null);
  const {data,error,loading}=useMarket('history?symbol='+symbol+'&frequency='+frequency,enabled,30000);
  const quote=useMarket('quotes?symbols='+symbol,enabled,15000);
+ const stream=useSchwabQuoteStream(symbol,enabled);
  const allCandles=(data?.candles||[]).filter(c=>Number.isFinite(c.open)&&Number.isFinite(c.close)&&Number.isFinite(c.low)&&Number.isFinite(c.high)&&Number.isFinite(new Date(c.time).getTime()));
  const count=Math.min(160,Math.max(15,visibleBars));
  const maxOffset=Math.max(0,allCandles.length-count);
  const clampedOffset=Math.min(offset,maxOffset);
  const endIndex=allCandles.length-clampedOffset;
  const candles=allCandles.slice(Math.max(0,endIndex-count),endIndex);
- const q=quote.data?.quotes?.[0];
+ const q=(stream.status==='connected'&&stream.quote)?{...quote.data?.quotes?.[0],...stream.quote,realtime:stream.quote.delayed===false}:quote.data?.quotes?.[0];
  const values=candles.flatMap(c=>[c.low,c.high]),low=values.length?Math.min(...values):0,high=values.length?Math.max(...values):1;
  const pad=Math.max((high-low)*.08,high*.0001,.01),min=low-pad,max=high+pad,span=max-min||1;
  const y=p=>260-(p-min)/span*225;
@@ -45,17 +86,19 @@ export function SchwabChart({symbol,enabled}){
  return <section className="itt-card itt-schwab-interactive" style={expanded?{position:'fixed',inset:20,zIndex:10000,overflow:'auto',background:'#101722'}:{}} aria-label="Interactive Schwab price chart">
  <div className="itt-card-heading"><div><div className="itt-eyebrow">SCHWAB MARKET DATA · INTERACTIVE</div><h3>{symbol} · Price chart</h3></div><button className="itt-wide-button" onClick={()=>setExpanded(!expanded)}>{expanded?'Close expanded chart':'Expand chart'}</button></div>
  <div className="itt-schwab-chart-content">
- <div className="itt-schwab-quote"><strong>{money(q?.last)} · Bid {money(q?.bid)} · Ask {money(q?.ask)}</strong><span>Quote {stamp(q?.quoteTime)} ET · {q?.realtime===true?'Provider marks real-time':q?.realtime===false?'Delayed':'Delay status unconfirmed'} · Polls every 15s</span></div>
+ <div className="itt-schwab-quote"><strong>{money(q?.last)} · Bid {money(q?.bid)} · Ask {money(q?.ask)}</strong><span>Quote {stamp(q?.quoteTime)} ET · {q?.realtime===true?'Provider marks real-time':q?.realtime===false?'Delayed':'Delay status unconfirmed'} · {stream.status==='connected'?'STREAM ACTIVE · WebSocket updates':stream.status==='unavailable'?'STREAM UNAVAILABLE · 15s polling':stream.status==='reconnecting'?'RECONNECTING · 15s polling':'15s polling fallback'}</span></div>
+ <div className={'itt-stream-state '+(stream.status==='connected'?'itt-stream-on':'')} role="status">{stream.status==='connected'?'● SCHWAB LIVE STREAM':stream.status==='offline'?'○ OFFLINE': '○ '+stream.status.toUpperCase()} {stream.error&&' — '+stream.error}</div>
  <div className="itt-schwab-toolbar"><div>{[1,5,15,30,60].map(f=><button type="button" key={f} className={frequency===f?'selected':''} aria-pressed={frequency===f} onClick={()=>{setFrequency(f);range(65)}}>{f}m</button>)}</div><div><button onClick={()=>zoom(-1)} title="Zoom in">＋ Zoom</button><button onClick={()=>zoom(1)} title="Zoom out">－ Zoom</button><button onClick={()=>{setOffset(0);setHover(null)}}>Latest ↦</button></div></div>
  {!enabled?<p>Connect Schwab under Connections & advanced settings to load candles.</p>:error||quote.error?<p role="alert">{error||quote.error}</p>:loading&&!allCandles.length?<p>Loading Schwab candles…</p>:candles.length?<div className="itt-schwab-canvas">
  <svg viewBox="0 0 800 310" role="img" aria-label={symbol+' interactive Schwab candle chart. Hover for values, drag to pan, use zoom buttons.'} className="itt-schwab-svg" onPointerMove={onMove} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);setDragStart({x:e.clientX,offset:clampedOffset})}} onPointerUp={e=>{setDragStart(null);e.currentTarget.releasePointerCapture(e.pointerId)}} onPointerCancel={()=>setDragStart(null)} onPointerLeave={()=>{if(!dragStart)setHover(null)}} onWheel={e=>{if(e.deltaY!==0){zoom(e.deltaY>0?1:-1)}}}>
  {[0,1,2,3,4].map(i=>{const p=min+span*i/4;return <g key={i}><line x1="10" x2="725" y1={y(p)} y2={y(p)} stroke="#253246"/><text x="735" y={y(p)+4} fill="#aabbd0" fontSize="11">{p.toFixed(2)}</text></g>})}
  {candles.map((c,i)=>{const cx=x(i),w=Math.max(2,Math.min(12,500/candles.length)),color=c.close>=c.open?'#32d5a0':'#ff6581';return <g key={c.time}><line x1={cx} x2={cx} y1={y(c.high)} y2={y(c.low)} stroke={color}/><rect x={cx-w/2} y={Math.min(y(c.open),y(c.close))} width={w} height={Math.max(1,Math.abs(y(c.open)-y(c.close)))} fill={color}/></g>})}
+ {stream.status==='connected'&&Number.isFinite(q?.last)&&q.last>=min&&q.last<=max&&<g pointerEvents="none"><line x1="10" x2="724" y1={y(q.last)} y2={y(q.last)} stroke="#71ecb6" strokeWidth="1.5" strokeDasharray="6 4"/><text x="735" y={y(q.last)-7} fill="#8df5c8" fontSize="11">LIVE</text></g>}
  {hover!==null&&candles[hover]&&<g pointerEvents="none"><line x1={x(hover)} x2={x(hover)} y1="20" y2="270" stroke="#b3daef" strokeDasharray="4 4" opacity=".8"/><line x1="12" x2="724" y1={y(candles[hover].close)} y2={y(candles[hover].close)} stroke="#b3daef" strokeDasharray="4 4" opacity=".55"/></g>}
  <text x="15" y="298" fill="#aabbd0" fontSize="11">{stamp(candles[0].time)} ET</text><text x="610" y="298" fill="#aabbd0" fontSize="11">{stamp(candles.at(-1).time)} ET</text>
  </svg>
  <div className="itt-schwab-crosshair" aria-live="off">{focused?<><strong>{new Date(focused.time).toLocaleString('en-US',{timeZone:'America/New_York'})} ET</strong><span>O {money(focused.open)} · H {money(focused.high)} · L {money(focused.low)} · C {money(focused.close)} · Vol {Number(focused.volume||0).toLocaleString()}</span></>:null}</div></div>:<p>No candles returned for this session. Check Schwab authorization and market-data entitlement.</p>}
- <p className="itt-schwab-freshness">Schwab history · Last candle {candles.length?new Date(candles.at(-1).time).toLocaleString('en-US',{timeZone:'America/New_York'}):'Unavailable'} ET · Fetched {stamp(data?.receivedAt)} ET · History refreshes every 30s. Drag to pan, hover for OHLC, zoom to inspect. The latest candle can be incomplete; quotes and candles can update at different times.</p>
+ <p className="itt-schwab-freshness">Schwab history · Last candle {candles.length?new Date(candles.at(-1).time).toLocaleString('en-US',{timeZone:'America/New_York'}):'Unavailable'} ET · Fetched {stamp(data?.receivedAt)} ET · History refreshes every 30s. Drag to pan, hover for OHLC, zoom to inspect. The latest candle can be incomplete; streaming quotes and historical candles have different update schedules. Streaming data is informational and is not yet connected to the server's paper-execution engine.</p>
  </div></section>;
 }
 export function SchwabOptions({symbol,side,enabled}){
