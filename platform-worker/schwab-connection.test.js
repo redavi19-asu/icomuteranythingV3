@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import worker from './index.js';
+import {issueStreamTicket,openSchwabStream} from './schwab-stream.js';
 import {schwabMarket,schwabPreflight,schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabQuotes,schwabDisconnect,sealTokens,openTokens,SCHWAB_CALLBACK_URL} from './schwab-connection.js';
 const owner={id:'test-owner',role:'owner'};
 const request=(path,method='GET',origin='https://icomputeranything.com')=>new Request('https://worker.invalid/platform/schwab/'+path,{method,headers:{Authorization:'Bearer artificial-session',Origin:origin}});
@@ -94,4 +95,23 @@ test('market adapters constrain destinations and strip provider fields',async()=
  globalThis.fetch=async()=>tokenResponse();await schwabCallback(callback(state),env);
  globalThis.fetch=async(url,opts)=>{assert.equal(opts.redirect,'manual');assert.equal(new URL(url).origin,'https://api.schwabapi.com');return Response.json({candles:[{datetime:1,open:2,high:3,low:1,close:2,volume:5}],callExpDateMap:{'2026-11-06:2':{'100':[{symbol:'TEST',strikePrice:100,bid:1,ask:2,privateField:'never-return'}]}}})};
  try{const h=await(await schwabMarket(request('history?symbol=SPY'),env,owner,'history')).json();assert.equal(h.candles.length,1);const c=await(await schwabMarket(request('options?symbol=SPY'),env,owner,'options')).json();assert.equal(c.contracts[0].side,'CALL');assert.ok(!JSON.stringify(c).includes('never-return'));assert.equal((await schwabMarket(request('history?frequency=999'),env,owner,'history')).status,400)}finally{globalThis.fetch=original}
+});
+
+test('streaming uses an HTTPS upgrade and never sends broker credentials to the browser',async()=>{
+ const {env,sqlite}=await fixture();await begin(env);
+ const payload=await sealTokens(env,owner.id,{access_token:'test-access',refresh_token:'test-refresh',expires_at:Date.now()+1800000});
+ sqlite.prepare('UPDATE schwab_connections SET payload=?').run(payload);
+ const original=globalThis.fetch;let upgrades=0;
+ globalThis.fetch=async(url,options)=>{
+  if(String(url).endsWith('/trader/v1/userPreference'))return Response.json({streamerInfo:[{streamerSocketUrl:'wss://streamer-api.schwab.com/ws',schwabClientCustomerId:'test-customer',schwabClientCorrelId:'test-correlation'}]});
+  upgrades++;assert.equal(String(url),'https://streamer-api.schwab.com/ws');assert.equal(options.headers.Upgrade,'websocket');assert.equal(options.redirect,'manual');assert.equal(options.headers.Authorization,undefined);
+  return new Response(null,{status:503});
+ };
+ try{
+  const issued=await issueStreamTicket(request('stream-ticket?symbol=SPY'),env,owner);assert.equal(issued.status,200);
+  const body=await issued.json();assert.ok(!JSON.stringify(body).includes('test-access'));
+  const upgrade=new Request('https://worker.invalid/platform/schwab/stream?ticket='+encodeURIComponent(body.ticket),{headers:{Origin:'https://icomputeranything.com',Upgrade:'websocket'}});
+  const result=await openSchwabStream(upgrade,env);assert.equal(result.status,503);assert.equal(upgrades,1);
+  assert.ok(!(await result.text()).includes('test-access'));
+ }finally{globalThis.fetch=original}
 });

@@ -49,7 +49,9 @@ export async function openSchwabStream(request,env){
  // Create one Schwab connection for the visible symbol; never route browser commands to Schwab.
  let upstream;
  try{
-  const handshake=await fetch(stream.url,{headers:{Upgrade:'websocket'},redirect:'manual'});
+  // Workers fetch performs the upgrade over HTTPS; wss is the socket URL scheme.
+  const handshakeUrl=new URL(stream.url);handshakeUrl.protocol='https:';
+  const handshake=await fetch(handshakeUrl.toString(),{headers:{Upgrade:'websocket'},redirect:'manual'});
   if(!handshake.webSocket)throw Error('Schwab did not accept streaming connection.');
   upstream=handshake.webSocket;upstream.accept();
  }catch{return Response.json({error:'Schwab streaming socket unavailable.'},{status:503})}
