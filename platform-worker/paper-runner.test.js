@@ -31,3 +31,32 @@ test('paper entries still reject insufficient simulated cash',()=>{
  const initial={...newPaper(),cash:100,day:'2026-11-04',dayPnl:75.70,dayTrades:8};
  assert.throws(()=>stepPaper(initial,{quote,enter:true,now}),/Insufficient paper cash/);
 });
+
+
+test('independent paper alerts survive reload, expire and can be dismissed one at a time',async()=>{
+ const {db,env}=await fixture();const date=Date.now;Date.now=()=>now;
+ try{
+  await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;
+  s.alerts=[{...pending(),id:'one',status:'PENDING'},{...pending(),id:'two',status:'PENDING',expires:now-1},{...pending(),id:'three',status:'EXPIRED'}];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  const first=await(await paperApi(req(),env,owner)).json();assert.equal(first.alerts.length,3);
+  const closed=await paperApi(req('dismiss','two'),env,owner);assert.equal(closed.status,200);
+  const after=await(await paperApi(req(),env,owner)).json();
+  assert.deepEqual(after.alerts.map(a=>a.id),['one','three']);
+  assert.equal(after.alerts[0].status,'PENDING');
+  assert.equal(after.alerts[1].status,'EXPIRED');
+ }finally{Date.now=date}
+});
+test('approving one alert preserves other opportunities and keeps single position',async()=>{
+ const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
+ globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});
+ try{
+  await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.alerts=[{...pending(),id:'first',status:'PENDING'},{...pending(),id:'second',status:'PENDING'}];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  const entry=await paperApi(req('accept','first'),env,owner);assert.equal(entry.status,200);
+  const state=await entry.json();assert.ok(state.paper.position);
+  assert.equal(state.alerts.find(a=>a.id==='first').status,'TAKEN');
+  assert.equal(state.alerts.find(a=>a.id==='second').status,'PENDING');
+  assert.equal((await paperApi(req('accept','second'),env,owner)).status,409);
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
