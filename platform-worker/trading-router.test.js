@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from './index.js';
 
-for(const [path,method] of [['status','GET'],['chat','POST']]){
+for(const [path,method] of [['status','GET'],['chat','POST'],['check-credits','POST']]){
  test(`trading ${path} rejects missing authentication before accessing storage`,async()=>{
   const response=await worker.fetch(new Request(`https://worker.invalid/platform/trading-ai/${path}`,{method}),{});
   assert.equal(response.status,403);

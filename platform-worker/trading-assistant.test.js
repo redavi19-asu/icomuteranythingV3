@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {tradingAiChat,tradingAiStatus} from './trading-assistant.js';
+import {tradingAiChat,tradingAiStatus,tradingAiCreditCheck} from './trading-assistant.js';
 
 const owner={id:'owner-test',email:'owner@example.invalid',role:'owner'};
 const request=(body,origin='https://icomputeranything.com')=>new Request('https://ica-master-platform.ryanedavis.workers.dev/platform/trading-ai/chat',{
@@ -105,4 +105,58 @@ test('billing quota failure explains API activation without leaking provider det
   assert.match(d.error,/API credits or billing quota/);
   assert.ok(!JSON.stringify(d).includes('private provider details'));
  }finally{globalThis.fetch=original}
+});
+
+const creditRequest=(origin='https://icomputeranything.com')=>new Request(
+ 'https://ica-master-platform.ryanedavis.workers.dev/platform/trading-ai/check-credits',
+ {method:'POST',headers:{Origin:origin}}
+);
+test('credit check is owner protected and never exposes the API key',async()=>{
+ const r=await tradingAiCreditCheck(creditRequest(),env(),{id:'guest',role:'customer'});
+ assert.equal(r.status,403);
+ assert.ok(!JSON.stringify(await r.json()).includes('test-key'));
+});
+test('credit check shows unconfigured without making a provider call',async()=>{
+ const r=await tradingAiCreditCheck(creditRequest(),env(''),owner);
+ const result=await r.json();
+ assert.equal(result.billingState,'unconfigured');
+});
+test('credit check uses a small paid API request and does not provide fake balance dollars',async()=>{
+ const original=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>{
+   assert.equal(url,'https://api.openai.com/v1/responses');
+   const payload=JSON.parse(options.body);
+   assert.equal(payload.store,false);
+   assert.equal(payload.max_output_tokens,64);
+   assert.equal(payload.tools,undefined);
+   return new Response(JSON.stringify({output:[{type:'message',content:[{type:'output_text',text:'OK'}]}]}),{status:200});
+ };
+ try{
+  const r=await tradingAiCreditCheck(creditRequest(),env(),owner);
+  assert.equal(r.status,200);
+  const data=await r.json();
+  assert.equal(data.billingState,'active');
+  assert.equal(data.balance,undefined);
+  assert.ok(!JSON.stringify(data).includes('test-key'));
+ }finally{globalThis.fetch=original}
+});
+test('credit check distinguishes empty credits, spend limits and temporary rate limits',async()=>{
+ const original=globalThis.fetch;
+ try{
+  const cases=[
+   [{error:{code:'credit_balance_exhausted'}},'credits_exhausted'],
+   [{error:{code:'project_spend_limit_exceeded'}},'spend_limit'],
+   [{error:{type:'insufficient_quota'}},'billing_blocked'],
+   [{error:{code:'rate_limit_exceeded'}},'rate_limited']
+  ];
+  for(const [body,state] of cases){
+   globalThis.fetch=async()=>new Response(JSON.stringify(body),{status:429});
+   const r=await tradingAiCreditCheck(creditRequest(),env(),owner);
+   assert.equal((await r.json()).billingState,state);
+  }
+ }finally{globalThis.fetch=original}
+});
+test('credit check refuses unrecognized origins',async()=>{
+ const r=await tradingAiCreditCheck(creditRequest('https://bad-origin.example'),env(),owner);
+ assert.equal(r.status,403);
 });
