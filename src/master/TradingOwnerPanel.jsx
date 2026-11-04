@@ -242,9 +242,6 @@ export default function TradingOwnerPanel(){
     <span className="itt-tape-label">MARKET TAPE</span>
     <TVTickerTape/>
    </section>
-   <div className="itt-stats">
-    {statRows.map(s=><div className="itt-stat" key={s.label}><div className="itt-stat-heading"><span className="itt-stat-icon">{icon(s.type,17)}</span><small>{s.label}</small></div><strong>{s.value}</strong><p>{s.helper}</p></div>)}
-   </div>
    <div className="itt-layout">
     <div className="itt-main">
      <SchwabChart symbol={selected} enabled={!!schwabStatus?.connected}/>

@@ -5,15 +5,15 @@ const time=n=>n?new Date(n).toLocaleTimeString('en-US',{timeZone:'America/New_Yo
 export default function PaperSession({connected}){
  const [s,setS]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[now,setNow]=useState(Date.now());const lock=useRef(false);
  async function call(action,id){const token=localStorage.getItem('ica_master_token');const r=await fetch(API+'/platform/paper',{method:action?'POST':'GET',headers:{Authorization:'Bearer '+token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify({action,id})}:{})});const d=await r.json();if(!r.ok)throw Error(d.error||'Paper server unavailable.');return d}
- async function act(action,id){if(lock.current)return;lock.current=true;setBusy(true);setError('');try{setS(await call(action,id))}catch(e){setError(e.message)}finally{lock.current=false;setBusy(false)}}
+ async function act(action,id){if(lock.current&&!['pause','close'].includes(action))return;lock.current=true;setBusy(true);setError('');try{setS(await call(action,id))}catch(e){setError(e.message)}finally{lock.current=false;setBusy(false)}}
  useEffect(()=>{let active=true,t;async function refresh(){if(!lock.current){try{const data=await call();if(active){setS(data);setError('')}}catch(e){if(active)setError(e.message)}}if(active){setNow(Date.now());t=setTimeout(refresh,5000)}}refresh();return()=>{active=false;clearTimeout(t)}},[]);
  const p=s?.paper?.position,a=s?.pending,stale=!s?.heartbeat||now-s.heartbeat>150000;
  return <section className="itt-card" aria-label="Paper trading control center" style={{padding:20,margin:'14px 0',border:'1px solid #40cbb1'}}>
  <div className="itt-eyebrow">PRIVATE · SERVER PAPER MONEY</div><h3>You approve the entry. ICA manages the simulation.</h3>
  <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
  <button className="itt-wide-button" disabled={busy||!connected||s?.enabled} onClick={()=>act('start')}>Start paper setup scanner</button>
- <button className="itt-wide-button" disabled={busy||!s?.enabled} onClick={()=>act('pause')}>Pause new setups</button>
- <button className="itt-wide-button" disabled={busy||!p} style={{background:'#7d2337'}} onClick={()=>act('close')}>EMERGENCY: Stop & close paper position</button>
+ <button className="itt-wide-button" disabled={!s?.enabled} onClick={()=>act('pause')}>Pause new setups</button>
+ <button className="itt-wide-button" disabled={!p} style={{background:'#7d2337'}} onClick={()=>act('close')}>EMERGENCY: Stop & close paper position</button>
  <button className="itt-wide-button" disabled={busy} onClick={()=>act('tick')}>Check / manage now</button></div>
  <p><strong>{s?.enabled?'SCANNER ENABLED':'NEW SETUPS PAUSED'} · {p?'SIMULATED POSITION OPEN':'NO SIMULATED POSITION'}</strong></p>
  <p>Paper cash {money(s?.paper?.cash)} · Realized paper P/L {money(s?.paper?.realized)} · Daily paper P/L {money(s?.paper?.dayPnl)} · Unrealized estimate {money(s?.mark?.pnl)}</p>

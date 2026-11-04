@@ -18,7 +18,7 @@ export default function SchwabConnection({symbol='SPY',onStatus}){
  const price=v=>typeof v==='number'?'$'+v.toFixed(2):'Unavailable';
  return <section className="itt-panel" aria-label="Private Schwab market-data connection" style={{padding:16,margin:'12px 0'}}>
   <strong>Schwab market data · {status?.connected?'Authorized':status?.appCredentialsConfigured?'App credentials installed':'Checking setup'}</strong>
-  <p style={{fontSize:12,margin:'8px 0'}}>Owner-only quotes. Scanner and trade execution remain inactive. Authorization is completed directly at Schwab.</p>
+  <p style={{fontSize:12,margin:'8px 0'}}>Owner-only market data. Paper setup scanning is controlled below. Brokerage order execution is disabled.</p>
   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
    <button className="itt-wide-button" disabled={busy} onClick={testSetup}>Test Schwab setup</button>
    <button className="itt-wide-button" disabled={busy} onClick={refresh}>Check Schwab connection</button>
