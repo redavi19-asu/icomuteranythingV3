@@ -225,3 +225,17 @@
 .itt-add-ticker{display:flex;gap:6px;margin:11px 0}.itt-add-ticker input{min-width:0;flex:1;background:#0c1c2b;border:1px solid #416276;border-radius:8px;color:#edfbff;padding:9px;font-size:12px}
 .itt-add-ticker button{border:1px solid #51c7aa;background:#205e54;color:#defdf4;border-radius:8px;padding:9px 12px;font-size:11px;font-weight:900;cursor:pointer}
 .itt-watch-error{color:#ff9b9b;font-size:11px}.itt-custom-tickers{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.itt-custom-tickers button{border:1px solid #426477;border-radius:7px;padding:6px 8px;background:#173144;color:#aecbd4;font-size:10px;cursor:pointer}
+
+/* Paper scanner visibility and editable market scope */
+.itt-scanner-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0}
+.itt-scanner-summary>span{background:#132d3d;border:1px solid #305467;border-radius:9px;padding:10px;font-size:10px;color:#a7c1cc}
+.itt-scanner-summary strong{display:block;color:#aaf7dc;font-size:15px;margin-bottom:5px;overflow-wrap:anywhere}
+.itt-scanner-disclaimer{font-size:11px;color:#8aaabb;line-height:1.55}
+.itt-scanner-settings,.itt-scanner-activity{border:1px solid #304d61;border-radius:10px;padding:11px 13px;margin:10px 0;font-size:11px;color:#a9c5d0}
+.itt-scanner-settings summary,.itt-scanner-activity summary{font-weight:850;color:#c3e9e6;font-size:12px;cursor:pointer}
+.itt-scanner-settings-grid{display:grid;grid-template-columns:minmax(140px,1fr) minmax(160px,1.7fr);gap:12px;margin-top:13px}
+.itt-scanner-settings-grid label{display:flex;flex-direction:column;gap:6px;font-size:11px}
+.itt-scanner-settings-grid input{background:#0d1f2e;border:1px solid #47687c;color:#e3f8fa;border-radius:8px;padding:11px;min-width:0}
+.itt-scanner-settings .itt-wide-button{margin-top:12px}
+.itt-scanner-activity p{border-top:1px solid #274153;padding:8px 0;margin:6px 0;line-height:1.5}
+@media(max-width:650px){.itt-scanner-summary{grid-template-columns:1fr 1fr}.itt-scanner-settings-grid{grid-template-columns:1fr}}
