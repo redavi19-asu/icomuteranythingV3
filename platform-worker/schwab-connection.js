@@ -148,13 +148,35 @@ export async function schwabStreamerSession(env,owner){
  if(!owner?.id||owner.role!=='owner')throw Error('Owner access required.');
  const auth=await accessToken(env,owner);
  const r=await fetch('https://api.schwabapi.com/trader/v1/userPreference',{headers:{Authorization:'Bearer '+auth.token,Accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(12000)});
- if(!r.ok)throw Error('Schwab streaming preferences unavailable ('+r.status+').');
+ if(r.status===401||r.status===403){const error=Error('Streaming permission not available for this Schwab authorization. Market quotes can still work; Trader API account access must be separately approved and authorized.');error.providerStatus=r.status;error.code='TRADER_PERMISSION_REQUIRED';throw error;}
+ if(!r.ok)throw Error('Schwab streaming preferences temporarily unavailable (HTTP '+r.status+').');
  const prefs=await boundedJson(r,250000);
  const root=Array.isArray(prefs)?prefs[0]:prefs,info=Array.isArray(root?.streamerInfo)?root.streamerInfo[0]:null;
  const url=info?.streamerSocketUrl,customer=info?.schwabClientCustomerId,correl=info?.schwabClientCorrelId;
  if(typeof url!=='string'||!url.startsWith('wss://')||typeof customer!=='string'||typeof correl!=='string')throw Error('Schwab streaming credentials not present in account preferences.');
  const parsed=new URL(url);if(!parsed.hostname.endsWith('.schwab.com')&&!parsed.hostname.endsWith('.schwabapi.com'))throw Error('Unexpected streaming host.');
  return {url,token:auth.token,customer,correl,channel:info.schwabClientChannel||'N9',functionId:info.schwabClientFunctionId||'APIAPP'};
+}
+// Read-only account summary. Does not call account order endpoints or expose account IDs.
+export async function schwabAccountSnapshot(request,env,owner){
+ if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
+ try{
+  const auth=await accessToken(env,owner);
+  const r=await fetch('https://api.schwabapi.com/trader/v1/accounts',{headers:{Authorization:'Bearer '+auth.token,Accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(12000)});
+  if(r.status===401||r.status===403)return json({linked:false,permission:'TRADER_API_REQUIRED',error:'Schwab account access is not authorized for this application. Account balance and buying power cannot be read. Market-data access can remain active.',realOrdersEnabled:false},200);
+  if(!r.ok)return json({linked:false,error:'Schwab account snapshot is unavailable (HTTP '+r.status+').',realOrdersEnabled:false},503);
+  const response=await boundedJson(r,500000);
+  const accounts=Array.isArray(response)?response:[];
+  const number=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0?n:null;
+  const result=accounts.map((row,index)=>{
+   const acct=row.securitiesAccount||row.account||{},balances=acct.currentBalances||acct.initialBalances||{};
+   return {id:index,accountType:typeof acct.type==='string'?acct.type:'Unknown',
+    buyingPower:number(balances.buyingPower),cashAvailableForTrading:number(balances.cashAvailableForTrading),
+    availableFunds:number(balances.availableFunds),accountValue:number(balances.liquidationValue),
+    dayTradingBuyingPower:number(balances.dayTradingBuyingPower)};
+  });
+  return json({linked:true,source:'Schwab Trader API',receivedAt:Date.now(),accounts:result,realOrdersEnabled:false});
+ }catch(e){return json({linked:false,error:'Schwab account snapshot not available. '+(e?.message||'Retry later.'),realOrdersEnabled:false},503)}
 }
 export async function schwabQuotes(request,env,owner){
  if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
