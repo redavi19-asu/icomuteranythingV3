@@ -246,7 +246,7 @@ export default function TradingOwnerPanel(){
    <div className="itt-layout">
     <div className="itt-main">
      {chartPanel}
-     {schwabStatus?.connected&&<details className="itt-secondary-chart"><summary>Schwab data chart</summary><SchwabChart symbol={selected} enabled={true}/></details>}
+     <SchwabChart symbol={selected} enabled={!!schwabStatus?.connected}/>
     </div>
     <aside className="itt-side">
      {watchlistPanel}
