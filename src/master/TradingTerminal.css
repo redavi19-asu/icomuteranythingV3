@@ -321,3 +321,6 @@
 .itt-opportunity-expiry{color:#a7d4c9;font-size:12px;line-height:1.4}
 .itt-paper-approval-error{padding:12px 15px;background:#572a32;color:#ffdcda;border:1px solid #c36e78;border-radius:10px;overflow-wrap:anywhere}
 @media(max-width:580px){.itt-opportunities-overlay{padding:5px}.itt-opportunities-window{max-height:96vh;padding:13px;border-radius:12px}.itt-opportunities-grid{grid-template-columns:1fr}.itt-opportunities-header h2{font-size:21px}}
+
+.itt-bell-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:12px 0}
+.itt-bell-controls small{display:block;flex-basis:100%;color:#a7c7d5;font-size:11px;line-height:1.5}
