@@ -13,7 +13,7 @@ function useMarket(path,enabled,period=30000){
 function useSchwabQuoteStream(symbol,enabled){
  const [state,setState]=useState({status:'offline',quote:null,lastMessage:0,error:''});
  useEffect(()=>{
-  let active=true,socket=null,retry=null,attempt=0;
+  let active=true,socket=null,retry=null,attempt=0,watchedOption=null;
   setState({status:enabled?'connecting':'offline',quote:null,lastMessage:0,error:''});
   async function connect(){
    try{
@@ -26,7 +26,7 @@ function useSchwabQuoteStream(symbol,enabled){
      if(!active)return;
      try{
       const m=JSON.parse(e.data);
-      if(m.type==='connected'){attempt=0;setState(v=>({...v,status:'connected',error:''}))}
+      if(m.type==='connected'){attempt=0;setState(v=>({...v,status:'connected',error:''}));if(watchedOption)socket.send(JSON.stringify({type:'watch_option',symbol:watchedOption}))}
       else if(m.type==='quote'){
        setState(v=>({status:'connected',error:'',lastMessage:Date.now(),quote:{symbol:m.symbol,bid:typeof m.bid==='number'?m.bid:v.quote?.bid??null,ask:typeof m.ask==='number'?m.ask:v.quote?.ask??null,last:typeof m.last==='number'?m.last:v.quote?.last??null,quoteTime:m.quoteTime||v.quote?.quoteTime||null,delayed:m.delayed,receivedAt:m.receivedAt}}));
       }else if(m.type==='option_quote'){
@@ -46,7 +46,7 @@ function useSchwabQuoteStream(symbol,enabled){
     if(!/permission|authorized|Trader API|401|403/i.test(e.message||''))retry=setTimeout(connect,Math.min(20000,3000*2**Math.min(3,attempt++)));
    }
   }
-  function watchOption(e){if(!active||!socket||socket.readyState!==WebSocket.OPEN||typeof e.detail?.symbol!=='string')return;socket.send(JSON.stringify({type:'watch_option',symbol:e.detail.symbol}))}
+  function watchOption(e){if(!active||typeof e.detail?.symbol!=='string')return;watchedOption=e.detail.symbol;if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:'watch_option',symbol:watchedOption}))}
   window.addEventListener('ica-watch-option-stream',watchOption);
   if(enabled)connect();
   return()=>{active=false;clearTimeout(retry);window.removeEventListener('ica-watch-option-stream',watchOption);if(socket)socket.close()};
