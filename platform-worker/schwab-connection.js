@@ -159,3 +159,27 @@ export async function schwabQuotes(request,env,owner){
   return json({provider:'Schwab',receivedAt:new Date().toISOString(),quotes,realOrdersEnabled:false});
  }catch{return json({error:'Schwab market data is not ready. Connect or reconnect the owner session, then retry.'},503)}
 }
+
+export async function schwabMarket(request,env,owner,kind){
+ if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
+ const input=new URL(request.url),symbol=(input.searchParams.get('symbol')||'SPY').toUpperCase();
+ if(!/^[A-Z][A-Z0-9.\-]{0,9}$/.test(symbol))return json({error:'Invalid symbol.'},400);
+ const frequency=Number(input.searchParams.get('frequency')||5);
+ if(kind==='history'&&![1,5,15,30,60].includes(frequency))return json({error:'Invalid interval.'},400);
+ try{
+  const auth=await accessToken(env,owner),url=new URL(MARKET_URL+(kind==='history'?'/pricehistory':'/chains'));
+  url.searchParams.set('symbol',symbol);
+  const params=kind==='history'?{periodType:'day',period:'1',frequencyType:'minute',frequency:String(frequency),needExtendedHoursData:'true'}:{contractType:'ALL',strikeCount:'12',strategy:'SINGLE',range:'NTM',fromDate:new Date().toISOString().slice(0,10),toDate:new Date(Date.now()+14*86400000).toISOString().slice(0,10)};
+  for(const [k,v] of Object.entries(params))url.searchParams.set(k,v);
+  const r=await fetch(url,{headers:{Authorization:'Bearer '+auth.token,Accept:'application/json'},signal:AbortSignal.timeout(12000),redirect:'manual'});
+  if(!r.ok)return json({error:'Schwab market data unavailable.',providerStatus:r.status},503);
+  const d=await boundedJson(r,4000000),num=v=>typeof v==='number'&&Number.isFinite(v)?v:null;
+  if(kind==='history')return json({symbol,provider:'Schwab',receivedAt:new Date().toISOString(),candles:(d.candles||[]).filter(c=>[c.datetime,c.open,c.high,c.low,c.close].every(v=>num(v)!==null)).map(c=>({time:c.datetime,open:c.open,high:c.high,low:c.low,close:c.close,volume:num(c.volume)})),realOrdersEnabled:false});
+  const contracts=[];
+  for(const [side,map] of [['CALL',d.callExpDateMap],['PUT',d.putExpDateMap]])for(const [expiration,strikes] of Object.entries(map||{}))for(const list of Object.values(strikes))for(const c of list){
+   if(typeof c.symbol!=='string')continue;
+   contracts.push({symbol:c.symbol,side,expiration:expiration.split(':')[0],strike:num(c.strikePrice),bid:num(c.bid),ask:num(c.ask),delta:num(c.delta),volume:num(c.totalVolume),openInterest:num(c.openInterest),quoteTime:num(c.quoteTimeInLong),nonStandard:c.nonStandard===true});
+  }
+  return json({symbol,provider:'Schwab',receivedAt:new Date().toISOString(),delayed:typeof d.isDelayed==='boolean'?d.isDelayed:null,contracts:contracts.slice(0,500),realOrdersEnabled:false});
+ }catch{return json({error:'Schwab data could not be loaded. Retry or check the connection.'},503)}
+}

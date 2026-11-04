@@ -2,6 +2,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import TradingAiAssistant, {TradingAiBillingPanel} from './TradingAiAssistant';
 import './TradingTerminal.css';
 import SchwabConnection from './SchwabConnection';
+import {SchwabChart,SchwabOptions,SchwabWatchPrices} from './SchwabMarket';
 
 /* Owner-only market workstation. Public TradingView charts are for visual research
  * and are NOT a Schwab data feed, execution signal or options chain.
@@ -103,6 +104,7 @@ function readAutoStart(){
 export default function TradingOwnerPanel(){
  const [tab,setTab]=useState('dashboard');
  const [schwabStatus,setSchwabStatus]=useState(null);
+ const [watchQuotes,setWatchQuotes]=useState([]);
  const [aiBillingState,setAiBillingState]=useState('not_checked');
  const [selected,setSelected]=useState(()=>{
   const s=new URLSearchParams(window.location.search).get('symbol')?.toUpperCase();
@@ -185,8 +187,8 @@ export default function TradingOwnerPanel(){
       <div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('radar',18)}</span><div><div className="itt-eyebrow">MARKET RADAR</div><h3>Watchlist</h3></div></div><div className="itt-panel-buttons"><span className="itt-mini-dot">● OFF</span>{popButton('watchlist')}</div></div>
       <div className="itt-watch-tabs">{Object.keys(tickerGroups).map(k=><button type="button" aria-pressed={group===k} key={k} className={group===k?'active':''} onClick={()=>{setGroup(k);if(!tickerGroups[k].includes(selected))setSelected(tickerGroups[k][0])}}>{k}</button>)}</div>
       <div className="itt-watch-labels"><span>SYMBOL</span><span>LAST</span><span>SCAN</span></div>
-      <div className="itt-watch-rows">{tickerGroups[group].map(sym=><button type="button" className={sym===selected?'itt-selected':''} key={sym} onClick={()=>setSelected(sym)}><span><strong>{sym}</strong><small>{descriptions[sym]}</small></span><span className="itt-blank-price">—</span><span className="itt-ticker-state">WAIT</span></button>)}</div>
-      <div className="itt-watch-foot">Tap a symbol to open its public chart. Actual option signals require the Schwab feed.</div>
+      <div className="itt-watch-rows">{tickerGroups[group].map(sym=><button type="button" className={sym===selected?'itt-selected':''} key={sym} onClick={()=>setSelected(sym)}><span><strong>{sym}</strong><small>{descriptions[sym]}</small></span><span className="itt-blank-price">{typeof watchQuotes.find(q=>q.symbol===sym)?.last==='number'?'$'+watchQuotes.find(q=>q.symbol===sym).last.toFixed(2):'—'}</span><span className="itt-ticker-state">WAIT</span></button>)}</div>
+      <div className="itt-watch-foot">Schwab quotes refresh every 15 seconds. Select a symbol to update both charts. SCAN remains inactive.</div>
      </section>
  );
  const scannerPanel=(
@@ -197,10 +199,9 @@ export default function TradingOwnerPanel(){
      </section>
  );
  const chainPanel=(
-<section className="itt-card itt-chain-panel"><div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('bolt',17)}</span><div><div className="itt-eyebrow">OPTIONS INTELLIGENCE</div><h3>{selected} Contracts</h3></div></div><div className="itt-panel-buttons"><span className="itt-muted-badge">NO CHAIN</span>{popButton('chain')}</div></div>
+<section className="itt-card itt-chain-panel"><div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('bolt',17)}</span><div><div className="itt-eyebrow">OPTIONS INTELLIGENCE</div><h3>{selected} Contracts</h3></div></div><div className="itt-panel-buttons"><span className="itt-muted-badge">{schwabStatus?.connected?'SCHWAB':'NO CHAIN'}</span>{popButton('chain')}</div></div>
       <div className="itt-chain-tabs"><button type="button" className={chainSide==='CALL'?'active':''} aria-pressed={chainSide==='CALL'} onClick={()=>setChainSide('CALL')}>CALLS</button><button type="button" className={chainSide==='PUT'?'active':''} aria-pressed={chainSide==='PUT'} onClick={()=>setChainSide('PUT')}>PUTS</button></div>
-      <div className="itt-chain-header"><span>STRIKE</span><span>BID</span><span>ASK</span><span>DELTA</span></div>
-      <div className="itt-chain-empty">{icon('chart',24)}<strong>Options feed not connected</strong><p>Verified {chainSide.toLowerCase()} contracts, spreads, volume and open interest will populate this panel.</p></div>
+      <SchwabOptions symbol={selected} side={chainSide} enabled={!!schwabStatus?.connected}/>
      </section>
  );
  const riskPanel=(
@@ -228,6 +229,7 @@ export default function TradingOwnerPanel(){
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
   <SchwabConnection symbol={selected} onStatus={setSchwabStatus}/>
+  <SchwabWatchPrices symbols={tickerGroups[group]} enabled={!!schwabStatus?.connected} onQuotes={setWatchQuotes}/>
   <TradingAiBillingPanel billingState={aiBillingState} onStateChange={setAiBillingState}/>
   <nav className="itt-tabs" aria-label="Trading workspace views">
    <button type="button" className={tab==='dashboard'?'active':''} onClick={()=>setTab('dashboard')}>{icon('chart',16)} Trading Dashboard</button>
@@ -243,6 +245,7 @@ export default function TradingOwnerPanel(){
    </div>
    <div className="itt-layout">
     <div className="itt-main">
+     <SchwabChart symbol={selected} enabled={!!schwabStatus?.connected}/>
      {chartPanel}
      {alertPanel}
      {resultsPanel}

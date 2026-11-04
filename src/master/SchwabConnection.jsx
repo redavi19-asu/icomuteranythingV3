@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 const API=import.meta.env.VITE_ICA_MASTER_API_URL||'https://ica-master-platform.ryanedavis.workers.dev';
-async function request(path,post=false){
+export async function request(path,post=false){
  const token=localStorage.getItem('ica_master_token')||'';if(!token)throw Error('Sign in to ICA Master first.');
  const r=await fetch(API+'/platform/schwab/'+path,{method:post?'POST':'GET',headers:{Authorization:'Bearer '+token,...(post?{'Content-Type':'application/json'}:{})},...(post?{body:'{}'}:{})});
  const d=await r.json();if(!r.ok)throw Error((d.error||'Schwab connection unavailable.')+(d.providerStatus?' HTTP '+d.providerStatus:'')+(d.errorCode?' · '+d.errorCode.replaceAll('_',' '):'')+(d.providerFormat?' · '+d.providerFormat:'')+(d.responseShape?' · '+d.responseShape:''));return d;

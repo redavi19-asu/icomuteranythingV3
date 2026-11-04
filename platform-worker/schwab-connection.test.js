@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import worker from './index.js';
-import {schwabPreflight,schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabQuotes,schwabDisconnect,sealTokens,openTokens,SCHWAB_CALLBACK_URL} from './schwab-connection.js';
+import {schwabMarket,schwabPreflight,schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabQuotes,schwabDisconnect,sealTokens,openTokens,SCHWAB_CALLBACK_URL} from './schwab-connection.js';
 const owner={id:'test-owner',role:'owner'};
 const request=(path,method='GET',origin='https://icomputeranything.com')=>new Request('https://worker.invalid/platform/schwab/'+path,{method,headers:{Authorization:'Bearer artificial-session',Origin:origin}});
 async function fixture(){
@@ -25,7 +25,7 @@ test('callback rejects unsolicited codes without reflection or persistence',asyn
  const r=await worker.fetch(new Request(SCHWAB_CALLBACK_URL+'?code=private-test-code&state=untrusted'),{});
  assert.equal(r.status,400);assert.ok(!(await r.text()).includes('private-test-code'));assert.equal(r.headers.get('Cache-Control'),'no-store');assert.equal(r.headers.get('Referrer-Policy'),'no-referrer');
 });
-for(const [path,method] of [['preflight','POST'],['status','GET'],['authorize','POST'],['quotes','GET'],['disconnect','POST']])test(path+' denies unauthenticated access',async()=>{
+for(const [path,method] of [['history','GET'],['options','GET'],['preflight','POST'],['status','GET'],['authorize','POST'],['quotes','GET'],['disconnect','POST']])test(path+' denies unauthenticated access',async()=>{
  assert.equal((await worker.fetch(new Request('https://worker.invalid/platform/schwab/'+path,{method}),{})).status,403);
 });
 test('credentials alone never claim an authorized data connection',async()=>{
@@ -87,4 +87,11 @@ test('preflight fails closed on redirects and bad client credentials',async()=>{
  globalThis.fetch=async(url,options)=>{assert.equal(options.redirect,'manual');return response};
  try{assert.equal((await schwabPreflight(request('preflight','POST'),env,owner)).status,503)}finally{globalThis.fetch=original}
  }
+});
+
+test('market adapters constrain destinations and strip provider fields',async()=>{
+ const {env}=await fixture();const state=await begin(env);const original=globalThis.fetch;
+ globalThis.fetch=async()=>tokenResponse();await schwabCallback(callback(state),env);
+ globalThis.fetch=async(url,opts)=>{assert.equal(opts.redirect,'manual');assert.equal(new URL(url).origin,'https://api.schwabapi.com');return Response.json({candles:[{datetime:1,open:2,high:3,low:1,close:2,volume:5}],callExpDateMap:{'2026-11-06:2':{'100':[{symbol:'TEST',strikePrice:100,bid:1,ask:2,privateField:'never-return'}]}}})};
+ try{const h=await(await schwabMarket(request('history?symbol=SPY'),env,owner,'history')).json();assert.equal(h.candles.length,1);const c=await(await schwabMarket(request('options?symbol=SPY'),env,owner,'options')).json();assert.equal(c.contracts[0].side,'CALL');assert.ok(!JSON.stringify(c).includes('never-return'));assert.equal((await schwabMarket(request('history?frequency=999'),env,owner,'history')).status,400)}finally{globalThis.fetch=original}
 });
