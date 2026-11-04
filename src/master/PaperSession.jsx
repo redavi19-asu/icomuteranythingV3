@@ -24,6 +24,7 @@ export default function PaperSession({connected}){
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
  const lock=useRef(false);
  const [showAlerts,setShowAlerts]=useState(true);
+ const [tradeFeedback,setTradeFeedback]=useState(null);
  const seenAlerts=useRef(null);
  const audioRef=useRef(null);
  const [soundOn,setSoundOn]=useState(false);
@@ -41,7 +42,22 @@ export default function PaperSession({connected}){
  }
  useEffect(()=>()=>{audioRef.current?.close().catch(()=>{});audioRef.current=null},[]);
  async function call(action,id){const token=localStorage.getItem('ica_master_token');const r=await fetch(API+'/platform/paper',{method:action?'POST':'GET',headers:{Authorization:'Bearer '+token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify({action,...(action==='settings'&&id&&typeof id==='object'?id:{id})})}:{})});const d=await r.json();if(!r.ok){const ex=Error(d.error||'Paper server unavailable.');ex.code=d.code||null;ex.serverState=d.status||null;throw ex;}return d}
- async function act(action,id){if(lock.current&&!['pause','close'].includes(action))return;lock.current=true;setBusy(true);setError('');try{setS(await call(action,id));if(action==='settings')setSettingsDirty(false)}catch(e){setError(e.message);if(e.serverState)setS(e.serverState);else if(action==='accept'||action==='skip'){try{setS(await call())}catch{}}}finally{lock.current=false;setBusy(false)}}
+ async function act(action,id){
+  if(lock.current&&!['pause','close'].includes(action))return;
+  lock.current=true;setBusy(true);setError('');
+  if(action==='accept')setTradeFeedback({id,message:'Refreshing contract quote and checking paper entry…',kind:'checking'});
+  try{
+   const data=await call(action,id);setS(data);
+   if(action==='settings')setSettingsDirty(false);
+   if(action==='accept')setTradeFeedback({id,message:'Paper entry accepted. The simulated position is now being managed.',kind:'success'});
+   if(action==='dismiss'||action==='skip')setTradeFeedback(current=>current?.id===id?null:current);
+  }catch(e){
+   setError(e.message);
+   if(action==='accept')setTradeFeedback({id,message:e.message,kind:'error'});
+   if(e.serverState)setS(e.serverState);
+   else if(action==='accept'||action==='skip'){try{setS(await call())}catch{}}
+  }finally{lock.current=false;setBusy(false)}
+ }
  function saveSettings(){
   const list=symbolsDraft.split(/[\s,]+/).map(v=>v.trim().toUpperCase()).filter(Boolean),amount=Number(budgetDraft);
   if(!Number.isFinite(amount)||amount<1||amount>5000){setError('Set paper maximum premium from $1 to $5,000.');return}
@@ -119,7 +135,8 @@ export default function PaperSession({connected}){
   <div className="itt-opportunities-window">
    <div className="itt-opportunities-header"><div><div className="itt-eyebrow">ICA MARKET RADAR · PAPER ONLY</div><h2>Trading Opportunities <small>({liveAlerts.length} actionable / {alerts.length} saved)</small></h2></div><button className="itt-opportunity-x" type="button" onClick={()=>setShowAlerts(false)} title="Minimize window without dismissing alerts">Minimize</button></div>
    <p className="itt-opportunity-help">Individual opportunities stay in this window until you dismiss them with X. An alert is only actionable for two minutes; the card remains visible afterward. New signals can be added while older cards wait.</p>
-   {error&&<p role="alert" className="itt-paper-approval-error">{error}</p>}
+   {tradeFeedback&&<div className={'itt-opportunity-feedback '+tradeFeedback.kind} role={tradeFeedback.kind==='error'?'alert':'status'}><strong>{tradeFeedback.kind==='error'?'PAPER ENTRY NOT ACCEPTED':tradeFeedback.kind==='success'?'PAPER ENTRY ACCEPTED':'CHECKING PAPER ENTRY'}</strong><span>{tradeFeedback.message}</span><button type="button" className="itt-opportunity-x" onClick={()=>setTradeFeedback(null)} aria-label="Dismiss trade message">✕</button></div>}
+   {error&&!tradeFeedback&&<p role="alert" className="itt-paper-approval-error">{error}</p>}
    <div className="itt-opportunities-grid">{alerts.map(item=>{
     const ready=item.status==='PENDING'&&now<item.expires;
     const state=item.status==='PENDING'&&!ready?'EXPIRED':item.status;
@@ -131,6 +148,7 @@ export default function PaperSession({connected}){
      <p className="itt-opportunity-reason">{item.signal?.reason||'Rules-qualified technical setup.'}</p>
      <div className="itt-opportunity-numbers"><span>Alert ask <strong>{money(c.ask)}</strong></span><span>Vol / OI <strong>{c.volume??'—'} / {c.openInterest??'—'}</strong></span><span>Delta <strong>{c.delta??'—'}</strong></span><span>Created <strong>{time(item.created)} ET</strong></span></div>
      <p className="itt-opportunity-expiry">{ready?'Approval expires '+time(item.expires)+' ET':'Review only — original approval is no longer available.'}</p>
+     {tradeFeedback?.id===item.id&&<div role={tradeFeedback.kind==='error'?'alert':'status'} className={'itt-opportunity-inline-feedback '+tradeFeedback.kind}>{tradeFeedback.message}</div>}
      <button className="itt-wide-button" type="button" disabled={busy||!connected||!s.enabled||stale||!!p||!ready} onClick={()=>act('accept',item.id)}>{ready?'TAKE IT — approve PAPER contract':state==='TAKEN'?'SIMULATED TRADE ACCEPTED':'NOT ACTIONABLE'}</button>
     </article>
    })}</div>
