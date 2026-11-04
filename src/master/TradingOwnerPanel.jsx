@@ -104,6 +104,7 @@ function readAutoStart(){
 }
 export default function TradingOwnerPanel(){
  const [tab,setTab]=useState('dashboard');
+ const [showDiagnostics,setShowDiagnostics]=useState(false);
  const [schwabStatus,setSchwabStatus]=useState(null);
  const [watchQuotes,setWatchQuotes]=useState([]);
  const [aiBillingState,setAiBillingState]=useState('not_checked');
@@ -226,13 +227,13 @@ export default function TradingOwnerPanel(){
     <span className="itt-brand-emblem">{icon('radar',27)}</span>
     <div><div className="itt-eyebrow">PRIVATE ICA MASTER / TRADING INTELLIGENCE</div><h2>ICA <span>PRIME</span></h2><p>High-Probability Trading Workstation</p></div>
    </div>
-   <div className="itt-status-bar"><span className="itt-status itt-off"><span className="itt-status-dot"/> {schwabStatus?.connected?'SCHWAB AUTHORIZED':'SCHWAB DISCONNECTED'}</span><span className="itt-status itt-off">PAPER CONTROLS ABOVE</span><span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
+   <div className="itt-status-bar"><div className="itt-trade-mode" role="group" aria-label="Trading mode"><button className="selected">PAPER TRADE</button><button disabled title="Live mode requires verified broker routing and safety tests">LIVE TRADE · LOCKED</button></div><span className="itt-status itt-off"><span className="itt-status-dot"/> {schwabStatus?.connected?'SCHWAB AUTHORIZED':'SCHWAB DISCONNECTED'}</span><span className="itt-status itt-off">PAPER CONTROLS ABOVE</span><span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
-  <SchwabConnection symbol={selected} onStatus={setSchwabStatus}/>
   <PaperSession connected={!!schwabStatus?.connected}/>
   <SchwabWatchPrices symbols={tickerGroups[group]} enabled={!!schwabStatus?.connected} onQuotes={setWatchQuotes}/>
-  <TradingAiBillingPanel billingState={aiBillingState} onStateChange={setAiBillingState}/>
+  <button type="button" className="itt-diagnostics-toggle" onClick={()=>setShowDiagnostics(v=>!v)} aria-expanded={showDiagnostics}>{showDiagnostics?'Hide connections and diagnostics':'Connections and advanced settings'} ▾</button>
+  <div className={showDiagnostics?'itt-diagnostics':'itt-diagnostics itt-hidden'}><SchwabConnection symbol={selected} onStatus={setSchwabStatus}/><TradingAiBillingPanel billingState={aiBillingState} onStateChange={setAiBillingState}/></div>
   <nav className="itt-tabs" aria-label="Trading workspace views">
    <button type="button" className={tab==='dashboard'?'active':''} onClick={()=>setTab('dashboard')}>{icon('chart',16)} Trading Dashboard</button>
    <button type="button" className={tab==='ai'?'active':''} onClick={()=>setTab('ai')}>{icon('bot',16)} Ask ICA Trading AI</button>
@@ -244,15 +245,16 @@ export default function TradingOwnerPanel(){
    </section>
    <div className="itt-layout">
     <div className="itt-main">
-     <SchwabChart symbol={selected} enabled={!!schwabStatus?.connected}/>
      {chartPanel}
+     {schwabStatus?.connected&&<details className="itt-secondary-chart"><summary>Schwab data chart</summary><SchwabChart symbol={selected} enabled={true}/></details>}
     </div>
     <aside className="itt-side">
      {watchlistPanel}
      {chainPanel}
-     {riskPanel}
+     <details className="itt-secondary-chart"><summary>Advanced risk rules</summary>{riskPanel}</details>
     </aside>
    </div>
+   <section className="itt-card itt-flow-board"><div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('bolt',18)}</span><div><div className="itt-eyebrow">OPTIONS ACTIVITY</div><h3>Options Flow &amp; Opportunities</h3></div></div><span className="itt-muted-badge">LIVE FLOW FEED NOT CONNECTED</span></div><p>Real-time unusual options flow requires an authorized options-tape feed. Until then, inspect the options chain on the right. No fabricated alerts or probability labels.</p><div className="itt-flow-legend"><span>● Strong technical/liquidity confirmation</span><span>● Developing setup</span><span>● No qualifying setup</span></div></section>
   </>}
   {tab==='ai'&&<div className="itt-ai-wrapper"><TradingAiAssistant ranked={[]} report={null} rules={riskPlan} quotes={[]} creditBlocked={['credits_exhausted','billing_blocked','spend_limit'].includes(aiBillingState)} onBillingStateChange={setAiBillingState}/></div>}
  </section>;
