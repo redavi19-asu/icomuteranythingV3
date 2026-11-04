@@ -17,11 +17,15 @@ export default function PaperSession({connected}){
  useEffect(()=>{let active=true,t;async function refresh(){if(!lock.current){try{const data=await call();if(active){setS(data);setError('')}}catch(e){if(active)setError(e.message)}}if(active){setNow(Date.now());t=setTimeout(refresh,5000)}}refresh();return()=>{active=false;clearTimeout(t)}},[]);
  const p=s?.paper?.position,a=s?.pending,stale=!s?.heartbeat||now-s.heartbeat>150000;
  const recent=s?.scanHistory||[],latest=recent[0]||(s?.lastScan?{symbol:s.lastScan.symbol,time:s.lastScan.time,state:s.lastScan.signal?.state||'WAIT',reason:s.lastScan.signal?.reason||s.lastScan.note}:null);
- const scanActive=Boolean(s?.enabled&&!stale&&!p&&!a);
+ const marketClock=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now);
+ const clockParts=Object.fromEntries(marketClock.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+ const marketMinute=Number(clockParts.hour)*60+Number(clockParts.minute);
+ const marketWindow=!['Sat','Sun'].includes(clockParts.weekday)&&marketMinute>=575&&marketMinute<945;
+ const scanActive=Boolean(s?.enabled&&!stale&&!p&&!a&&marketWindow);
  const scannedAt=latest?.time||null;
  const elapsed=scannedAt?Math.max(0,Math.floor((now-scannedAt)/1000)):null;
- const scanPhase=!s?'CONNECTING':error||s?.lastError?'DATA HOLD':p?'MANAGING POSITION':a?'AWAITING APPROVAL':!s.enabled?'PAUSED':stale?'SERVER STALE':scanActive?'MONITORING':'WAITING';
- const scanEligible=Boolean(s?.enabled&&!p&&!a&&!stale);
+ const scanPhase=!s?'CONNECTING':error||s?.lastError?'DATA HOLD':p?'MANAGING POSITION':a?'AWAITING APPROVAL':!s.enabled?'PAUSED':stale?'SERVER STALE':!marketWindow?'OUTSIDE SESSION':scanActive?'MONITORING':'WAITING';
+ const scanEligible=Boolean(scanActive);
  const scanProgress=scanEligible&&scannedAt?Math.min(100,Math.round(Math.min(elapsed||0,60)/60*100)):0;
  useEffect(()=>{if(s&&!settingsDirty){setBudgetDraft(String(s.maxPremium??350));setSymbolsDraft((s.extraSymbols||[]).join(', '))}},[s,settingsDirty]);
  return <section className="itt-card itt-paper-compact" aria-label="Paper trading control center">
@@ -40,7 +44,7 @@ export default function PaperSession({connected}){
   <div className="itt-paper-radar-heading"><div><span className="itt-eyebrow">ICA MARKET RADAR</span><h3>Scanner Activity</h3></div><span className={'itt-radar-state '+(scanPhase==='MONITORING'?'active':scanPhase==='DATA HOLD'||scanPhase==='SERVER STALE'?'warning':'')}>{scanPhase}</span></div>
   <div className="itt-radar-dashboard">
    <div className={'itt-radar-visual '+(scanActive?'running':'')} aria-hidden="true"><div className="itt-radar-rings"/><div className="itt-radar-sweep"/><div className="itt-radar-core">⌖</div></div>
-   <div className="itt-radar-primary"><small>LAST VERIFIED CHECK</small><strong>{latest?.symbol||'—'}</strong><span>{latest?.state?.replaceAll('_',' ')||'NO SCANS YET'}</span><p>{latest?.reason||'Waiting for the first market-data evaluation.'}</p></div>
+   <div className="itt-radar-primary"><small>LAST RECORDED CHECK</small><strong>{latest?.symbol||'—'}</strong><span>{latest?.state?.replaceAll('_',' ')||'NO SCANS YET'}</span><p>{latest?.reason||'Waiting for the first market-data evaluation.'}</p></div>
   </div>
   <div className="itt-radar-metrics"><div><small>UNIVERSE</small><strong>{s?.scanUniverse?.length??'—'} tickers</strong></div><div><small>LAST CHECK</small><strong>{time(scannedAt)} ET</strong></div><div><small>SERVER</small><strong>{stale?'STALE':s?.heartbeat?'RESPONDING':'WAITING'}</strong></div></div>
   <div className="itt-radar-cycle"><div className="itt-radar-cycle-title"><span>{scanEligible?'Next scheduled check (approx.)':scanPhase==='MONITORING'?'Waiting':'Scan cycle not running'}</span><span>{scanEligible&&elapsed!==null?Math.max(0,60-elapsed)+'s':'—'}</span></div><div className="itt-radar-track"><span style={{width:scanProgress+'%'}}/></div></div>
