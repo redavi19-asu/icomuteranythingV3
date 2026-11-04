@@ -23,6 +23,7 @@ export default function SchwabConnection({symbol='SPY',onStatus}){
    <button className="itt-wide-button" disabled={busy||!status?.authorizationReady} onClick={connect}>{status?.connected?'Reconnect Schwab market data':'Connect Schwab market data'}</button>
    {status?.connected&&<><button className="itt-wide-button" disabled={busy} onClick={quote}>Read {symbol} quote</button><button className="itt-wide-button" disabled={busy} onClick={disconnect}>Disconnect Schwab</button></>}
   </div>
+  {status?.lastError&&<p role="status" style={{color:'#ffb0ad',fontSize:12}}>Last connection attempt: {status.lastError.error_code.replaceAll('_',' ')}{status.lastError.provider_status?' · Schwab HTTP '+status.lastError.provider_status:''}. Reconnect after the configuration issue is resolved.</p>}
   {error&&<p role="alert" style={{color:'#ffb0ad',fontSize:12}}>{error}</p>}
   {q&&<div role="status" style={{marginTop:12,fontSize:13}}><strong>{q.symbol} · Last {price(q.last)} · Bid {price(q.bid)} · Ask {price(q.ask)}</strong><p style={{fontSize:11}}>Schwab quote timestamp: {q.quoteTime?new Date(q.quoteTime).toLocaleString('en-US',{timeZone:'America/New_York'})+' ET':'Not supplied'} · {q.realtime===true?'Provider marks this quote real-time':q.realtime===false?'Provider marks this quote delayed':'Real-time entitlement not confirmed'}. Received {new Date(snapshot.receivedAt).toLocaleTimeString('en-US',{timeZone:'America/New_York'})} ET.</p></div>}
   {snapshot&&!q&&<p role="status">Schwab returned no quote for {symbol}.</p>}

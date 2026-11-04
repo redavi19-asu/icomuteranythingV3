@@ -30,7 +30,11 @@ async function boundedJson(response,max=1000000){
 }
 async function exchange(env,body,previous=null){
  const r=await fetch(TOKEN_URL,{method:'POST',headers:{Authorization:'Basic '+btoa(clean(env.SCHWAB_APP_KEY)+':'+clean(env.SCHWAB_APP_SECRET)),'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body),signal:AbortSignal.timeout(15000),redirect:'error'});
- if(!r.ok){const error=Error('Schwab authorization was not completed. Reconnect from ICA Master.');error.providerStatus=r.status;throw error;}
+ if(!r.ok){
+  const error=Error('Schwab authorization was not completed. Reconnect from ICA Master.');error.providerStatus=r.status;error.safeCode='provider_http_error';
+  try{const detail=await boundedJson(r,16000);if(['invalid_client','invalid_grant','invalid_request','unauthorized_client','unsupported_grant_type','invalid_scope','access_denied'].includes(detail?.error))error.safeCode=detail.error}catch{}
+  throw error;
+ }
  const t=await boundedJson(r,32000);const expires=Number(t.expires_in);
  if(!clean(t.access_token)||!Number.isFinite(expires)||expires<=0||expires>86400)throw Error('Invalid authorization response');
  const refresh=clean(t.refresh_token)||previous?.refresh_token;
@@ -40,12 +44,12 @@ async function exchange(env,body,previous=null){
 export async function schwabConnectionStatus(env,owner){
  if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
  const hasKeys=Boolean(clean(env.SCHWAB_APP_KEY)&&clean(env.SCHWAB_APP_SECRET));
- let connected=false,expiresAt=null;
+ let connected=false,expiresAt=null,lastError=null;
  if(configured(env)){
-  try{const row=await env.DB.prepare('SELECT payload FROM schwab_connections WHERE owner_id=?').bind(owner.id).first();if(row?.payload){const t=await openTokens(env,owner.id,row.payload);connected=Boolean(t.refresh_token);expiresAt=new Date(t.expires_at).toISOString()}}
+  try{await cipherKey(env);lastError=await env.DB.prepare('SELECT stage,provider_status,error_code,occurred_at FROM schwab_connection_diagnostics WHERE owner_id=?').bind(owner.id).first();const row=await env.DB.prepare('SELECT payload FROM schwab_connections WHERE owner_id=?').bind(owner.id).first();if(row?.payload){const t=await openTokens(env,owner.id,row.payload);connected=Boolean(t.refresh_token);expiresAt=new Date(t.expires_at).toISOString()}}
   catch{return json({error:'Schwab connection storage unavailable. Please try again later.'},503)}
  }
- return json({service:'schwab-market-data',appCredentialsConfigured:hasKeys,callbackUrl:SCHWAB_CALLBACK_URL,authorizationReady:configured(env),connected,accessExpiresAt:expiresAt,marketDataConnected:connected,realOrdersEnabled:false,stage:connected?'AUTHORIZED':configured(env)?'OWNER_AUTHORIZATION_REQUIRED':'CONFIGURATION_PENDING'});
+ return json({service:'schwab-market-data',appCredentialsConfigured:hasKeys,callbackUrl:SCHWAB_CALLBACK_URL,lastError,authorizationReady:configured(env),connected,accessExpiresAt:expiresAt,marketDataConnected:connected,realOrdersEnabled:false,stage:connected?'AUTHORIZED':configured(env)?'OWNER_AUTHORIZATION_REQUIRED':'CONFIGURATION_PENDING'});
 }
 export async function schwabAuthorize(request,env,owner){
  if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);
@@ -54,6 +58,7 @@ export async function schwabAuthorize(request,env,owner){
  const bearer=request.headers.get('Authorization')||'';if(!bearer.startsWith('Bearer '))return json({error:'Owner session required.'},403);
  const now=Date.now(),state=random(),stateHash=await sha(state),sessionHash=await sha(bearer.slice(7));
  await env.DB.batch([
+  env.DB.prepare('DELETE FROM schwab_connection_diagnostics WHERE owner_id=?').bind(owner.id),
   env.DB.prepare('DELETE FROM schwab_oauth_states WHERE owner_id=? OR expires_at<?').bind(owner.id,now),
   env.DB.prepare('INSERT INTO schwab_oauth_states(state_hash,owner_id,session_hash,expires_at) VALUES(?,?,?,?)').bind(stateHash,owner.id,sessionHash,now+600000),
   env.DB.prepare('INSERT INTO schwab_connections(owner_id,generation,payload,updated_at) VALUES(?,?,NULL,?) ON CONFLICT(owner_id) DO UPDATE SET generation=excluded.generation,payload=NULL,updated_at=excluded.updated_at,refresh_lock_until=0,refresh_lock_id=NULL').bind(owner.id,stateHash,now)
@@ -72,13 +77,22 @@ export async function schwabCallback(request,env){
  if(!pending||pending.expires_at<Date.now())return fail();
  const owner=await env.DB.prepare("SELECT u.id FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.user_id=? AND s.expires_at>? AND u.role='owner' AND u.status='active'").bind(pending.session_hash,pending.owner_id,Date.now()).first();
  if(!owner||url.searchParams.has('error')||!code||code.length>4096)return fail();
+ let stage='token_exchange';
  try{
   const tokens=await exchange(env,{grant_type:'authorization_code',code,redirect_uri:SCHWAB_CALLBACK_URL});
+  stage='token_encryption';
   const encrypted=await sealTokens(env,pending.owner_id,tokens);
+  stage='token_storage';
   const saved=await env.DB.prepare('UPDATE schwab_connections SET payload=?,updated_at=? WHERE owner_id=? AND generation=?').bind(encrypted,Date.now(),pending.owner_id,hash).run();
   if(saved.meta?.changes!==1)return fail('The connection was cancelled or replaced. Return to ICA Master.',409);
   return new Response(null,{status:303,headers:{...headers,Location:'https://icomputeranything.com/master?view=trading&schwab=connected'}});
- }catch{return fail('Schwab did not complete the connection. Return to ICA Master and reconnect; newly created apps may take time to activate.',502)}
+ }catch(error){
+  const status=Number.isInteger(error.providerStatus)?error.providerStatus:null;
+  const safeCode=error.safeCode||(['DataError','OperationError','InvalidCharacterError'].includes(error.name)?'encryption_configuration_error':'connection_error');
+  try{await env.DB.prepare('INSERT INTO schwab_connection_diagnostics(owner_id,stage,provider_status,error_code,occurred_at) VALUES(?,?,?,?,?) ON CONFLICT(owner_id) DO UPDATE SET stage=excluded.stage,provider_status=excluded.provider_status,error_code=excluded.error_code,occurred_at=excluded.occurred_at').bind(pending.owner_id,stage,status,safeCode,Date.now()).run()}catch{}
+  const reason=stage==='token_exchange'?'The Schwab token exchange failed'+(status?' (HTTP '+status+', '+safeCode+')':' (network or response error)'):stage==='token_encryption'?'ICA could not encrypt the connection securely':'ICA could not save the connection securely';
+  return fail(reason+'. Return to ICA Master and reconnect. No authorization code or token is shown on this page.',502);
+ }
 }
 export async function schwabDisconnect(request,env,owner){
  if(!owner?.id||owner.role!=='owner')return json({error:'Owner access required.'},403);

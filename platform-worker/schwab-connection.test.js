@@ -10,6 +10,7 @@ const request=(path,method='GET',origin='https://icomputeranything.com')=>new Re
 async function fixture(){
  const sqlite=new DatabaseSync(':memory:');
  sqlite.exec(readFileSync(new URL('./migrations/0007_schwab_market_data.sql',import.meta.url),'utf8'));
+ sqlite.exec(readFileSync(new URL('./migrations/0008_schwab_connection_diagnostics.sql',import.meta.url),'utf8'));
  sqlite.exec("CREATE TABLE users(id TEXT,role TEXT,status TEXT);CREATE TABLE sessions(id TEXT,user_id TEXT,expires_at INTEGER);INSERT INTO users VALUES('test-owner','owner','active');");
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('artificial-session'))),b=>b.toString(16).padStart(2,'0')).join('');
  sqlite.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash,owner.id,Date.now()+3600000);
@@ -66,4 +67,11 @@ test('expired access token refresh is serialized and rotation is persisted',asyn
 test('rejected refresh clears the stored authorization rather than reporting connected',async()=>{
  const {env,sqlite}=await fixture();await begin(env);const expired=await sealTokens(env,owner.id,{access_token:'old-access',refresh_token:'old-refresh',expires_at:0});sqlite.prepare('UPDATE schwab_connections SET payload=?').run(expired);const original=globalThis.fetch;globalThis.fetch=async()=>new Response('rejected',{status:400});
  try{assert.equal((await schwabQuotes(request('quotes'),env,owner)).status,503);assert.equal(sqlite.prepare('SELECT payload FROM schwab_connections').get().payload,null);assert.equal((await(await schwabConnectionStatus(env,owner)).json()).connected,false)}finally{globalThis.fetch=original}
+});
+
+
+test('token exchange records only safe diagnostic codes, never provider messages',async()=>{
+ const {env,sqlite}=await fixture();const state=await begin(env);const original=globalThis.fetch;
+ globalThis.fetch=async()=>Response.json({error:'invalid_client',error_description:'private-test-token'}, {status:401});
+ try{const r=await schwabCallback(callback(state),env);assert.equal(r.status,502);const text=await r.text();assert.match(text,/HTTP 401, invalid_client/);assert.ok(!text.includes('private-test-token'));const row=sqlite.prepare('SELECT * FROM schwab_connection_diagnostics').get();assert.equal(row.stage,'token_exchange');assert.equal(row.error_code,'invalid_client');assert.ok(!JSON.stringify(row).includes('private-test-token'))}finally{globalThis.fetch=original}
 });
