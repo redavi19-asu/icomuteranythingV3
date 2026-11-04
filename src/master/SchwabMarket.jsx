@@ -12,22 +12,50 @@ function useMarket(path,enabled,period=30000){
 }
 export function SchwabChart({symbol,enabled}){
  const [frequency,setFrequency]=useState(5),[expanded,setExpanded]=useState(false);
- const {data,error,loading}=useMarket('history?symbol='+symbol+'&frequency='+frequency,enabled);
+ const [visibleBars,setVisibleBars]=useState(65),[offset,setOffset]=useState(0),[hover,setHover]=useState(null);
+ const [dragStart,setDragStart]=useState(null);
+ const {data,error,loading}=useMarket('history?symbol='+symbol+'&frequency='+frequency,enabled,30000);
  const quote=useMarket('quotes?symbols='+symbol,enabled,15000);
- const candles=(data?.candles||[]).slice(-100),q=quote.data?.quotes?.[0];
- const values=candles.flatMap(c=>[c.low,c.high]),low=Math.min(...values),high=Math.max(...values),span=high-low||1;
- const y=p=>270-(p-low)/span*230;
- return <section className="itt-card" style={expanded?{position:'fixed',inset:20,zIndex:10000,overflow:'auto',background:'#101722'}:{}} aria-label="Schwab price chart">
- <div className="itt-card-heading"><div><div className="itt-eyebrow">SCHWAB MARKET DATA</div><h3>{symbol} · Price chart</h3></div><button className="itt-wide-button" onClick={()=>setExpanded(!expanded)}>{expanded?'Close expanded chart':'Expand chart'}</button></div>
- <div style={{padding:'0 18px 18px'}}><strong>{money(q?.last)} · Bid {money(q?.bid)} · Ask {money(q?.ask)}</strong>
- <p style={{fontSize:12}}>Quote {stamp(q?.quoteTime)} ET · {q?.realtime===true?'Schwab marks quote real-time':q?.realtime===false?'Delayed quote':'Quote status unconfirmed'} · Quotes refresh every 15 seconds.</p>
- <div className="itt-chain-tabs">{[1,5,15,30,60].map(f=><button key={f} aria-pressed={frequency===f} onClick={()=>setFrequency(f)}>{f}m</button>)}</div>
- {!enabled?<p>Connect Schwab to load candles.</p>:error||quote.error?<p role="alert">{error||quote.error}</p>:loading?<p>Loading Schwab candles…</p>:candles.length?<svg viewBox="0 0 800 310" role="img" aria-label={symbol+' Schwab candlestick chart'} style={{width:'100%',minHeight:260,background:'#0a101b'}}>
- {[0,1,2,3,4].map(i=>{const price=low+span*i/4;return <g key={i}><line x1="0" x2="730" y1={y(price)} y2={y(price)} stroke="#253246"/><text x="735" y={y(price)+4} fill="#aabbd0" fontSize="11">{price.toFixed(2)}</text></g>})}
- {candles.map((c,i)=>{const x=10+i*710/candles.length,w=Math.max(2,500/candles.length),color=c.close>=c.open?'#32d5a0':'#ff6581';return <g key={c.time}><title>{stamp(c.time)} ET · O {c.open} H {c.high} L {c.low} C {c.close}</title><line x1={x} x2={x} y1={y(c.high)} y2={y(c.low)} stroke={color}/><rect x={x-w/2} y={Math.min(y(c.open),y(c.close))} width={w} height={Math.max(1,Math.abs(y(c.open)-y(c.close)))} fill={color}/></g>})}
- <text x="10" y="300" fill="#aabbd0" fontSize="11">{stamp(candles[0].time)} ET</text><text x="610" y="300" fill="#aabbd0" fontSize="11">{stamp(candles.at(-1).time)} ET</text>
- </svg>:<p>No candles returned for this session.</p>}
- {data&&<p style={{fontSize:11}}>Historical candles from Schwab · Last candle {candles.length?new Date(candles.at(-1).time).toLocaleString('en-US',{timeZone:'America/New_York'}):'Unavailable'} ET · Fetched {stamp(data.receivedAt)} ET. Candles refresh every 30 seconds; the current candle may be incomplete. Extended hours included.</p>}
+ const allCandles=(data?.candles||[]).filter(c=>Number.isFinite(c.open)&&Number.isFinite(c.close)&&Number.isFinite(c.low)&&Number.isFinite(c.high)&&Number.isFinite(new Date(c.time).getTime()));
+ const count=Math.min(160,Math.max(15,visibleBars));
+ const maxOffset=Math.max(0,allCandles.length-count);
+ const clampedOffset=Math.min(offset,maxOffset);
+ const endIndex=allCandles.length-clampedOffset;
+ const candles=allCandles.slice(Math.max(0,endIndex-count),endIndex);
+ const q=quote.data?.quotes?.[0];
+ const values=candles.flatMap(c=>[c.low,c.high]),low=values.length?Math.min(...values):0,high=values.length?Math.max(...values):1;
+ const pad=Math.max((high-low)*.08,high*.0001,.01),min=low-pad,max=high+pad,span=max-min||1;
+ const y=p=>260-(p-min)/span*225;
+ const x=i=>20+(i+.5)*705/Math.max(1,candles.length);
+ const range=(n)=>{setVisibleBars(n);setOffset(0);setHover(null)};
+ const zoom=direction=>{setVisibleBars(v=>Math.max(15,Math.min(160,v+direction*15)));setHover(null)};
+ const positionIndex=e=>{
+  const bounds=e.currentTarget.getBoundingClientRect();
+  if(!bounds.width)return null;
+  const px=(e.clientX-bounds.left)/bounds.width*800;
+  return Math.max(0,Math.min(candles.length-1,Math.floor((px-20)/705*candles.length)));
+ };
+ const onMove=e=>{
+  if(!candles.length)return;
+  if(dragStart){const delta=Math.round((e.clientX-dragStart.x)/Math.max(1,e.currentTarget.getBoundingClientRect().width)*candles.length);
+   if(Math.abs(delta)>=1){setOffset(Math.max(0,Math.min(maxOffset,dragStart.offset+delta)));setDragStart({x:e.clientX,offset:Math.max(0,Math.min(maxOffset,dragStart.offset+delta))});}return;}
+  setHover(positionIndex(e));
+ };
+ const focused=hover===null?candles.at(-1):candles[hover];
+ return <section className="itt-card itt-schwab-interactive" style={expanded?{position:'fixed',inset:20,zIndex:10000,overflow:'auto',background:'#101722'}:{}} aria-label="Interactive Schwab price chart">
+ <div className="itt-card-heading"><div><div className="itt-eyebrow">SCHWAB MARKET DATA · INTERACTIVE</div><h3>{symbol} · Price chart</h3></div><button className="itt-wide-button" onClick={()=>setExpanded(!expanded)}>{expanded?'Close expanded chart':'Expand chart'}</button></div>
+ <div className="itt-schwab-chart-content">
+ <div className="itt-schwab-quote"><strong>{money(q?.last)} · Bid {money(q?.bid)} · Ask {money(q?.ask)}</strong><span>Quote {stamp(q?.quoteTime)} ET · {q?.realtime===true?'Provider marks real-time':q?.realtime===false?'Delayed':'Delay status unconfirmed'} · Polls every 15s</span></div>
+ <div className="itt-schwab-toolbar"><div>{[1,5,15,30,60].map(f=><button type="button" key={f} className={frequency===f?'selected':''} aria-pressed={frequency===f} onClick={()=>{setFrequency(f);range(65)}}>{f}m</button>)}</div><div><button onClick={()=>zoom(-1)} title="Zoom in">＋ Zoom</button><button onClick={()=>zoom(1)} title="Zoom out">－ Zoom</button><button onClick={()=>{setOffset(0);setHover(null)}}>Latest ↦</button></div></div>
+ {!enabled?<p>Connect Schwab under Connections & advanced settings to load candles.</p>:error||quote.error?<p role="alert">{error||quote.error}</p>:loading&&!allCandles.length?<p>Loading Schwab candles…</p>:candles.length?<div className="itt-schwab-canvas">
+ <svg viewBox="0 0 800 310" role="img" aria-label={symbol+' interactive Schwab candle chart. Hover for values, drag to pan, use zoom buttons.'} className="itt-schwab-svg" onPointerMove={onMove} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);setDragStart({x:e.clientX,offset:clampedOffset})}} onPointerUp={e=>{setDragStart(null);e.currentTarget.releasePointerCapture(e.pointerId)}} onPointerCancel={()=>setDragStart(null)} onPointerLeave={()=>{if(!dragStart)setHover(null)}} onWheel={e=>{if(e.deltaY!==0){zoom(e.deltaY>0?1:-1)}}}>
+ {[0,1,2,3,4].map(i=>{const p=min+span*i/4;return <g key={i}><line x1="10" x2="725" y1={y(p)} y2={y(p)} stroke="#253246"/><text x="735" y={y(p)+4} fill="#aabbd0" fontSize="11">{p.toFixed(2)}</text></g>})}
+ {candles.map((c,i)=>{const cx=x(i),w=Math.max(2,Math.min(12,500/candles.length)),color=c.close>=c.open?'#32d5a0':'#ff6581';return <g key={c.time}><line x1={cx} x2={cx} y1={y(c.high)} y2={y(c.low)} stroke={color}/><rect x={cx-w/2} y={Math.min(y(c.open),y(c.close))} width={w} height={Math.max(1,Math.abs(y(c.open)-y(c.close)))} fill={color}/></g>})}
+ {hover!==null&&candles[hover]&&<g pointerEvents="none"><line x1={x(hover)} x2={x(hover)} y1="20" y2="270" stroke="#b3daef" strokeDasharray="4 4" opacity=".8"/><line x1="12" x2="724" y1={y(candles[hover].close)} y2={y(candles[hover].close)} stroke="#b3daef" strokeDasharray="4 4" opacity=".55"/></g>}
+ <text x="15" y="298" fill="#aabbd0" fontSize="11">{stamp(candles[0].time)} ET</text><text x="610" y="298" fill="#aabbd0" fontSize="11">{stamp(candles.at(-1).time)} ET</text>
+ </svg>
+ <div className="itt-schwab-crosshair" aria-live="off">{focused?<><strong>{new Date(focused.time).toLocaleString('en-US',{timeZone:'America/New_York'})} ET</strong><span>O {money(focused.open)} · H {money(focused.high)} · L {money(focused.low)} · C {money(focused.close)} · Vol {Number(focused.volume||0).toLocaleString()}</span></>:null}</div></div>:<p>No candles returned for this session. Check Schwab authorization and market-data entitlement.</p>}
+ <p className="itt-schwab-freshness">Schwab history · Last candle {candles.length?new Date(candles.at(-1).time).toLocaleString('en-US',{timeZone:'America/New_York'}):'Unavailable'} ET · Fetched {stamp(data?.receivedAt)} ET · History refreshes every 30s. Drag to pan, hover for OHLC, zoom to inspect. The latest candle can be incomplete; quotes and candles can update at different times.</p>
  </div></section>;
 }
 export function SchwabOptions({symbol,side,enabled}){
