@@ -7,4 +7,14 @@ test('paper entry uses ask, slippage and commission without mutating input',()=>
 for(const [bid,reason] of [[1.5,'STOP_LOSS'],[2.7,'PROFIT_TARGET']])test(reason+' closes at bid less fees',()=>{let s=stepPaper(newPaper(),{quote:q,enter:true,now});s=stepPaper(s,{quote:{...q,bid,ask:bid+0.05},now});assert.equal(s.position,null);assert.equal(s.trades[0].reason,reason);assert.equal(s.cash,Math.round((1500+s.realized)*100)/100)});
 test('stale quotes and zero bid cannot create fake exit fills',()=>{const s=stepPaper(newPaper(),{quote:q,enter:true,now});assert.throws(()=>stepPaper(s,{quote:q,close:true,now:now+61000}),/fresh/);assert.throws(()=>stepPaper(s,{quote:{...q,bid:0},close:true,now}),/positive bid/)});
 test('trailing stop tracks peak and closes on retracement',()=>{let s=stepPaper(newPaper(),{quote:q,enter:true,now});s=stepPaper(s,{quote:{...q,bid:2.4,ask:2.45},now});s=stepPaper(s,{quote:{...q,bid:2.1,ask:2.15},now});assert.equal(s.trades[0].reason,'TRAILING_STOP')});
-test('daily cap and incomplete quality prevent entries',()=>{assert.throws(()=>stepPaper({...newPaper(),day:'2026-11-04',dayTrades:3},{quote:q,enter:true,now}),/limit/);assert.throws(()=>stepPaper(newPaper(),{quote:{...q,delta:null},enter:true,now}),/incomplete/)});
+test('paper practice continues beyond old daily count and profit cutoffs',()=>{
+ for(const dayPnl of [75.70,-150]){
+  const initial={...newPaper(),day:'2026-11-04',dayTrades:8,dayPnl};
+  const entered=stepPaper(initial,{quote:q,enter:true,now});
+  assert.ok(entered.position);
+  assert.equal(entered.dayTrades,9);
+  assert.equal(entered.dayPnl,dayPnl);
+  assert.equal(initial.position,null);
+ }
+});
+test('incomplete quality still prevents paper entries',()=>{assert.throws(()=>stepPaper(newPaper(),{quote:{...q,delta:null},enter:true,now}),/incomplete/)});
