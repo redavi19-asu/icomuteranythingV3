@@ -1,8 +1,9 @@
 import {PAPER_DEFAULTS,eligiblePaperQuote,marketTime} from './trading-paper-engine.js';
 export const paperRules={...PAPER_DEFAULTS,stopAfterDailyGoal:true};
+export const paperDailyGoal=(value)=>Number.isFinite(value)&&value>=10&&value<=500?value:50;
 export const newPaper=()=>({version:1,cash:1500,realized:0,position:null,trades:[],day:'',dayPnl:0,dayTrades:0});
 const round=x=>Math.round(x*100)/100;
-export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperRules.premiumBudget,now=Date.now()}){
+export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperRules.premiumBudget,dailyGoal=50,now=Date.now()}){
  const s=structuredClone(state),session=marketTime(now);
  if(s.day!==session.day){s.day=session.day;s.dayPnl=0;s.dayTrades=0}
  if(!quote||!Number.isFinite(quote.quoteTime)||now-quote.quoteTime>60000||quote.quoteTime>now+5000)throw Error('Waiting for a fresh contract quote.');
@@ -14,7 +15,7 @@ export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperR
   if(reason){if(quote.bid<=0)throw Error('No positive bid available; simulated position remains open.');const credit=round(Math.max(0,quote.bid-0.01)*100-0.65),pnl=round(credit-p.cost);s.cash=round(s.cash+credit);s.realized=round(s.realized+pnl);s.dayPnl=round(s.dayPnl+pnl);s.trades.push({...p,exitTime:now,exitFill:quote.bid-0.01,pnl,reason});s.position=null}
  }else if(enter){
   if(['Sat','Sun'].includes(session.weekday)||session.minute<575||session.minute>=945)throw Error('Paper entries run 9:35 AM–3:45 PM ET on weekdays.');
-  if(s.dayTrades>=3||s.dayPnl<=-100||s.dayPnl>=50)throw Error('Daily paper limit reached.');
+  if(s.dayTrades>=3||s.dayPnl<=-100||s.dayPnl>=paperDailyGoal(dailyGoal))throw Error('Daily paper limit reached.');
   if(quote.nonStandard)throw Error('Nonstandard contracts are excluded.');
   if(![quote.delta,quote.volume,quote.openInterest].every(Number.isFinite))throw Error('Contract quality data is incomplete.');
   const blocked=eligiblePaperQuote(quote,{...paperRules,premiumBudget:maxPremium});if(blocked)throw Error(blocked.replaceAll('_',' '));
