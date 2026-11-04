@@ -8,7 +8,7 @@ const scannerUniverse=s=>[...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s
 const budget=s=>Number.isFinite(s.maxPremium)?s.maxPremium:paperRules.premiumBudget;
 function alertList(s){
  if(!Array.isArray(s.alerts))s.alerts=[];
- if(s.pending){if(!s.alerts.some(a=>a.id===s.pending.id))s.alerts.unshift({...s.pending,status:'PENDING'});s.pending=null;}
+ if(s.pending){if(!s.alerts.some(a=>a.id===s.pending.id))s.alerts.unshift({...s.pending,status:'PENDING'});s.seen=[...new Set([...(s.seen||[]),s.pending.id])].slice(-200);s.pending=null;}
  return s.alerts;
 }
 const liveAlert=(a,now=Date.now())=>a.status==='PENDING'&&a.expires>now;
