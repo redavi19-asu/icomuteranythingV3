@@ -615,13 +615,95 @@
  box-shadow:0 0 14px rgba(240,74,87,.4)!important
 }
 
-/* ICA PRIME wordmark only: a banknote-green MONEY MACHINE label.
-   The existing graphite/orange/red dashboard and yellow active controls remain untouched. */
-.itt-brand h2 .itt-brand-divider{
- background:none!important;color:#a9aaaf!important;-webkit-text-fill-color:#a9aaaf!important;
- font-weight:500;letter-spacing:0
+/* ICA PRIME wordmark: miniature engraved dollar-bill cartouche.
+   Header-only styling: trading candles, ICA palette, and yellow controls are unchanged. */
+.itt-brand h2{
+ display:flex;
+ align-items:center;
+ flex-wrap:wrap;
+ column-gap:8px;
+ row-gap:5px;
 }
+.itt-brand h2 .itt-brand-divider{
+ background:none!important;
+ color:#a9aaaf!important;
+ -webkit-text-fill-color:#a9aaaf!important;
+ font-weight:500;
+ letter-spacing:0;
+}
+.itt-brand h2 .itt-money-machine-note{
+ position:relative;
+ isolation:isolate;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ min-height:40px;
+ padding:6px 39px 7px;
+ flex:0 0 auto;
+ border:1px solid #536b4e;
+ border-radius:3px;
+ background:
+  repeating-linear-gradient(0deg,rgba(37,63,42,.055) 0px,rgba(37,63,42,.055) 1px,transparent 1px,transparent 4px),
+  repeating-linear-gradient(90deg,transparent 0px,transparent 10px,rgba(53,82,55,.07) 10px,rgba(53,82,55,.07) 11px),
+  radial-gradient(ellipse at 50% 50%,#f0f0d8 0%,#d9e0c8 48%,#aab99c 100%);
+ color:#304b34!important;
+ -webkit-text-fill-color:#304b34!important;
+ box-shadow:
+  inset 0 0 0 3px #dbe3c9,
+  inset 0 0 0 4px #75896d,
+  inset 0 0 0 6px rgba(236,239,217,.82),
+  0 3px 10px rgba(0,0,0,.4);
+}
+.itt-brand h2 .itt-money-machine-note::before,
+.itt-brand h2 .itt-money-machine-note::after{
+ content:';
+ position:absolute;
+ z-index:1;
+ top:50%;
+ transform:translateY(-50%);
+ width:24px;
+ height:24px;
+ border:2px double #5b7559;
+ border-radius:50%;
+ background:rgba(217,226,199,.65);
+ color:#425e44;
+ -webkit-text-fill-color:#425e44;
+ font-family:Georgia,'Times New Roman',serif;
+ font-size:19px;
+ font-weight:700;
+ line-height:20px;
+ letter-spacing:0;
+ text-align:center;
+ text-shadow:0 1px #f3f3df;
+}
+.itt-brand h2 .itt-money-machine-note::before{left:9px}
+.itt-brand h2 .itt-money-machine-note::after{right:9px}
 .itt-brand h2 .itt-money-machine{
- background:none!important;color:#80c978!important;-webkit-text-fill-color:#80c978!important;
- font-size:.65em;font-weight:850;letter-spacing:.065em;white-space:nowrap;
+ position:relative;
+ z-index:2;
+ display:inline-block;
+ background:none!important;
+ color:#2d4832!important;
+ -webkit-text-fill-color:#2d4832!important;
+ font-family:Baskerville,'Palatino Linotype','Book Antiqua',Georgia,serif;
+ font-size:.88em;
+ font-weight:900;
+ font-variant:small-caps;
+ letter-spacing:.06em;
+ line-height:1.1;
+ white-space:nowrap;
+ text-shadow:.4px .4px 0 #455e43,0 1px 0 #f9f8e9;
+}
+@media(max-width:630px){
+ .itt-brand h2 .itt-money-machine-note{
+  min-height:35px;
+  padding:5px 31px 6px;
+ }
+ .itt-brand h2 .itt-money-machine-note::before,
+ .itt-brand h2 .itt-money-machine-note::after{
+  width:18px;height:18px;font-size:15px;line-height:15px;
+ }
+ .itt-brand h2 .itt-money-machine-note::before{left:7px}
+ .itt-brand h2 .itt-money-machine-note::after{right:7px}
+ .itt-brand h2 .itt-money-machine{font-size:.81em;letter-spacing:.045em}
 }
