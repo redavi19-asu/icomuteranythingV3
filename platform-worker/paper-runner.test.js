@@ -171,3 +171,48 @@ test('legacy paper alerts without verified options-flow evidence cannot be appro
   assert.equal(after.paper.positions.length,0);
  }finally{Date.now=oldNow;globalThis.fetch=fetcher}
 });
+
+test('Single Ticker mode scans only SPY on scheduler and Run Now, and Multiple Tickers restores rotation',async()=>{
+ const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
+ const scopeReq=(mode,symbol)=>new Request('https://test/platform/paper',{method:'POST',headers:{Origin:'https://icomputeranything.com'},body:JSON.stringify({action:'scan_scope',mode,symbol})});
+ globalThis.fetch=async url=>{
+  if(String(url).includes('/pricehistory'))return Response.json({candles:[]});
+  return Response.json({});
+ };
+ try{
+  const {env}=await fixture();
+  assert.equal((await paperApi(req('start'),env,owner)).status,200);
+  const single=await paperApi(scopeReq('SINGLE','spy'),env,owner);
+  assert.equal(single.status,200);
+  let state=await single.json();
+  assert.equal(state.scanMode,'SINGLE');assert.equal(state.singleTicker,'SPY');assert.deepEqual(state.scanUniverse,['SPY']);
+  state=await runPaperTick(env,owner);
+  assert.deepEqual(state.lastCheck.scannedSymbols,['SPY'],'Run Now should scan only the requested symbol');
+  state=await runPaperTick(env,owner,{scheduled:true});
+  assert.deepEqual(state.lastCheck.scannedSymbols,['SPY'],'scheduled checks use the same scope');
+  state=await(await paperApi(req(),env,owner)).json();
+  assert.equal(state.singleTicker,'SPY','scope is server-persisted across reloads');
+  assert.equal((await paperApi(scopeReq('SINGLE','SPY;QQQ'),env,owner)).status,409);
+  assert.equal((await paperApi(scopeReq('UNKNOWN','SPY'),env,owner)).status,409);
+  const multiple=await paperApi(scopeReq('MULTI'),env,owner);assert.equal(multiple.status,200);
+  state=await runPaperTick(env,owner);
+  assert.deepEqual(state.lastCheck.scannedSymbols,['SPY','QQQ','IWM']);
+  assert.ok(state.scanUniverse.length>1);
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
+test('Single Ticker scope invalidates unrelated pending setups but preserves open paper positions',async()=>{
+ const {env,db}=await fixture();await paperApi(req(),env,owner);
+ const state=freshRunner();state.enabled=true;
+ state.alerts=[{...pending(),id:'other',status:'PENDING',contract:{...pending().contract,underlying:'QQQ'}}];
+ const quote={symbol:'QQQ PAPER 400 C',underlying:'QQQ',bid:1.95,ask:2,quoteTime:now,delta:0.5,volume:200,openInterest:500};
+ state.paper=stepPaper(state.paper,{quote,enter:true,now});
+ db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
+ const request=new Request('https://test/platform/paper',{method:'POST',headers:{Origin:'https://icomputeranything.com'},body:JSON.stringify({action:'scan_scope',mode:'SINGLE',symbol:'SPY'})});
+ const updated=await paperApi(request,env,owner);
+ assert.equal(updated.status,200);
+ const after=await updated.json();
+ assert.equal(after.alerts[0].status,'OUT_OF_SCOPE');
+ assert.equal(after.paper.positions.length,1);
+ assert.equal(after.paper.positions[0].underlying,'QQQ');
+ assert.equal((await paperApi(req('accept','other'),env,owner)).status,409,'out-of-scope approvals must fail closed');
+});
