@@ -1,7 +1,8 @@
 import {normalizePaperPortfolio,enterPaperPosition,managePaperPosition} from '../src/master/paper-portfolio.js';
 import {newPaper,paperRules} from '../src/master/paper-session.js';
 import {evaluateSymbol,eligiblePaperQuote,marketTime} from '../src/master/trading-paper-engine.js';
-import {schwabMarket,schwabContractQuote} from './schwab-connection.js';
+import {schwabMarket,schwabQuotes,schwabContractQuote} from './schwab-connection.js';
+import {schwabQuoteFreshness} from '../src/master/schwab-quote-freshness.js';
 import {getContractFlow} from './options-flow.js';
 import {evaluateVerifiedFlow,evaluateAristotleConfluence,evaluateDailySwing,classifyTradeHorizon} from '../src/master/trading-smart-money.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
@@ -31,11 +32,22 @@ async function notifyPaperOpportunity(env,owner,alert){
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
 export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],scanMode:'MULTI',singleTicker:'SPY',dailySignals:{},dailyCheckedDay:{},
- flowGate:{status:'NOT_CHECKED',provider:'UNUSUAL_WHALES',level2:'NOT_CONNECTED',reason:'No verified contract tape checked yet.'},autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[]});
+ flowGate:{status:'NOT_CHECKED',provider:'UNUSUAL_WHALES',level2:'NOT_CONNECTED',reason:'No verified contract tape checked yet.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[]});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
 async function data(env,owner,kind,symbol){const r=await schwabMarket(new Request('https://internal/platform/schwab/'+kind+'?symbol='+symbol+'&frequency=1'),env,owner,kind);if(!r.ok)throw Error('Market feed unavailable.');return r.json()}
+async function validateUnderlyingQuote(env,owner,symbol,now=Date.now()){
+ const empty={symbol,checkedAt:now,code:'UNAVAILABLE',label:'SCHWAB QUOTE UNAVAILABLE',quoteTime:null};
+ try{
+  const res=await schwabQuotes(new Request('https://internal/platform/schwab/quotes?symbols='+encodeURIComponent(symbol)),env,owner);
+  if(!res.ok)return empty;
+  const payload=await res.json(),quote=payload.quotes?.find(q=>q.symbol===symbol);
+  if(!quote)return empty;
+  const status=schwabQuoteFreshness(quote,now);
+  return {...status,symbol,quoteTime:quote.quoteTime??null,checkedAt:now};
+ }catch{return empty}
+}
 export async function runPaperTick(env,owner,{scan=true,scheduled=false}={}){
  const row=await load(env,owner.id),s=row.state;s.heartbeat=Date.now();s.lastError=null;
  // Server-side opt-in schedule: a real setting, not a browser-local checkbox.
@@ -74,6 +86,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false}={}){
      const history=await data(env,owner,'history',symbol);
      const bars=(history.candles||[]).filter(c=>c.time+60000<=checkedAt&&Number.isFinite(c.volume));
      const signal=evaluateSymbol(symbol,bars,{now:checkedAt,staleAfterMinutes:3});
+     s.marketFeed=await validateUnderlyingQuote(env,owner,symbol,Date.now());
      s.lastScan={symbol,time:checkedAt,signal};
      s.scanHistory=[{symbol,time:checkedAt,state:signal.state,reason:signal.reason},...(s.scanHistory||[])].slice(0,30);
      // Daily OHLCV is independent of minute-breakout alerts; scan each
@@ -95,6 +108,10 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false}={}){
       }catch{s.dailySignals[symbol]={status:'UNAVAILABLE',confirmed:false,reason:'Daily Schwab bars unavailable.'}}
      }
      if(signal.state!=='TECHNICAL_WATCH')continue;
+     if(s.marketFeed?.code!=='VERIFIED_FRESH'){
+      s.scanHistory.unshift({symbol,time:checkedAt,state:'FEED_HOLD',reason:'Real-time Schwab underlying quote was not freshly verified: '+(s.marketFeed?.label||'UNAVAILABLE')});
+      s.scanHistory=s.scanHistory.slice(0,30);continue;
+     }
      const confluence=evaluateAristotleConfluence(bars,signal.direction);
      if(!confluence.confirmed){
       s.scanHistory.unshift({symbol,time:checkedAt,state:'CONFLUENCE_WATCH',reason:confluence.reason});
