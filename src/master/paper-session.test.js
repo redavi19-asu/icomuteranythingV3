@@ -58,3 +58,32 @@ test('protective-exit explanation persists after page refresh and past the NY da
  assert.equal(tomorrow.todayRealized,0,'new trading day starts at zero');
  assert.deepEqual(tomorrow.automaticExits,first.automaticExits,'stored closure notice is never timer-dismissed');
 });
+
+test('selected paper stop choices behave independently for new positions',()=>{
+ for(const pct of [15,20,35,50]){
+  const entered=stepPaper(newPaper(),{quote:q,enter:true,now,stopLossPct:pct});
+  assert.equal(entered.position.stopLossPct,pct);
+  const mid={...q,bid:1.5,ask:1.6};
+  const managed=stepPaper(entered,{quote:mid,now});
+  assert.equal(Boolean(managed.position),pct>=35,'wider stops remain active on this exact bid for '+pct);
+  if(pct<=20)assert.equal(managed.trades.at(-1).reason,'STOP_LOSS');
+ }
+});
+
+test('changing the saved default NEVER silently widens a currently open position',()=>{
+ const entry=stepPaper(newPaper(),{quote:q,enter:true,now,stopLossPct:15});
+ const evaluated=stepPaper(entry,{quote:{...q,bid:1.60,ask:1.70},now,stopLossPct:50});
+ assert.equal(evaluated.position,null);
+ assert.equal(evaluated.trades[0].reason,'STOP_LOSS');
+ assert.equal(evaluated.trades[0].stopLossPct,15);
+ const legacy=stepPaper(newPaper(),{quote:q,enter:true,now});
+ delete legacy.position.stopLossPct;
+ const prior=stepPaper(legacy,{quote:{...q,bid:1.6,ask:1.7},now});
+ assert.equal(prior.trades.at(-1).reason,'STOP_LOSS','old saved positions keep 20 percent rule');
+});
+
+test('unsupported paper stop choice is rejected when creating a position',()=>{
+ for(const pct of [0,10,60,100,NaN]){
+  assert.throws(()=>stepPaper(newPaper(),{quote:q,enter:true,now,stopLossPct:pct}),/supported paper stop/);
+ }
+});

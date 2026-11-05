@@ -175,7 +175,7 @@ test('available paper cash still gates additional contracts without losing accep
 });
 test('the scanner continues checking new symbols while a paper contract is open',async()=>{
  const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;const feed=portfolioFeed();let histories=0;globalThis.fetch=async(url,options)=>{if(String(url).includes('/pricehistory'))histories++;return feed(url,options)};
- try{const {env}=await portfolioFixture(1);await acceptPortfolio(env,1);const state=await runPaperTick(env,owner);assert.equal(state.paper.positions.length,1);assert.equal(histories,6);assert.equal(state.scanHistory.length,3);assert.equal(state.lastCheck.positionsChecked,1);assert.equal(state.lastCheck.positionsUpdated,1);assert.equal(state.lastCheck.scannedSymbols.length,3);assert.equal(state.lastCheck.completedAt,now);const restored=await(await paperApi(req(),env,owner)).json();assert.equal(restored.lastCheck.id,state.lastCheck.id)}finally{Date.now=date;globalThis.fetch=fetcher}
+ try{const {env}=await portfolioFixture(1);await acceptPortfolio(env,1);const state=await runPaperTick(env,owner);assert.equal(state.paper.positions.length,1);assert.equal(histories,10);assert.equal(state.scanHistory.length,5);assert.equal(state.lastCheck.positionsChecked,1);assert.equal(state.lastCheck.positionsUpdated,1);assert.equal(state.lastCheck.scannedSymbols.length,5);assert.equal(state.lastCheck.completedAt,now);const restored=await(await paperApi(req(),env,owner)).json();assert.equal(restored.lastCheck.id,state.lastCheck.id)}finally{Date.now=date;globalThis.fetch=fetcher}
 });
 test('Close All wins an in-flight approval and invalidates approvals queued under an older epoch',async()=>{
  const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();
@@ -252,7 +252,7 @@ test('Single Ticker mode scans only SPY on scheduler and Run Now, and Multiple T
   assert.equal((await paperApi(scopeReq('UNKNOWN','SPY'),env,owner)).status,409);
   const multiple=await paperApi(scopeReq('MULTI'),env,owner);assert.equal(multiple.status,200);
   state=await runPaperTick(env,owner);
-  assert.deepEqual(state.lastCheck.scannedSymbols,['SPY','QQQ','IWM']);
+  assert.deepEqual(state.lastCheck.scannedSymbols,['SPY','QQQ','IWM','DIA','XLK']);
   assert.ok(state.scanUniverse.length>1);
  }finally{Date.now=date;globalThis.fetch=fetcher}
 });
@@ -274,4 +274,31 @@ test('Single Ticker scope invalidates unrelated pending setups but preserves ope
  assert.equal(after.paper.positions[0].underlying,'QQQ');
  assert.equal((await paperApi(req('accept','other'),env,owner)).status,409,'out-of-scope approvals must fail closed');
  }finally{Date.now=originalNow}
+});
+
+test('owner saves adjustable risk for future paper entries without rewriting open positions',async()=>{
+ const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
+ const request=id=>new Request('https://test/platform/paper',{method:'POST',
+  headers:{Origin:'https://icomputeranything.com'},body:JSON.stringify({action:'stop_settings',id})});
+ try{
+  const {db,env}=await fixture();
+  assert.equal((await paperApi(req(),env,owner)).status,200);
+  let result=await paperApi(request(35),env,owner);
+  assert.equal(result.status,200);
+  assert.equal((await result.json()).stopLossPct,35);
+  assert.equal((await paperApi(request(80),env,owner)).status,409,'invalid large loss is rejected');
+  const s=JSON.parse(db.prepare('SELECT payload FROM paper_runners').get().payload);
+  s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,
+   quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});
+  const accepted=await paperApi(req('accept','setup'),env,owner);
+  assert.equal(accepted.status,200);
+  const entered=await accepted.json();
+  assert.equal(entered.paper.positions[0].stopLossPct,35);
+  result=await paperApi(request(50),env,owner);
+  assert.equal(result.status,200,'default may be changed even with a paper trade open');
+  const changed=await result.json();
+  assert.equal(changed.stopLossPct,50);
+  assert.equal(changed.paper.positions[0].stopLossPct,35,'open trade retains saved entry risk');
+ }finally{Date.now=date;globalThis.fetch=fetcher}
 });

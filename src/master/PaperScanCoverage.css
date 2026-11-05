@@ -1,0 +1,14 @@
+/* ICA PRIME: complete paper-scanner coverage, scrollable on mobile. */
+.itt-coverage-list{max-height:340px;overflow:auto;display:grid;gap:6px;padding:3px 5px 6px 0}
+.itt-coverage-row{display:grid;grid-template-columns:minmax(60px,.45fr) minmax(125px,1.1fr) minmax(105px,.75fr) minmax(110px,.8fr);align-items:center;gap:6px 10px;padding:10px;border:1px solid #424244;border-radius:8px;background:#252527;font-size:11px;color:#d9d9db;min-width:0}
+.itt-coverage-row strong{font-size:13px;color:#f1f1f3;letter-spacing:.03em}
+.itt-coverage-row span{font-weight:800;color:#ffcf88;overflow-wrap:anywhere}
+.itt-coverage-row time,.itt-coverage-row small{color:#a8a8ac;overflow-wrap:anywhere}
+.itt-coverage-row.pending{border-color:#363638;background:#202022}
+.itt-coverage-row.pending span{color:#a1a1a5}
+.itt-coverage-row .itt-coverage-reason{grid-column:1/-1;line-height:1.4;color:#98989e}
+@media(max-width:690px){
+ .itt-coverage-row{grid-template-columns:minmax(58px,.4fr) minmax(120px,1fr)}
+ .itt-coverage-row time,.itt-coverage-row small:not(.itt-coverage-reason){font-size:10px}
+ .itt-coverage-list{max-height:390px}
+}

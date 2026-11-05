@@ -1,0 +1,11 @@
+/* ICA PRIME independent paper risk selector, no open-position override. */
+.itt-stop-settings{width:100%}
+.itt-stop-settings h4{margin:0 0 10px;letter-spacing:.045em;font-size:13px;color:#ececee}
+.itt-stop-settings label{display:block;font-weight:750;font-size:12px;color:#bcbcc0}
+.itt-stop-settings-row{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin:10px 0}
+.itt-stop-settings select{padding:12px;min-width:115px;border-radius:8px;
+background:#242426;border:1px solid #777782;color:#f1f1f3;font:inherit;
+font-size:15px;font-weight:850}
+.itt-stop-settings p{font-size:12px;line-height:1.5;margin:9px 0 2px;color:#bdbdc0}
+.itt-stop-settings p strong{color:#f3e4c8}
+@media(max-width:580px){.itt-stop-settings-row>*{flex:1}}

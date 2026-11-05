@@ -11,13 +11,15 @@ test('only bounded real ticker and option symbols can reach Schwab subscriptions
 });
 test('only recent stream events may trigger paper signal work',()=>{
  const now=1793889000000;
- const valid={now,receivedAt:now,lastScanAt:now-10000,lastSymbolAt:now-20000};
+ const valid={now,receivedAt:now,lastScanAt:now-10000,lastSymbolAt:now-90000};
  assert.equal(streamScanAllowed(valid),true);
  assert.equal(streamScanAllowed({...valid,receivedAt:now-5001}),false);
  assert.equal(streamScanAllowed({...valid,receivedAt:now+5001}),false);
  assert.equal(streamScanAllowed({...valid,receivedAt:0}),false);
  assert.equal(streamScanAllowed({...valid,lastScanAt:now-4000,mode:'MULTI'}),false);
  assert.equal(streamScanAllowed({...valid,lastSymbolAt:now-11000,mode:'MULTI'}),false);
+ assert.equal(streamScanAllowed({...valid,lastSymbolAt:now-59000,mode:'MULTI'}),false,'do not re-scan GOOGL from each partial tick');
+ assert.equal(streamScanAllowed({...valid,lastSymbolAt:now-61000,mode:'MULTI'}),true,'allow fresh one-minute continuation');
  assert.equal(streamScanAllowed({...valid,lastScanAt:now-3500,lastSymbolAt:now-3500,mode:'SINGLE'}),true);
  assert.equal(streamScanAllowed({...valid,lastScanAt:now-2000,lastSymbolAt:now-2000,mode:'SINGLE'}),false);
 });

@@ -5,7 +5,10 @@ export const isStreamContract=s=>typeof s==='string'&&s.length<=90&&/^[A-Z0-9 .:
 export function streamScanAllowed({now=Date.now(),receivedAt=0,lastScanAt=0,lastSymbolAt=0,mode='MULTI'}={}){
  if(!Number.isFinite(now)||!Number.isFinite(receivedAt)||receivedAt<=0||receivedAt>now+5000||now-receivedAt>5000)return false;
  const globalMs=mode==='SINGLE'?3000:5000;
- const symbolMs=mode==='SINGLE'?3000:12000;
+ // Completed one-minute candles do not need re-evaluation every 12 seconds.
+ // One streamed check per minute per symbol preserves fast market awareness
+ // while keeping busy symbols from dominating a 26+ ticker scanner display.
+ const symbolMs=mode==='SINGLE'?3000:60000;
  return now-lastScanAt>=globalMs&&now-lastSymbolAt>=symbolMs;
 }
 
