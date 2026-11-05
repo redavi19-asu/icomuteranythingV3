@@ -3,8 +3,7 @@ import {newPaper,paperRules} from '../src/master/paper-session.js';
 import {evaluateSymbol,eligiblePaperQuote,marketTime} from '../src/master/trading-paper-engine.js';
 import {schwabMarket,schwabQuotes,schwabContractQuote} from './schwab-connection.js';
 import {schwabQuoteFreshness} from '../src/master/schwab-quote-freshness.js';
-import {getContractFlow} from './options-flow.js';
-import {evaluateVerifiedFlow,evaluateAristotleConfluence,evaluateDailySwing,classifyTradeHorizon} from '../src/master/trading-smart-money.js';
+import {evaluateAristotleConfluence,evaluateDailySwing,classifyTradeHorizon} from '../src/master/trading-smart-money.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 // Bounded liquid options universe. This is NOT a claim to scan every exchange-listed stock.
 export const PAPER_SCAN_UNIVERSE=Object.freeze(['SPY','QQQ','IWM','DIA','XLK','XLF','XLE','USO','BNO','AAPL','NVDA','TSLA','AMZN','META','MSFT','AMD','GOOGL','TLT','GLD','SLV']);
@@ -32,7 +31,7 @@ async function notifyPaperOpportunity(env,owner,alert){
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
 export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],scanMode:'MULTI',singleTicker:'SPY',dailySignals:{},dailyCheckedDay:{},
- flowGate:{status:'NOT_CHECKED',provider:'UNUSUAL_WHALES',level2:'NOT_CONNECTED',reason:'No verified contract tape checked yet.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[]});
+ flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[]});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
@@ -50,6 +49,7 @@ async function validateUnderlyingQuote(env,owner,symbol,now=Date.now()){
 }
 export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymbol=null,streamHealth=null}={}){
  const row=await load(env,owner.id),s=row.state;s.heartbeat=Date.now();s.lastError=null;
+ s.flowGate={status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'No paid options-flow feed required; Schwab technical, quote and contract checks remain active.'};
  if(streamHealth){
   // Status is diagnostic only. No streamer metadata is accepted as a quote entitlement.
   s.marketStream={transport:String(streamHealth.transport||'NOT_CONNECTED').slice(0,50),
@@ -115,7 +115,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
        s.dailySignals[symbol]=swing;
        if(swing.status==='SWING_WATCH'){
         s.scanHistory.unshift({symbol,time:checkedAt,state:'MULTIDAY_SWING_WATCH',
-         reason:swing.reason+' Informational only; option contract, affordability, flow and overnight risks not confirmed.'});
+         reason:swing.reason+' Informational only; option contract, affordability and overnight risks not confirmed.'});
         s.scanHistory=s.scanHistory.slice(0,30);
        }
       }catch{s.dailySignals[symbol]={status:'UNAVAILABLE',confirmed:false,reason:'Daily Schwab bars unavailable.'}}
@@ -143,13 +143,6 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      if(env.PAPER_QUOTE_STREAM&&scanSymbol!==null)try{
       await env.PAPER_QUOTE_STREAM.getByName(owner.id).watchOption(contract.symbol,symbol);
      }catch{}
-     const flow=evaluateVerifiedFlow(await getContractFlow(env,contract.symbol),
-      {contractSymbol:contract.symbol,side:signal.direction,now:Date.now()});
-     s.flowGate={...flow,checkedAt:Date.now(),symbol,contractSymbol:contract.symbol};
-     if(!flow.confirmed){
-      s.scanHistory.unshift({symbol,time:checkedAt,state:'FLOW_HOLD',reason:flow.reason});
-      s.scanHistory=s.scanHistory.slice(0,30);continue;
-     }
      // A chain snapshot can be seconds old. Reprice the exact option contract
      // immediately before publishing any scalp setup, with provider-proven
      // real-time entitlement and a sub-10s quote timestamp.
@@ -166,13 +159,13 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      if(!s.seen.includes(id)){
       const alert={id,created:Date.now(),expires:Date.now()+120000,
        contract:{...actionable,underlying:symbol},signal,style,
-       qualification:{confluence,flow},status:'PENDING'};
+       qualification:{confluence,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
       check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);
       s.seen=[...s.seen,id].slice(-200);
       s.scanHistory.unshift({symbol,time:checkedAt,state:'HIGH_CONFLUENCE_REVIEW',
-       reason:style.label+': technical, multi-timeframe, contract risk and independent options-flow checks aligned. Not a measured win probability.'});
+       reason:style.label+': Schwab quote freshness, technical confluence and option-contract liquidity/risk checks aligned. No paid options-flow feed required; not a measured win probability.'});
       s.scanHistory=s.scanHistory.slice(0,30);
-      event(s,'VERIFIED FLOW + TECHNICAL PAPER SETUP awaiting owner approval: '+contract.symbol+' · '+style.label);
+      event(s,'SCHWAB-VERIFIED TECHNICAL PAPER SETUP awaiting owner approval: '+contract.symbol+' · '+style.label);
       try{await notifyPaperOpportunity(env,owner,alert)}catch(e){event(s,'Email notification unavailable: '+e.message)}
      }
     }catch(error){
@@ -252,8 +245,8 @@ export async function paperApi(request,env,owner){
    const input=JSON.parse(body);
    if(input.epoch!==undefined&&input.epoch!==s.entryEpoch)throw Error('Approval cancelled by Close All. Review the opportunity again before accepting.');
    if(!a||!liveAlert(a))throw Error('This opportunity is expired or already accepted. Check Open Trades and Closed Trades.');
-   if(a.qualification?.flow?.confirmed!==true||a.qualification?.confluence?.confirmed!==true)
-    throw Error('Verified flow and multi-timeframe evidence required. Historical alerts must be re-screened.');
+   if(a.qualification?.confluence?.confirmed!==true||a.qualification?.marketData?.provider!=='SCHWAB'||a.qualification?.marketData?.realtime!==true)
+    throw Error('Verified Schwab market data and multi-timeframe evidence required. Historical alerts must be re-screened.');
    const c=a.contract,quote={...c,...await schwabContractQuote(env,owner,c.symbol)};
    if(a.expires<Date.now())throw Error('Setup expired during quote refresh.');
    if(!Number.isFinite(quote.ask)||quote.ask<=0||Math.abs(quote.ask/c.ask-1)>0.02){

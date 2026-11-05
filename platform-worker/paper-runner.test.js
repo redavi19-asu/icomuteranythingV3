@@ -4,7 +4,7 @@ import {stepPaper,newPaper} from '../src/master/paper-session.js';import {sealTo
 const owner={id:'owner-test',role:'owner'},now=Date.parse('2026-11-04T15:00:00Z');
 const req=(action,id)=>new Request('https://test/platform/paper',{method:action?'POST':'GET',headers:{Origin:'https://icomputeranything.com'},...(action?{body:JSON.stringify({action,id})}:{})});
 async function fixture(){const db=new DatabaseSync(':memory:');for(const f of ['0007_schwab_market_data.sql','0009_paper_runner.sql'])db.exec(readFileSync(new URL('./migrations/'+f,import.meta.url),'utf8'));const DB={prepare(sql){let a=[];const p={bind(...args){a=args;return p},async first(){return db.prepare(sql).get(...a)},async run(){return {meta:{changes:db.prepare(sql).run(...a).changes}}}};return p}};const env={DB,SCHWAB_TOKEN_ENCRYPTION_KEY:btoa('12345678901234567890123456789012')};const payload=await sealTokens(env,owner.id,{access_token:'fixture-token',refresh_token:'fixture-refresh',expires_at:now+86400000});db.prepare('INSERT INTO schwab_connections(owner_id,generation,payload,updated_at) VALUES(?,?,?,?)').run(owner.id,'test',payload,now);return {db,env}}
-function pending(){return {id:'setup',expires:now+120000,qualification:{flow:{confirmed:true,provider:'FIXTURE'},confluence:{confirmed:true}},contract:{symbol:'TEST OPTION',underlying:'SPY',bid:1.95,ask:2,quoteTime:now,delta:0.5,volume:200,openInterest:500}}}
+function pending(){return {id:'setup',expires:now+120000,qualification:{marketData:{provider:'SCHWAB',realtime:true},confluence:{confirmed:true}},contract:{symbol:'TEST OPTION',underlying:'SPY',bid:1.95,ask:2,quoteTime:now,delta:0.5,volume:200,openInterest:500}}}
 test('paper routes deny public access',async()=>{for(const method of ['GET','POST'])assert.equal((await worker.fetch(new Request('https://test/platform/paper',{method}),{})).status,403)});
 test('approval is single use, state survives reload, emergency close persists',async()=>{const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});try{
  await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
@@ -12,6 +12,27 @@ test('approval is single use, state survives reload, emergency close persists',a
  const restored=await(await paperApi(req(),env,owner)).json();assert.ok(restored.paper.position);assert.equal(restored.paper.dayTrades,1);
  const immediate=await(await paperApi(req('close'),env,owner)).json();assert.equal(immediate.paper.position,null);await paperApi(req('close'),env,owner);const closed=await(await paperApi(req(),env,owner)).json();assert.equal(closed.enabled,true);assert.equal(closed.paper.position,null);assert.equal(closed.paper.trades[0].reason,'MANUAL_CLOSE');assert.equal(closed.paper.trades.length,1);
  }finally{Date.now=date;globalThis.fetch=fetcher}});
+test('valid paper setup can be approved without paid options-flow confirmation',async()=>{
+ const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
+ try{
+  await paperApi(req(),env,owner);
+  const s=freshRunner();s.enabled=true;s.alerts=[{...pending(),status:'PENDING',qualification:{
+   marketData:{provider:'SCHWAB',realtime:true},confluence:{confirmed:true},
+   flow:{confirmed:false,provider:'UNUSUAL_WHALES',reason:'Not subscribed'}
+  }}];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});
+  const accepted=await paperApi(req('accept','setup'),env,owner);
+  assert.equal(accepted.status,200,'a paid flow denial must not block a fully verified Schwab paper setup');
+  const state=await accepted.json();
+  assert.equal(state.paper.positions.length,1);
+  assert.equal(state.realOrdersEnabled,false);
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
+test('server scanner does not depend on a paid options-flow API',()=>{
+ const code=readFileSync(new URL('./paper-runner.js',import.meta.url),'utf8');
+ assert.doesNotMatch(code,/getContractFlow|evaluateVerifiedFlow|FLOW_HOLD|UNUSUAL_WHALES/);
+});
 test('stale quote leaves emergency request pending and never fabricates fill',async()=>{const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});try{await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));await paperApi(req('accept','setup'),env,owner);globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now-120000}}});const held=await(await paperApi(req('close'),env,owner)).json();assert.ok(held.paper.position);assert.equal(held.closeRequested,true);assert.match(held.lastError,/fresh/)}finally{Date.now=date;globalThis.fetch=fetcher}});
 test('cross-origin controls and expired approval fail closed',async()=>{const {db,env}=await fixture();assert.equal((await paperApi(new Request('https://test',{method:'POST',body:'{}'}),env,owner)).status,403);await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending={...pending(),expires:0};db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));assert.equal((await paperApi(req('accept','setup'),env,owner)).status,409)});
 test('pause during approval wins over in-flight entry',async()=>{const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;try{await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));globalThis.fetch=async()=>{await paperApi(req('pause'),env,owner);return Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}})};assert.equal((await paperApi(req('accept','setup'),env,owner)).status,409);const after=await(await paperApi(req(),env,owner)).json();assert.equal(after.enabled,false);assert.equal(after.paper.position,null)}finally{Date.now=date;globalThis.fetch=fetcher}});
@@ -158,7 +179,7 @@ test('server-backed 9:30 schedule only enables opted-in PAPER scanner once per E
  }finally{Date.now=originalNow}
 });
 
-test('legacy paper alerts without verified options-flow evidence cannot be approved',async()=>{
+test('legacy paper alerts without verified Schwab data and technical confluence cannot be approved',async()=>{
  const {env,db}=await fixture(),oldNow=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
  try{
   await paperApi(req(),env,owner);
@@ -166,7 +187,7 @@ test('legacy paper alerts without verified options-flow evidence cannot be appro
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
   globalThis.fetch=async()=>{throw Error('Legacy acceptance should not request market data')};
   const response=await paperApi(req('accept','setup'),env,owner);
-  assert.equal(response.status,409);assert.match((await response.json()).error,/Verified flow|expired|already accepted/i);
+  assert.equal(response.status,409);assert.match((await response.json()).error,/Verified Schwab market data|expired|already accepted/i);
   const after=await(await paperApi(req(),env,owner)).json();
   assert.equal(after.paper.positions.length,0);
  }finally{Date.now=oldNow;globalThis.fetch=fetcher}
