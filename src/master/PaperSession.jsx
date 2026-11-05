@@ -1,6 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {summarizePaperExits} from './paper-session.js';
 import './PaperExitNotice.css';
+import PaperScanCoverage from './PaperScanCoverage.jsx';
 const API=import.meta.env.VITE_ICA_MASTER_API_URL||'https://ica-master-platform.ryanedavis.workers.dev';
 const money=n=>Number.isFinite(n)?(n<0?'-$':'$')+Math.abs(n).toFixed(2):'—';
 const time=n=>n?new Date(n).toLocaleTimeString('en-US',{timeZone:'America/New_York'}):'Not checked yet';
@@ -247,6 +248,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    <div className="itt-radar-cycle"><div className="itt-radar-cycle-title"><span>{radarActive?'Next scheduled check (approx.)':'Checks paused / outside session'}</span><span>{radarActive&&elapsed!==null?Math.max(0,60-elapsed)+'s':'—'}</span></div><div className="itt-radar-track"><span style={{width:radarActive&&elapsed!==null?Math.min(100,elapsed/60*100)+'%':'0%'}}/></div></div>
    <div className="itt-radar-recent"><strong>RECENT TICKER CHECKS</strong>{recent.slice(0,4).map((r,i)=><div className="itt-radar-recent-item" key={r.symbol+String(r.time)+i}><span>{r.symbol}</span><span>{r.state?.replaceAll('_',' ')}</span><time>{time(r.time)}</time></div>)}</div><p className="itt-radar-foot"><strong>DON'T CHASE · ACTIVE</strong> — New CALLS and PUTS are held if today's move is already stretched without a fresh pullback or consolidation breakout. No 11 AM or lunch trading ban. The radar keeps showing WAIT FOR BOUNCE / WAIT FOR PULLBACK while it waits. Existing trades keep their stop-loss protection.</p>
   </aside></div>
+  <PaperScanCoverage snapshot={s} now={now}/>
   <details className="itt-scanner-settings">
    <summary>Confirmed 5/5 support &amp; resistance · Schwab (30-minute lookback)</summary>
    <p>Levels use completed one-minute Schwab candles and require five bars on either side of each swing. They may differ from your TradingView indicator. They improve NEW paper entries only; the 20% protective option stop stays unchanged.</p>
