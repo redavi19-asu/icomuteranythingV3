@@ -227,6 +227,11 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
      <span className="itt-switch" aria-hidden="true"/>
     </label>
    <div className="itt-flow-status" role="status">
+    <strong>SCHWAB MARKET FEED · {s?.marketFeed?.checkedAt&&now-s.marketFeed.checkedAt>120000?'STALE · RECHECK REQUIRED':s?.marketFeed?.label||'NOT VERIFIED'}</strong>
+    <p>{s?.marketFeed?.symbol||'No symbol checked'} · Quote as of {time(s?.marketFeed?.quoteTime)} ET · Server check {time(s?.marketFeed?.checkedAt)} ET. A connection alone does not verify quote freshness.</p>
+    <small>Only a fresh quote explicitly marked real-time by Schwab qualifies for actionable paper setups. The options chain and exact contract quote are checked separately.</small>
+   </div>
+   <div className="itt-flow-status" role="status">
     <strong>HIGH-CONFLUENCE GATE · {s?.flowGate?.status?.replaceAll('_',' ')||'NOT CHECKED'}</strong>
     <p>{s?.flowGate?.reason||'Verified options-flow feed has not been checked. Only technical watches can appear until licensed tape confirms aggressive same-contract activity.'}</p>
     <small>Golden Sweep identity: NOT VERIFIED · Level II: NOT CONNECTED · Technical watches never ring as high-probability options.</small>
