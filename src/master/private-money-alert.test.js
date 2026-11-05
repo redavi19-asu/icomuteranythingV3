@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {
  PERSONAL_ALERT_START_SECONDS,PERSONAL_ALERT_END_SECONDS,
  trimPersonalAudio,encodePersonalClipWav,preparePersonalMoneyClip,
@@ -177,4 +178,33 @@ test('user-edited 4.928-second money alert retains final beep instead of truncat
  const view=new DataView(bytes);
  assert.equal(view.getUint32(40,true),frames*2);
  assert.equal(view.getInt16(bytes.byteLength-2,true),Math.round(.95*32767));
+});
+
+test('Money Alert UI previews an already saved file, leaving file picker to Change Clip',()=>{
+ const ui=readFileSync(new URL('./PaperSession.jsx',import.meta.url),'utf8');
+ assert.match(ui,/onClick=\{handleMoneyAlertClick\}[^>]*>Money Alert<\/button>/);
+ assert.match(ui,/async function handleMoneyAlertClick\(\)\{\s*if\(!privateClipReady\)\{\s*personalFileInputRef\.current\?\.click\(\)/);
+ assert.match(ui,/onClick=\{\(\)=>personalFileInputRef\.current\?\.click\(\)\}>Change Clip<\/button>/);
+ assert.match(ui,/MONEY ALERT LOADED · OPTIONS SOUND ON/);
+ assert.match(ui,/<audio ref=\{personalPreviewAudioRef\} controls/);
+ assert.doesNotMatch(ui,/>Test Money Alert<\/button>/);
+});
+test('quiet submitted audio is amplified strongly, remains exactly 5 seconds and signals playback ended',()=>{
+ const audioSamples=new Float32Array(5*rate);
+ audioSamples[0]=0.05;
+ const buffer={duration:5,numberOfChannels:1,getChannelData:()=>audioSamples};
+ const levels=[];
+ let started,source,ended=false;
+ const node=()=>({connect(){},disconnect(){}});
+ const ctx={
+  state:'running',currentTime:0,destination:{},
+  createBufferSource(){source={...node(),start:(at,offset,duration)=>{started=[at,offset,duration]}};return source},
+  createDynamicsCompressor(){return {...node(),threshold:{},ratio:{},knee:{},attack:{},release:{}}},
+  createGain(){return {...node(),gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(value){levels.push(value)}}}}
+ };
+ assert.equal(playPersonalMoneyClip(ctx,buffer,()=>{ended=true}),true);
+ assert.deepEqual(started.slice(1),[0,5]);
+ assert.ok(levels.some(x=>x>=18),'should lift -26dB original alert close to full scale');
+ source.onended();
+ assert.equal(ended,true);
 });
