@@ -304,7 +304,7 @@ export async function paperApi(request,env,owner){
     await save(env,owner.id,row);
     return response({error:'Contract price moved over 2%. This alert was marked repriced. Wait for a fresh setup.',code:'CONTRACT_REPRICED',status:view(s)},409);
    }
-   enterPaperPosition(s,a,quote,{maxPremium:budget(s)});
+   enterPaperPosition(s,a,quote,{maxPremium:budget(s),stopLossPct:stopLossPct(s)});
    a.status='TAKEN';a.enteredAt=Date.now();event(s,'OWNER APPROVED simulated entry: '+c.symbol);
   }else throw Error('Unknown action.');
   await save(env,owner.id,row);
