@@ -1,5 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {summarizePaperExits} from './paper-session.js';
+import {marketTime} from './trading-paper-engine.js';
+import {marketBellEvent,playMoneyCountingAlert} from './trading-session-audio.js';
 import './PaperExitNotice.css';
 import PaperScanCoverage from './PaperScanCoverage.jsx';
 import './PaperStopSettings.css';
@@ -64,7 +66,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     if(!audioRef.current){audioRef.current=new Constructor();audioRef.current.onstatechange=warnIfAudioPaused}
     const ctx=audioRef.current;
     await ctx.resume();
-    if(ctx.state!=='running')throw Error('Sound was blocked. Tap Enable Alert Bell again and check device volume.');
+    if(ctx.state!=='running')throw Error('Sound was blocked. Tap Enable Alert Sounds again and check device volume.');
     soundEnabledRef.current=true;
     setSoundOn(true);
     setSoundWarning('');
@@ -97,6 +99,19 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     setSoundWarning('Recorded bell could not play. Backup bell is active.');
    }
   }
+  function playTradeOpportunitySound(){
+   if(!soundEnabledRef.current||document.visibilityState!=='visible')return;
+   if(!playMoneyCountingAlert(audioRef.current))
+    setSoundWarning('The phone paused browser audio. Tap Test Money Alert to restore sound.');
+  }
+  async function testMoneyAlert(){
+   try{
+    if(!soundEnabledRef.current||!audioRef.current)throw Error('Enable Alert Sounds first.');
+    if(audioRef.current.state!=='running')await audioRef.current.resume();
+    if(!playMoneyCountingAlert(audioRef.current))throw Error('Browser audio paused; tap Enable Alert Sounds again.');
+    setSoundWarning('');
+   }catch(e){setSoundWarning(e.message||'Money alert unavailable.')}
+  }
   async function testAlertBell(){
    try{
     if(!soundEnabledRef.current||!audioRef.current)throw Error('Enable Alert Bell first.');
@@ -121,6 +136,18 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     }
    };
   },[]);
+  useEffect(()=>{
+   // Market bell is separate from opportunity notifications. Browsers require
+   // a prior user gesture and cannot promise sound while locked/backgrounded.
+   if(!soundOn)return;
+   let previous=Date.now();
+   const timer=setInterval(()=>{
+    const current=Date.now(),bell=marketBellEvent(previous,current);
+    previous=current;
+    if(bell&&document.visibilityState==='visible'&&audioRef.current?.state==='running')playAlertBell();
+   },1000);
+   return ()=>clearInterval(timer);
+  },[soundOn]);
   async function call(action,id,epoch){
   const token=localStorage.getItem('ica_master_token');
   const body=['settings','scan_scope'].includes(action)?{action,...id}:action==='auto_start'?{action,enabled:id}:{action,id,...(epoch!==undefined?{epoch}:{})};
@@ -180,13 +207,13 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  function openWindow(tab=positions.length?'open':liveAlerts.length?'opportunities':history.length?'closed':'opportunities',id=null){setWindowTab(tab);setSelected(id);setShowWindow(true)}
  useEffect(()=>{
   if(!s?.alerts)return;const ids=new Set(s.alerts.map(a=>a.id));
-  if(seenAlerts.current&&s.alerts.some(a=>a.status==='PENDING'&&a.expires>Date.now()&&!seenAlerts.current.has(a.id))){openWindow('opportunities');if(soundOn&&document.visibilityState==='visible')playAlertBell()}seenAlerts.current=ids;
+  if(seenAlerts.current&&s.alerts.some(a=>a.status==='PENDING'&&a.expires>Date.now()&&!seenAlerts.current.has(a.id))){openWindow('opportunities');if(soundOn&&document.visibilityState==='visible')playTradeOpportunitySound()}seenAlerts.current=ids;
  },[s?.alerts,soundOn]);
  useEffect(()=>{if(s&&!settingsDirty){setBudgetDraft(String(s.maxPremium??350));setSymbolsDraft((s.extraSymbols||[]).join(', '))}},[s,settingsDirty]);
  useEffect(()=>{if(s&&!stopLossDirty)setStopLossDraft(String([15,20,35,50].includes(s.stopLossPct)?s.stopLossPct:20))},[s,stopLossDirty]);
  useEffect(()=>{if(s&&!singleTickerDirty)setSingleTickerDraft(s.singleTicker||'SPY')},[s,singleTickerDirty]);
  const clock=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
- const minute=Number(clock.hour)*60+Number(clock.minute),marketWindow=!['Sat','Sun'].includes(clock.weekday)&&minute>=575&&minute<945;
+ const minute=Number(clock.hour)*60+Number(clock.minute),marketWindow=!['Sat','Sun'].includes(clock.weekday)&&minute>=575&&minute<960;
  const radarActive=!stale&&(positions.length>0||s?.enabled&&marketWindow);
  const recent=s?.scanHistory||[],latest=recent[0],elapsed=latest?.time?Math.max(0,Math.floor((now-latest.time)/1000)):null;
  // GOOGL and other frequently checked tickers must not appear multiple
@@ -214,7 +241,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
   {p.style&&<p className="itt-play-style"><strong>{p.style.label}</strong> · {p.style.window}. {p.style.reason}</p>}
   <button type="button" className="itt-wide-button itt-position-exit" onClick={()=>act('close',p.id)}>{p.closeRequested?'RETRY CLOSE CONTRACT':'CLOSE CONTRACT · PAPER'}</button>
   <div className="itt-opportunity-numbers"><span>Entry cost · 1 contract<strong>{money(p.cost)}</strong></span><span>Entry fill / share<strong>{money(p.fill)}</strong></span><span>Current bid / ask<strong>{money(p.mark?.bid)} / {money(p.mark?.ask)}</strong></span><span>Quote timestamp<strong>{time(p.mark?.quoteTime)} ET · {quoteStale?'STALE / UNAVAILABLE':'FRESH'}</strong></span></div>
-  {selected===p.id&&<div className="itt-position-details"><p>Strike {money(p.strike)} · Expiration {p.expiration||'—'} · Opened {time(p.time)} ET</p><p>Stop {money(p.fill*(1-(p.stopLossPct??20)/100))} ({p.stopLossPct??20}%) · Profit target {money(p.fill*1.3)} · Trailing {p.bestBid>=p.fill*1.15?money(p.bestBid*.9):'activates at '+money(p.fill*1.15)} · Maximum duration {p.maxHoldMinutes||30} min · protective session exit by 3:55 PM ET; whichever comes first</p></div>}
+  {selected===p.id&&<div className="itt-position-details"><p>Strike {money(p.strike)} · Expiration {p.expiration||'—'} · Opened {time(p.time)} ET</p><p>Stop {money(p.fill*(1-(p.stopLossPct??20)/100))} ({p.stopLossPct??20}%) · Profit target {money(p.fill*1.3)} · Trailing {p.bestBid>=p.fill*1.15?money(p.bestBid*.9):'activates at '+money(p.fill*1.15)} · {p.expiration&&p.expiration>marketTime(now).day?'OVERNIGHT ELIGIBLE · no automatic 30-minute exit · expiry-day exit at 3:55 PM ET':'Maximum duration '+(p.maxHoldMinutes??30)+' min · expiry-day exit at 3:55 PM ET'} · stop/target/trail protection remains active</p></div>}
   {(p.lastError||p.closeRequested)&&<p role="status" className="itt-paper-approval-error">{p.lastError||'Manual close requested. Waiting for a fresh positive bid.'}</p>}
 
  </article>}
@@ -233,7 +260,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
      <span>Simulated exit {money(t.exitFill)} · Final realized P/L <b>{signed(t.pnl)}</b></span>
     </div>)}
    </section>}
-   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Preparing sound…':soundOn?'🔔 ALERT BELL ON':'ENABLE ALERT BELL'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Test Bell</button><small>{soundWarning||'Recorded alert lasts up to 3.5 seconds while the page is active. Background alerts need notifications.'}</small></div>
+   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Preparing sound…':soundOn?'🔔 SOUNDS ON':'ENABLE ALERT SOUNDS'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Test Bell</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testMoneyAlert}>Test Money Alert</button><small>{soundWarning||'Opening/closing bell at 9:30 AM and 4:00 PM ET; money-counting ding-ding for new setups. Page must be active and audio enabled.'}</small></div>
    <button type="button" className="itt-wide-button itt-trade-center-button" onClick={()=>openWindow()}>TRADING OPPORTUNITIES &amp; TRADES · {liveAlerts.length} awaiting · {positions.length} open · {history.length} closed</button>
   </div><aside className="itt-paper-radar" aria-label="Scanner live status and recent ticker checks"><div className="itt-paper-radar-heading"><div><span className="itt-eyebrow">ICA MARKET RADAR</span><h3>Scanner Activity</h3></div><span className={'itt-radar-state '+(radarActive?'active':'')}>{phase}</span></div>
    <div className="itt-scan-scope" role="group" aria-label="Scan only one ticker or multiple tickers">

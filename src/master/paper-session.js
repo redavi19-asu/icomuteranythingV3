@@ -1,4 +1,5 @@
 import {PAPER_DEFAULTS,eligiblePaperQuote,marketTime} from './trading-paper-engine.js';
+import {expiryStatus,paperSessionOpen,paperExpirationCloseDue,PAPER_EXPIRY_EXIT_MINUTE} from './paper-session-clock.js';
 export const paperRules={...PAPER_DEFAULTS,stopAfterDailyGoal:false};
 export const PAPER_STOP_LOSS_CHOICES=Object.freeze([15,20,35,50]);
 export const selectedStopLossPct=(value)=>PAPER_STOP_LOSS_CHOICES.includes(value)?value:20;
@@ -16,10 +17,24 @@ export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperR
   // The stop is locked to the position at entry. Changing the dashboard
   // preference never silently widens a currently open paper trade.
   const stop=selectedStopLossPct(p.stopLossPct);
-  const reason=close?'MANUAL_CLOSE':quote.bid<=p.fill*(1-stop/100)?'STOP_LOSS':quote.bid>=p.fill*1.3?'PROFIT_TARGET':p.bestBid>=p.fill*1.15&&quote.bid<=p.bestBid*0.9?'TRAILING_STOP':now-p.time>=Math.min(390,Math.max(1,Number(p.maxHoldMinutes)||30))*60000?'MAX_HOLD':session.day!==p.day||session.minute>=955?'SESSION_END':null;
+  const expiry=expiryStatus(p.expiration,session.day);
+  // Only same-session, non-future-expiry scalps have the default 30-minute cap.
+  // Later-expiring positions can carry overnight; their stop/target/trail rules
+  // remain active and they must still close by 3:55 on expiration day.
+  const timedScalp=expiry!=='FUTURE'&&p.day===session.day&&
+   now-p.time>=Math.min(390,Math.max(1,Number(p.maxHoldMinutes)||30))*60000;
+  const reason=close?'MANUAL_CLOSE':
+   quote.bid<=p.fill*(1-stop/100)?'STOP_LOSS':
+   quote.bid>=p.fill*1.3?'PROFIT_TARGET':
+   p.bestBid>=p.fill*1.15&&quote.bid<=p.bestBid*0.9?'TRAILING_STOP':
+   paperExpirationCloseDue(p.expiration,session)?'SESSION_END':
+   timedScalp?'MAX_HOLD':null;
   if(reason){if(quote.bid<=0)throw Error('No positive bid available; simulated position remains open.');const credit=round(Math.max(0,quote.bid-0.01)*100-0.65),pnl=round(credit-p.cost);s.cash=round(s.cash+credit);s.realized=round(s.realized+pnl);s.dayPnl=round(s.dayPnl+pnl);s.trades.push({...p,exitTime:now,exitFill:quote.bid-0.01,pnl,reason});s.position=null}
  }else if(enter){
-  if(['Sat','Sun'].includes(session.weekday)||session.minute<575||session.minute>=945)throw Error('Paper entries run 9:35 AM–3:45 PM ET on weekdays.');
+  if(!paperSessionOpen(session))throw Error('Paper entries run 9:35 AM–4:00 PM ET on regular market weekdays.');
+  const contractExpiry=expiryStatus(quote.expiration,session.day);
+  if(contractExpiry==='EXPIRED'||(session.minute>=PAPER_EXPIRY_EXIT_MINUTE&&contractExpiry!=='FUTURE'))
+   throw Error('Same-day/unknown-expiration options cannot open after 3:55 PM ET.');
   // Paper practice has no daily trade-count, profit, or loss cutoffs.
   if(quote.nonStandard)throw Error('Nonstandard contracts are excluded.');
   if(![quote.delta,quote.volume,quote.openInterest].every(Number.isFinite))throw Error('Contract quality data is incomplete.');

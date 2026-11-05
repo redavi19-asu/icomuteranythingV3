@@ -3,6 +3,7 @@ import {schwabStreamerSession} from './schwab-connection.js';
 import {runPaperTick} from './paper-runner.js';
 import {marketTime} from '../src/master/trading-paper-engine.js';
 import {isStreamTicker,isStreamContract,chooseFreshStreamSymbol} from './paper-stream-policy.js';
+import {paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE} from '../src/master/paper-session-clock.js';
 
 // Private, owner-scoped server-side Schwab WebSocket. Streaming events accelerate
 // paper-only scan evaluation; all candidate quotes are STILL independently
@@ -54,7 +55,7 @@ export class PaperQuoteStream extends DurableObject {
  async alarm(){
   const config=await this.ctx.storage.get('config');
   const session=marketTime(Date.now());
-  if(!config||['Sat','Sun'].includes(session.weekday)||session.minute<565||session.minute>=950){
+  if(!config||['Sat','Sun'].includes(session.weekday)||session.minute<565||session.minute>=PAPER_MARKET_CLOSE_MINUTE){
    await this.disable();return;
   }
   this.ownerId=config.ownerId;this.active=true;this.mode=config.mode;
@@ -65,7 +66,7 @@ export class PaperQuoteStream extends DurableObject {
   // owns both triggers, and runRotation's persistent time guard permits at
   // most one full-universe sweep per minute across restarts or cron overlap.
   try{
-   if(session.minute>=575&&session.minute<945)
+   if(paperSessionOpen(session))
     await this.runRotation(config.ownerId,null,true);
   }catch(e){
    this.error='Scheduled paper rotation held: '+String(e?.message||'unknown error').slice(0,115);
@@ -214,8 +215,8 @@ export class PaperQuoteStream extends DurableObject {
  pumpQueuedScan(){
   if(!this.active||!this.ready||this.scanning||this.rotationActive)return;
   const now=Date.now(),session=marketTime(now);
-  // Preserve the existing 9:35–15:45 paper-entry window.
-  if(['Sat','Sun'].includes(session.weekday)||session.minute<575||session.minute>=945)return;
+  // Continue paper setup scanning through 3:59 PM ET; block 0DTE entries at 3:55 separately.
+  if(!paperSessionOpen(session))return;
   const symbol=chooseFreshStreamSymbol(this.symbols,this.quoteActivity,this.symbolScanAt,
    {now,lastScanAt:this.lastScanAt,mode:this.mode});
   if(!symbol)return;
