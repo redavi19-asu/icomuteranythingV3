@@ -3,7 +3,7 @@ import {schwabStreamerSession} from './schwab-connection.js';
 import {runPaperTick} from './paper-runner.js';
 import {marketTime} from '../src/master/trading-paper-engine.js';
 import {isStreamTicker,isStreamContract,chooseFreshStreamSymbol} from './paper-stream-policy.js';
-import {paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE} from '../src/master/paper-session-clock.js';
+import {paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE,scheduledRotationDue} from '../src/master/paper-session-clock.js';
 
 // Private, owner-scoped server-side Schwab WebSocket. Streaming events accelerate
 // paper-only scan evaluation; all candidate quotes are STILL independently
@@ -196,8 +196,9 @@ export class PaperQuoteStream extends DurableObject {
    // Durable alarm/cron rate limit. A DO restart must not erase the
    // most recent completed full-universe rotation timestamp.
    if(scheduled){
-    const last=Number(await this.ctx.storage.get('lastRotationAt'))||0;
-    if(Date.now()-last<55000)return {skipped:true,reason:'ROTATION_RECENT'};
+    const last=Number(await this.ctx.storage.get('lastRotationAt'))||0,now=Date.now();
+    if(!scheduledRotationDue(now,last,marketTime(now),last?marketTime(last):null))
+     return {skipped:true,reason:'ROTATION_RECENT'};
    }
    if(this.streamScanPromise)await this.streamScanPromise.catch(()=>{});
    const result=await runPaperTick(this.env,{id:ownerId,role:'owner'},
