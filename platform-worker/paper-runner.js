@@ -2,6 +2,8 @@ import {normalizePaperPortfolio,enterPaperPosition,managePaperPosition} from '..
 import {newPaper,paperRules} from '../src/master/paper-session.js';
 import {evaluateSymbol,eligiblePaperQuote,marketTime} from '../src/master/trading-paper-engine.js';
 import {schwabMarket,schwabContractQuote} from './schwab-connection.js';
+import {getContractFlow} from './options-flow.js';
+import {evaluateVerifiedFlow,evaluateAristotleConfluence,evaluateDailySwing,classifyTradeHorizon} from '../src/master/trading-smart-money.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 // Bounded liquid options universe. This is NOT a claim to scan every exchange-listed stock.
 export const PAPER_SCAN_UNIVERSE=Object.freeze(['SPY','QQQ','IWM','DIA','XLK','XLF','XLE','USO','BNO','AAPL','NVDA','TSLA','AMZN','META','MSFT','AMD','GOOGL','TLT','GLD','SLV']);
@@ -26,7 +28,8 @@ async function notifyPaperOpportunity(env,owner,alert){
  const sent=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+api,'Content-Type':'application/json'},body:JSON.stringify({from,to:[to],subject:'ICA Master Paper Setup: '+c.underlying+' '+c.side,text:body}),signal:AbortSignal.timeout(8000)});
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
-export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[]});
+export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],dailySignals:{},dailyCheckedDay:{},
+ flowGate:{status:'NOT_CHECKED',provider:'UNUSUAL_WHALES',level2:'NOT_CONNECTED',reason:'No verified contract tape checked yet.'},autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[]});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
@@ -71,15 +74,57 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false}={}){
      const signal=evaluateSymbol(symbol,bars,{now:checkedAt,staleAfterMinutes:3});
      s.lastScan={symbol,time:checkedAt,signal};
      s.scanHistory=[{symbol,time:checkedAt,state:signal.state,reason:signal.reason},...(s.scanHistory||[])].slice(0,30);
+     // Daily OHLCV is independent of minute-breakout alerts; scan each
+     // symbol only once per NY trading day, including if no scalp is present.
+     s.dailySignals||={};s.dailyCheckedDay||={};
+     if(s.dailyCheckedDay[symbol]!==session.day){
+      s.dailyCheckedDay[symbol]=session.day;
+      try{
+       const daily=await data(env,owner,'daily',symbol);
+       const today=Date.parse(new Date(checkedAt).toISOString().slice(0,10)+'T00:00:00Z');
+       const completed=(daily.candles||[]).filter(c=>c.time<today&&Number.isFinite(c.volume));
+       const swing=evaluateDailySwing(completed);
+       s.dailySignals[symbol]=swing;
+       if(swing.status==='SWING_WATCH'){
+        s.scanHistory.unshift({symbol,time:checkedAt,state:'MULTIDAY_SWING_WATCH',
+         reason:swing.reason+' Informational only; option contract, affordability, flow and overnight risks not confirmed.'});
+        s.scanHistory=s.scanHistory.slice(0,30);
+       }
+      }catch{s.dailySignals[symbol]={status:'UNAVAILABLE',confirmed:false,reason:'Daily Schwab bars unavailable.'}}
+     }
      if(signal.state!=='TECHNICAL_WATCH')continue;
+     const confluence=evaluateAristotleConfluence(bars,signal.direction);
+     if(!confluence.confirmed){
+      s.scanHistory.unshift({symbol,time:checkedAt,state:'CONFLUENCE_WATCH',reason:confluence.reason});
+      s.scanHistory=s.scanHistory.slice(0,30);continue;
+     }
      const chain=await data(env,owner,'options',symbol);
      if(chain.delayed!==false)throw Error('Options delay status unconfirmed; skipping setup.');
      const candidates=(chain.contracts||[]).filter(c=>c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!eligiblePaperQuote(c,{...paperRules,premiumBudget:budget(s)})).sort((a,b)=>(a.ask-a.bid)/a.ask-(b.ask-b.bid)/b.ask);
      const contract=candidates[0],id=symbol+'|'+signal.asOf;
-     if(contract&&!s.seen.includes(id)){
-      const alert={id,created:checkedAt,expires:checkedAt+120000,contract:{...contract,underlying:symbol},signal,status:'PENDING'};
-      check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);s.seen=[...s.seen,id].slice(-200);
-      event(s,'SETUP awaiting owner approval: '+contract.symbol);
+     if(!contract){
+      s.scanHistory.unshift({symbol,time:checkedAt,state:'CONTRACT_HOLD',reason:'No fresh, liquid contract passed premium, spread, delta and risk checks.'});
+      s.scanHistory=s.scanHistory.slice(0,30);continue;
+     }
+     const flow=evaluateVerifiedFlow(await getContractFlow(env,contract.symbol),
+      {contractSymbol:contract.symbol,side:signal.direction,now:Date.now()});
+     s.flowGate={...flow,checkedAt:Date.now(),symbol,contractSymbol:contract.symbol};
+     if(!flow.confirmed){
+      s.scanHistory.unshift({symbol,time:checkedAt,state:'FLOW_HOLD',reason:flow.reason});
+      s.scanHistory=s.scanHistory.slice(0,30);continue;
+     }
+     const style=classifyTradeHorizon({bars,signal,contract,
+      dailySignal:s.dailySignals?.[symbol],now:checkedAt});
+     if(!s.seen.includes(id)){
+      const alert={id,created:checkedAt,expires:checkedAt+120000,
+       contract:{...contract,underlying:symbol},signal,style,
+       qualification:{confluence,flow},status:'PENDING'};
+      check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);
+      s.seen=[...s.seen,id].slice(-200);
+      s.scanHistory.unshift({symbol,time:checkedAt,state:'HIGH_CONFLUENCE_REVIEW',
+       reason:style.label+': technical, multi-timeframe, contract risk and independent options-flow checks aligned. Not a measured win probability.'});
+      s.scanHistory=s.scanHistory.slice(0,30);
+      event(s,'VERIFIED FLOW + TECHNICAL PAPER SETUP awaiting owner approval: '+contract.symbol+' · '+style.label);
       try{await notifyPaperOpportunity(env,owner,alert)}catch(e){event(s,'Email notification unavailable: '+e.message)}
      }
     }catch(error){
@@ -141,6 +186,8 @@ export async function paperApi(request,env,owner){
    const input=JSON.parse(body);
    if(input.epoch!==undefined&&input.epoch!==s.entryEpoch)throw Error('Approval cancelled by Close All. Review the opportunity again before accepting.');
    if(!a||!liveAlert(a))throw Error('This opportunity is expired or already accepted. Check Open Trades and Closed Trades.');
+   if(a.qualification?.flow?.confirmed!==true||a.qualification?.confluence?.confirmed!==true)
+    throw Error('Verified flow and multi-timeframe evidence required. Historical alerts must be re-screened.');
    const c=a.contract,quote={...c,...await schwabContractQuote(env,owner,c.symbol)};
    if(a.expires<Date.now())throw Error('Setup expired during quote refresh.');
    if(!Number.isFinite(quote.ask)||quote.ask<=0||Math.abs(quote.ask/c.ask-1)>0.02){
