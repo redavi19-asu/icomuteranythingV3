@@ -340,6 +340,22 @@
 .itt-bell-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:12px 0}
 .itt-bell-controls small{display:block;flex-basis:100%;color:#ffb578;font-size:11px;line-height:1.5}
 
+/* Sound controls stay out of the trading view until intentionally expanded.
+   Native details/summary keeps the controls mounted and audio active. */
+.itt-sound-card{display:block;width:100%;min-width:0;margin:12px 0;border:1px solid #38383b;border-radius:12px;background:#1b1b1d;overflow:hidden}
+.itt-sound-card[open]{border-color:#80502d}
+.itt-sound-card-summary{display:flex;align-items:center;gap:10px;min-height:44px;padding:11px 14px;cursor:pointer;list-style:none;user-select:none}
+.itt-sound-card-summary::-webkit-details-marker{display:none}
+.itt-sound-card-summary:focus-visible{outline:2px solid #ffb578;outline-offset:-2px}
+.itt-sound-card-head{display:flex;align-items:center;gap:8px;min-width:0;color:#ededf0;font-size:12px;letter-spacing:.2px}
+.itt-sound-card-icon{font-size:16px;line-height:1}
+.itt-sound-card-status{margin-left:auto;color:#aaaab0;font-size:10px;line-height:1.35;text-align:right}
+.itt-sound-card-toggle{color:#e89c69;font-size:19px;line-height:1;transition:transform .2s}
+.itt-sound-card[open] .itt-sound-card-toggle{transform:rotate(180deg)}
+.itt-sound-card .itt-bell-controls{margin:0;padding:13px;border-top:1px solid #333337}
+@media(max-width:580px){.itt-sound-card-summary{gap:7px;padding:11px 12px}.itt-sound-card-status{font-size:9px}.itt-sound-card-head{font-size:11px}.itt-sound-card .itt-bell-controls{padding:10px}}
+
+
 /* Keep actionable feedback in view, including on small iPad and iPhone screens. */
 .itt-opportunities-overlay{align-items:center}
 .itt-opportunities-window{max-height:min(82dvh,730px);display:flex;flex-direction:column;overflow:hidden}
