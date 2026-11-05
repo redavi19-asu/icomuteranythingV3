@@ -2,7 +2,7 @@
 // An options chain's daily volume/open interest is NOT institutional order flow.
 export const FLOW_RULES=Object.freeze({
  lookbackMs:5*60_000, minPrintPremium:25_000, minTotalPremium:250_000,
- minDistinctPrints:2, requireSweep:true
+ minDistinctPrints:2, requireSweep:false
 });
 const finite=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v):null;
 const stamp=v=>{
@@ -20,13 +20,18 @@ export function evaluateVerifiedFlow(flow,{contractSymbol,side,now=Date.now(),ru
   return {...base,status:'INVALID',reason:'Provider evidence is not scoped to this exact option contract and side.'};
  const qualifying=[],seen=new Set();
  for(const e of flow.events.slice(0,150)){
-  if(!e||typeof e!=='object'||yes(e.canceled)||yes(e.is_multi_leg)||yes(e.is_multileg)||yes(e.is_spread))continue;
+  if(!e||typeof e!=='object'||yes(e.canceled))continue;
+  // Official contract flow REST returns multi_vol and stock_multi_vol;
+  // never mistake a multi-leg hedge for an outright ask-side option buy.
+  if(finite(e.multi_vol)>0||finite(e.stock_multi_vol)>0)continue;
+  if(code(e.option_chain_id)!==code(contractSymbol)||code(e.option_type)!==side)continue;
   const at=stamp(e.executed_at),premium=finite(e.premium);
   const ask=finite(e.ask_vol),bid=finite(e.bid_vol);
   if(!Number.isFinite(at)||at>now+5_000||now-at>rules.lookbackMs||at>now)continue;
   if(premium===null||premium<rules.minPrintPremium||ask===null||ask<=0||bid===null||ask<=bid)continue;
-  const isSweep=yes(e.is_sweep)||finite(e.sweep_vol)>0||String(e.trade_type||'').toUpperCase()==='SWEEP';
-  const key=String(e.id??e.tracking_id??[at,premium,ask,bid,e.exchange||''].join('|'));
+  // This endpoint has no documented 'is_sweep' field. Do not invent a sweep.
+  const isSweep=false;
+  const key=String(e.id??[at,premium,ask,bid,e.exchange||''].join('|'));
   if(seen.has(key))continue;
   seen.add(key);qualifying.push({premium,isSweep});
  }
@@ -35,8 +40,8 @@ export function evaluateVerifiedFlow(flow,{contractSymbol,side,now=Date.now(),ru
  const confirmed=qualifying.length>=rules.minDistinctPrints&&total>=rules.minTotalPremium&&(!rules.requireSweep||sweeps>=1);
  return {...base,status:confirmed?'CONFIRMED':'INSUFFICIENT',confirmed,printCount:qualifying.length,
   premium:total,sweepCount:sweeps,reason:confirmed?
-   'Same-contract, recent, ask-dominant repeated prints with sweep evidence; buyer identity and opening intent are unverified.':
-   'Flow is connected, but same-contract ask-side sweep, count, recency or premium thresholds did not all pass.'};
+   'Same-contract, recent, repeated ask-dominant prints; no sweep or opening position verified.':
+   'Flow is connected, but same-contract ask-dominant, single-leg activity, count, recency or premium thresholds did not all pass.'};
 }
 // MACD, OBV and multi-timeframe trend are additional evidence, separate from the
 // existing VWAP/RSI/breakout/volume technical gate.
@@ -79,4 +84,49 @@ export function evaluateAristotleConfluence(bars,direction){
  return {...base,confirmed,macd,obv:obvPass,fiveMinute,fifteenMinute,
   reason:confirmed?'MACD, OBV, 5-minute and 15-minute direction all agree.':
    'MACD, OBV or 5-/15-minute trend confirmation is missing.'};
+}
+
+// Swing data must be DAILY completed bars, not fabricated from a couple hours.
+export function evaluateDailySwing(bars,direction=null){
+ const base={status:'UNASSESSED',direction:null,confirmed:false,reason:'Insufficient completed daily candles for multi-day swing analysis.'};
+ if(!Array.isArray(bars)||bars.length<55)return base;
+ const valid=bars.slice(-90).filter(b=>b&&[b.open,b.high,b.low,b.close,b.volume,b.time].every(Number.isFinite));
+ if(valid.length<55)return base;
+ const prices=valid.map(b=>b.close),e9=ema(prices,9),e21=ema(prices,21),e50=ema(prices,50);
+ const last=valid.at(-1),prev=valid.at(-2);
+ const up=last.close>e9&&e9>e21&&e21>e50;
+ const down=last.close<e9&&e9<e21&&e21<e50;
+ const dir=up?'CALL':down?'PUT':null;
+ const volAvg=valid.slice(-21,-1).reduce((sum,b)=>sum+b.volume,0)/20;
+ const relativeVolume=volAvg>0?last.volume/volAvg:0;
+ const bullBreak=last.close>Math.max(...valid.slice(-21,-1).map(b=>b.high));
+ const bearBreak=last.close<Math.min(...valid.slice(-21,-1).map(b=>b.low));
+ const confirmed=!!dir&&relativeVolume>=1.2&&(up?bullBreak:bearBreak);
+ const aligned=direction===null||direction===dir;
+ return {status:confirmed?'SWING_WATCH':'NO_SWING',direction:dir,confirmed:confirmed&&aligned,
+  relativeVolume:Number(relativeVolume.toFixed(2)),asOf:last.time,
+  reason:confirmed?(aligned?'Daily EMA 9/21/50, 20-session breakout and relative volume support a multi-day watch.':'Daily direction conflicts with the intraday setup.'):
+   'Daily EMA alignment, 20-session breakout and relative volume do not all confirm.'};
+}
+export function classifyTradeHorizon({bars,signal,contract,dailySignal,now=Date.now()}={}){
+ const unassessed={type:'UNASSESSED',label:'Trade style not assessed',window:'No reliable holding-window estimate',reason:'More confirmed price and contract data required.',invalidation:'Follow predefined paper risk controls.'};
+ if(!signal||signal.state!=='TECHNICAL_WATCH'||!Array.isArray(bars)||bars.length<40)return unassessed;
+ const expiry=contract?.expiration&&Date.parse(String(contract.expiration)+'T23:59:59Z');
+ const dte=Number.isFinite(expiry)?(expiry-now)/86400000:null;
+ const context=dailySignal?.confirmed&&dailySignal.direction===signal.direction;
+ const common={invalidation:'Monitor loss of VWAP/EMA alignment, momentum reversal, poor liquidity, and the planned stop; re-evaluate before the close.',dte: dte===null?null:Number(dte.toFixed(1))};
+ if(context&&dte!==null&&dte>=14)return {...common,type:'MULTIDAY_SWING_WATCH',label:'Multi-day swing candidate',
+  window:'Several sessions (illustrative, not a holding instruction)',
+  reason:'Confirmed daily trend/breakout agrees with intraday momentum; contract has at least 14 calendar days to expiry. Overnight gaps and option decay still require separate review.'};
+ const barsFor15=groupedBars(bars.slice(-150),900_000);
+ const up=signal.direction==='CALL',trend15=barsFor15.length>=9?(()=>{
+  const p=barsFor15.map(x=>x.close),e=ema(p,9),last=p.at(-1);
+  return up?last>e:last<e;
+ })():false;
+ if(trend15&&signal.metrics?.volumeMultiple>=1.5)return {...common,type:'INTRADAY_HOLD',label:'Intraday trend / hold candidate',
+  window:'Tens of minutes to the closing bell (conditional, not a promise)',
+  reason:'Aligned 15-minute direction plus stronger relative volume favor monitoring a sustained session move. Must be managed or closed according to existing paper rules.'};
+ return {...common,type:'SCALP',label:'Momentum scalp candidate',
+  window:'Minutes (conditional; exit at invalidation rather than a fixed time)',
+  reason:'Confirmed short-term momentum without enough sustained-session evidence for a longer hold.'};
 }
