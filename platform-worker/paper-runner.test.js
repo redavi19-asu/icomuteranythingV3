@@ -175,7 +175,7 @@ test('available paper cash still gates additional contracts without losing accep
 });
 test('the scanner continues checking new symbols while a paper contract is open',async()=>{
  const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;const feed=portfolioFeed();let histories=0;globalThis.fetch=async(url,options)=>{if(String(url).includes('/pricehistory'))histories++;return feed(url,options)};
- try{const {env}=await portfolioFixture(1);await acceptPortfolio(env,1);const state=await runPaperTick(env,owner);assert.equal(state.paper.positions.length,1);assert.equal(histories,6);assert.equal(state.scanHistory.length,3);assert.equal(state.lastCheck.positionsChecked,1);assert.equal(state.lastCheck.positionsUpdated,1);assert.equal(state.lastCheck.scannedSymbols.length,3);assert.equal(state.lastCheck.completedAt,now);const restored=await(await paperApi(req(),env,owner)).json();assert.equal(restored.lastCheck.id,state.lastCheck.id)}finally{Date.now=date;globalThis.fetch=fetcher}
+ try{const {env}=await portfolioFixture(1);await acceptPortfolio(env,1);const state=await runPaperTick(env,owner);assert.equal(state.paper.positions.length,1);assert.equal(histories,10);assert.equal(state.scanHistory.length,5);assert.equal(state.lastCheck.positionsChecked,1);assert.equal(state.lastCheck.positionsUpdated,1);assert.equal(state.lastCheck.scannedSymbols.length,5);assert.equal(state.lastCheck.completedAt,now);const restored=await(await paperApi(req(),env,owner)).json();assert.equal(restored.lastCheck.id,state.lastCheck.id)}finally{Date.now=date;globalThis.fetch=fetcher}
 });
 test('Close All wins an in-flight approval and invalidates approvals queued under an older epoch',async()=>{
  const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();
@@ -252,7 +252,7 @@ test('Single Ticker mode scans only SPY on scheduler and Run Now, and Multiple T
   assert.equal((await paperApi(scopeReq('UNKNOWN','SPY'),env,owner)).status,409);
   const multiple=await paperApi(scopeReq('MULTI'),env,owner);assert.equal(multiple.status,200);
   state=await runPaperTick(env,owner);
-  assert.deepEqual(state.lastCheck.scannedSymbols,['SPY','QQQ','IWM']);
+  assert.deepEqual(state.lastCheck.scannedSymbols,['SPY','QQQ','IWM','DIA','XLK']);
   assert.ok(state.scanUniverse.length>1);
  }finally{Date.now=date;globalThis.fetch=fetcher}
 });
