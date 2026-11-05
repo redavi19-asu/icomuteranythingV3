@@ -4,6 +4,7 @@ import {evaluateSymbol,eligiblePaperQuote,marketTime} from '../src/master/tradin
 import {schwabMarket,schwabQuotes,schwabContractQuote} from './schwab-connection.js';
 import {schwabQuoteFreshness} from '../src/master/schwab-quote-freshness.js';
 import {evaluateAristotleConfluence,evaluateDailySwing,classifyTradeHorizon} from '../src/master/trading-smart-money.js';
+import {assessEntryChase} from '../src/master/trading-entry-chase.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 // Bounded liquid options universe. This is NOT a claim to scan every exchange-listed stock.
 export const PAPER_SCAN_UNIVERSE=Object.freeze(['SPY','QQQ','IWM','DIA','XLK','XLF','XLE','USO','BNO','AAPL','NVDA','TSLA','AMZN','META','MSFT','AMD','GOOGL','TLT','GLD','SLV']);
@@ -125,6 +126,17 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
       s.scanHistory.unshift({symbol,time:checkedAt,state:'FEED_HOLD',reason:'Real-time Schwab underlying quote was not freshly verified: '+(s.marketFeed?.label||'UNAVAILABLE')});
       s.scanHistory=s.scanHistory.slice(0,30);continue;
      }
+     // Keep detection and execution timing separate: yesterday's XLE/AAPL
+     // puts found technical bearish momentum, but a mature morning decline
+     // can be too stretched for a favorable *new* entry. This guard is
+     // independent of clock time and never changes existing open positions.
+     const entryTiming=assessEntryChase(bars,signal);
+     if(entryTiming.hold){
+      s.scanHistory.unshift({symbol,time:checkedAt,state:entryTiming.status,
+       reason:entryTiming.reason});
+      s.scanHistory=s.scanHistory.slice(0,30);
+      continue; // No option chain, alert bell or new paper entry from a chase.
+     }
      const confluence=evaluateAristotleConfluence(bars,signal.direction);
      // Nov 4 paper-scanner behavior: a verified technical breakout may
      // generate a reviewable setup without a mandatory 150-bar MACD/OBV +
@@ -163,7 +175,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      if(!s.seen.includes(id)){
       const alert={id,created:Date.now(),expires:Date.now()+120000,
        contract:{...actionable,underlying:symbol},signal,style,
-       qualification:{technical:{confirmed:true,asOf:signal.asOf,direction:signal.direction},confluence,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
+       qualification:{technical:{confirmed:true,asOf:signal.asOf,direction:signal.direction},confluence,entryTiming,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
       check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);
       s.seen=[...s.seen,id].slice(-200);
       s.scanHistory.unshift({symbol,time:checkedAt,state:confluence.confirmed?'HIGH_CONFLUENCE_REVIEW':'TECHNICAL_SETUP_REVIEW',
@@ -172,7 +184,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
         ': Nov 4-style momentum breakout and fresh Schwab contract checks passed; additional 5/15-minute confirmation is not established.')+
         ' Review before paper entry; neither tier is a measured win probability.'});
       s.scanHistory=s.scanHistory.slice(0,30);
-      event(s,(confluence.confirmed?'HIGH-CONFLUENCE':'TECHNICAL')+' SCHWAB PAPER SETUP awaiting owner approval: '+contract.symbol+' · '+style.label);
+      event(s,(confluence.confirmed?'HIGH-CONFLUENCE':'TECHNICAL')+' SCHWAB PAPER SETUP awaiting owner approval: '+contract.symbol+' · '+style.label+' · Entry timing: '+entryTiming.status);
       try{await notifyPaperOpportunity(env,owner,alert)}catch(e){event(s,'Email notification unavailable: '+e.message)}
      }
     }catch(error){
