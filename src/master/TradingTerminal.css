@@ -433,6 +433,7 @@
 .itt-scope-switch .itt-wide-button{min-width:0;white-space:normal;text-align:center;padding:11px 7px}
 .itt-scope-switch button[aria-pressed="false"]{background:#14283a!important;border-color:#385669!important;color:#b0c4cf!important;box-shadow:none!important;outline:none}
 .itt-scope-switch button[aria-pressed="true"]{background:#162a3b!important;color:#fff5cb!important;border:2px solid #ffd84b!important;box-shadow:0 0 0 1px rgba(255,216,75,.16),0 0 12px rgba(255,216,75,.45)!important}
+.itt-scope-switch button:focus-visible{outline:2px solid #ffffff!important;outline-offset:3px!important}
 .itt-scope-ticker{justify-content:space-between;align-items:center}
 .itt-scope-ticker input{flex:1;min-width:75px}
 .itt-scope-ticker button{flex:0 0 auto}
@@ -445,7 +446,6 @@
 .itt-scan-start.is-active{color:#fff2bd!important;border:2px solid #ffd84b!important;box-shadow:0 0 0 1px rgba(255,216,75,.15),0 0 13px rgba(255,216,75,.48)!important}
 .itt-scan-pause.is-paused{color:#ffdadc!important;border:2px solid #ff5968!important;box-shadow:0 0 0 1px rgba(255,89,104,.13),0 0 12px rgba(255,89,104,.46)!important}
 .itt-scan-buttons .itt-run-now{background:#183b4c;color:#e4f7fa;border-color:#5e8494}
-.itt-scan-buttons .itt-run-now.checking{box-shadow:inherit}
 .itt-bell-controls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:9px;margin:8px 0}
 .itt-bell-controls small{width:100%;text-align:center}
 .itt-bell-controls button[aria-pressed="true"]{background:#172e41!important;color:#fff2bd!important;border:2px solid #ffd84b!important;box-shadow:0 0 11px rgba(255,216,75,.38)!important}
