@@ -6,11 +6,12 @@ import {schwabQuoteFreshness} from '../src/master/schwab-quote-freshness.js';
 import {evaluateAristotleConfluence,evaluateDailySwing,classifyTradeHorizon} from '../src/master/trading-smart-money.js';
 import {assessEntryChase} from '../src/master/trading-entry-chase.js';
 import {assessSwing55Entry} from '../src/master/trading-swing-levels.js';
+import {rotatingTickerBatch,saveSymbolScanCoverage} from './paper-scan-coverage.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 // Bounded liquid options universe. This is NOT a claim to scan every exchange-listed stock.
 export const PAPER_SCAN_UNIVERSE=Object.freeze(['SPY','QQQ','IWM','DIA','XLK','XLF','XLE','USO','BNO','AAPL','NVDA','TSLA','AMZN','META','MSFT','AMD','GOOGL','TLT','GLD','SLV']);
 const validTicker=t=>typeof t==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(t);
-const scannerUniverse=s=>s.scanMode==='SINGLE'?(validTicker(s.singleTicker)?[s.singleTicker]:[]):
+export const scannerUniverse=s=>s.scanMode==='SINGLE'?(validTicker(s.singleTicker)?[s.singleTicker]:[]):
  [...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s.extraSymbols)?s.extraSymbols:[])])].slice(0,40);
 const budget=s=>Number.isFinite(s.maxPremium)?s.maxPremium:paperRules.premiumBudget;
 function alertList(s){
@@ -33,7 +34,7 @@ async function notifyPaperOpportunity(env,owner,alert){
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
 export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],scanMode:'MULTI',singleTicker:'SPY',dailySignals:{},dailyCheckedDay:{},
- flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[],swingLevels:{}});
+ flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[],swingLevels:{},scanCoverage:{}});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
@@ -93,10 +94,14 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
    const now=Date.now(),session=marketTime(now);
    if(!['Sat','Sun'].includes(session.weekday)&&session.minute>=575&&session.minute<945){
     const allowed=scannerUniverse(s);
-    const universe=scanSymbol===null?allowed:allowed.filter(t=>t===scanSymbol);
-    const attempts=scanSymbol===null?Math.min(3,universe.length):universe.length;
-   for(let i=0;i<attempts;i++){
-    const symbol=scanSymbol===null?universe[(s.scanIndex++%universe.length)]:scanSymbol,checkedAt=Date.now();check.scannedSymbols.push(symbol);
+    // Advance five distinct default ticker slots per scheduled/owner scan.
+    // Streaming scans do not advance this cursor; their only role is to
+    // accelerate specific symbol checks, never to starve the full universe.
+    const scheduledBatch=scanSymbol===null?rotatingTickerBatch(allowed,s.scanIndex,5):[];
+    const universe=scanSymbol===null?scheduledBatch:allowed.filter(t=>t===scanSymbol);
+   for(let i=0;i<universe.length;i++){
+    const symbol=universe[i],checkedAt=Date.now();check.scannedSymbols.push(symbol);
+    if(scanSymbol===null)s.scanIndex++;
     try{
      const history=await data(env,owner,'history',symbol);
      const bars=(history.candles||[]).filter(c=>c.time+60000<=checkedAt&&Number.isFinite(c.volume));
@@ -204,6 +209,17 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      check.holds.push({symbol,reason:error.message});s.lastError=error.message;
      s.scanHistory=[{symbol,time:checkedAt,state:'DATA_HOLD',reason:error.message},...(s.scanHistory||[])].slice(0,30);
      event(s,'SCAN HOLD '+symbol+': '+error.message);
+    }finally{
+     // The old rolling 30-event feed hid real checks whenever a busy
+     // streaming symbol (e.g. GOOGL) appeared repeatedly. Track the last
+     // actual evaluation of EVERY symbol separately, regardless of outcome.
+     const latest=s.scanHistory?.find(item=>item.symbol===symbol&&item.time>=checkedAt);
+     saveSymbolScanCoverage(s,{
+      symbol,checkedAt:Date.now(),day:session.day,
+      source:scanSymbol===null?'ROTATION':'STREAM',
+      scanState:latest?.state||'DATA_HOLD',
+      reason:latest?.reason||'Scan did not return a final status.'
+     });
     }
    }
    }else s.lastScan={time:now,note:'Outside paper entry session (9:35 AM–3:45 PM ET weekdays).'};
