@@ -50,6 +50,7 @@ test('Nov 4 momentum alert path still produces a Schwab-verified paper opportuni
  };
  try{
   const {db,env}=await fixture();
+  await paperApi(req(),env,owner); // Create the paper runner row before updating its fixture.
   const state=freshRunner();state.enabled=true;state.scanMode='SINGLE';state.singleTicker='SPY';
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
   const result=await runPaperTick(env,owner,{scan:true,scanSymbol:'SPY'});
