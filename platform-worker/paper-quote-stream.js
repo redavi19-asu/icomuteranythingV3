@@ -2,7 +2,7 @@ import {DurableObject} from 'cloudflare:workers';
 import {schwabStreamerSession} from './schwab-connection.js';
 import {runPaperTick} from './paper-runner.js';
 import {marketTime} from '../src/master/trading-paper-engine.js';
-import {isStreamTicker,isStreamContract,streamScanAllowed} from './paper-stream-policy.js';
+import {isStreamTicker,isStreamContract,chooseFreshStreamSymbol} from './paper-stream-policy.js';
 
 // Private, owner-scoped server-side Schwab WebSocket. Streaming events accelerate
 // paper-only scan evaluation; all candidate quotes are STILL independently
@@ -15,7 +15,7 @@ export class PaperQuoteStream extends DurableObject {
   this.socket=null;this.session=null;this.ready=false;this.connecting=false;
   this.active=false;this.retryAt=0;this.failures=0;this.error='';
   this.lastQuoteAt=0;this.lastScanAt=0;this.scanning=false;
-  this.symbolScanAt=new Map();this.watched=new Map();this.watchTimes=new Map();
+  this.symbolScanAt=new Map();this.quoteActivity=new Map();this.watched=new Map();this.watchTimes=new Map();
  }
  status(){
   const age=this.lastQuoteAt?Date.now()-this.lastQuoteAt:null;
@@ -41,7 +41,7 @@ export class PaperQuoteStream extends DurableObject {
  }
  async disable(){
   this.active=false;this.ready=false;this.ownerId=null;this.symbols=[];
-  this.watched.clear();this.watchTimes.clear();this.symbolScanAt.clear();
+  this.watched.clear();this.watchTimes.clear();this.symbolScanAt.clear();this.quoteActivity.clear();
   const socket=this.socket;this.socket=null;
   try{socket?.close(1000,'Scanner inactive')}catch{}
   await this.ctx.storage.delete('config');
@@ -160,19 +160,27 @@ export class PaperQuoteStream extends DurableObject {
   }
  }
  onQuote(symbol,receivedAt){
-  if(!this.active||!this.ready||this.scanning||!this.symbols.includes(symbol))return;
-  const session=marketTime(Date.now());
+  if(!this.active||!this.ready||!this.symbols.includes(symbol))return;
+  // Record *all* ticker activity, even during an in-flight scan. The previous
+  // first-arrival scan never queued the rest, starving the broad watchlist.
+  this.quoteActivity.set(symbol,receivedAt);
+  this.pumpQueuedScan();
+ }
+ pumpQueuedScan(){
+  if(!this.active||!this.ready||this.scanning)return;
+  const now=Date.now(),session=marketTime(now);
   // Preserve the existing 9:35–15:45 paper-entry window.
   if(['Sat','Sun'].includes(session.weekday)||session.minute<575||session.minute>=945)return;
-  const now=Date.now();
-  if(!streamScanAllowed({now,receivedAt,lastScanAt:this.lastScanAt,
-   lastSymbolAt:this.symbolScanAt.get(symbol)||0,mode:this.mode}))return;
+  const symbol=chooseFreshStreamSymbol(this.symbols,this.quoteActivity,this.symbolScanAt,
+   {now,lastScanAt:this.lastScanAt,mode:this.mode});
+  if(!symbol)return;
   this.lastScanAt=now;this.symbolScanAt.set(symbol,now);this.scanning=true;
-  // Do NOT inject stream prices into risk checks: the Worker must separately
-  // verify non-delayed Schwab underlying and options-contract REST quotes.
+  // Streaming ticks trigger evaluation only. Existing independent REST checks
+  // still validate real-time entitlement, fresh underlying/contract quotes,
+  // liquidity and risk before the owner receives an actionable setup.
   const scan=runPaperTick(this.env,{id:this.ownerId,role:'owner'},{scan:true,scanSymbol:symbol})
    .catch(e=>{this.error='Live-triggered paper scan held: '+String(e?.message||'unavailable').slice(0,110)})
-   .finally(()=>{this.scanning=false});
+   .finally(()=>{this.scanning=false;this.pumpQueuedScan();});
   this.ctx.waitUntil(scan);
  }
 }
