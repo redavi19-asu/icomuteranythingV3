@@ -115,7 +115,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
        s.dailySignals[symbol]=swing;
        if(swing.status==='SWING_WATCH'){
         s.scanHistory.unshift({symbol,time:checkedAt,state:'MULTIDAY_SWING_WATCH',
-         reason:swing.reason+' Informational only; option contract, affordability, flow and overnight risks not confirmed.'});
+         reason:swing.reason+' Informational only; option contract, affordability and overnight risks not confirmed.'});
         s.scanHistory=s.scanHistory.slice(0,30);
        }
       }catch{s.dailySignals[symbol]={status:'UNAVAILABLE',confirmed:false,reason:'Daily Schwab bars unavailable.'}}
