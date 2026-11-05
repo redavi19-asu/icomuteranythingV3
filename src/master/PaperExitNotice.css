@@ -1,0 +1,14 @@
+/* ICA PRIME — retained paper trade exit notices and daily accounting. */
+.itt-paper-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+.itt-paper-summary strong.itt-pnl-negative{color:#ff99a6}
+.itt-paper-summary strong.itt-pnl-positive{color:#a6e9c0}
+.itt-paper-automatic-exits{width:100%;display:grid;gap:7px;padding:10px;margin:4px 0 8px;background:#2c2023;border:1px solid #90535e;border-radius:10px;color:#ebd9dc;min-width:0}
+.itt-paper-automatic-exits-header{display:flex;flex-direction:column;gap:3px}
+.itt-paper-automatic-exits-header strong{font-size:11px;letter-spacing:.065em;color:#ffc3c9}
+.itt-paper-automatic-exits-header small{font-size:10px;color:#c8afb6}
+.itt-paper-auto-exit{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 10px;background:#261d20;border:1px solid #594047;border-radius:7px;padding:9px 10px;font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+.itt-paper-auto-exit strong{color:#ffb0be;letter-spacing:.025em}
+.itt-paper-auto-exit.gain strong,.itt-paper-auto-exit.gain b{color:#a6e9c0}
+.itt-paper-auto-exit.loss b{color:#ffb0be}
+.itt-paper-auto-exit span:last-child{margin-left:auto}
+@media(max-width:580px){.itt-paper-summary{grid-template-columns:1fr}.itt-paper-auto-exit span:last-child{margin-left:0}}
