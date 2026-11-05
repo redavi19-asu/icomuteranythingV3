@@ -98,15 +98,12 @@ const ruleChecks=[
  ['Option liquidity','Spread, delta, volume and OI'],
  ['Risk checks','Stops, profit targets and daily limits']
 ];
-function readAutoStart(){
- try{return localStorage.getItem('ica_trading_pref_autostart930')==='true'}
- catch{return false}
-}
 export default function TradingOwnerPanel(){
  const [tab,setTab]=useState('dashboard');
  const [showDiagnostics,setShowDiagnostics]=useState(false);
  const [schwabStatus,setSchwabStatus]=useState(null);
  const [watchQuotes,setWatchQuotes]=useState([]);
+ const [paperSnapshot,setPaperSnapshot]=useState(null);
  const [aiBillingState,setAiBillingState]=useState('not_checked');
  const [selected,setSelected]=useState(()=>{
   const s=new URLSearchParams(window.location.search).get('symbol')?.toUpperCase();
@@ -121,8 +118,7 @@ export default function TradingOwnerPanel(){
  const [interval,setIntervalValue]=useState('5');
  const [chainSide,setChainSide]=useState('CALL');
  const [chainOpen,setChainOpen]=useState(()=>new URLSearchParams(window.location.search).get('panel')==='chain');
- const [autoStart,setAutoStart]=useState(readAutoStart);
- const [expanded,setExpanded]=useState(()=>{try{return localStorage.getItem('ica_trading_fullscreen')==='true'}catch{return false}});
+  const [expanded,setExpanded]=useState(()=>{try{return localStorage.getItem('ica_trading_fullscreen')==='true'}catch{return false}});
  const [popPanel]=useState(()=>{
   const p=new URLSearchParams(window.location.search).get('panel');
   return ['chart','alert','results','watchlist','scanner','chain','risk'].includes(p)?p:null;
@@ -144,9 +140,6 @@ export default function TradingOwnerPanel(){
  const [now,setNow]=useState(()=>Date.now());
  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),30000);return ()=>clearInterval(id)},[]);
  const clockText=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).format(now);
- const toggleAuto=()=>{
-  setAutoStart(v=>{const next=!v;try{localStorage.setItem('ica_trading_pref_autostart930',String(next))}catch{}return next});
- };
  const chartUrl='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSymbols[selected]||selected);
  const toggleWide=()=>setExpanded(v=>{
   const next=!v;
@@ -176,36 +169,15 @@ export default function TradingOwnerPanel(){
       <div className="itt-chart-footer"><span>TradingView public chart · exchange data may be delayed · not ICA’s broker feed</span><a href={chartUrl} target="_blank" rel="noopener noreferrer">Open full chart ↗</a></div>
      </section>
  );
- const alertPanel=(
-<section className="itt-card itt-alert-panel" aria-live="polite">
-      <div className="itt-alert-top"><div className="itt-alert-heading"><span className="itt-alert-flash">{icon('bolt',21)}</span><div><div className="itt-eyebrow">HIGH-PROBABILITY ENGINE</div><h3>Trade Opportunity Alert</h3></div></div><div className="itt-panel-buttons"><span className="itt-alert-label">NO VERIFIED SETUP</span>{popButton('alert')}</div></div>
-      <div className="itt-alert-body"><div className="itt-radar-viz"><span/><span/><span/>{icon('crosshair',32)}</div><div><h4>Waiting for our first qualifying play</h4><p>When ICA finds a confirmed option setup, the exact contract, entry, stop-loss and profit target will fill this alert. You make the decision.</p><div className="itt-signal-tags"><span>LIQUIDITY</span><span>MOMENTUM</span><span>RISK GATES</span></div></div></div>
-      <div className="itt-alert-actions"><button type="button" disabled title="Unlocks after a verified Schwab-connected signal">✓ TRADE THIS</button><button type="button" disabled title="No verified trade to skip yet">✕ SKIP TRADE</button></div>
-      <div className="itt-alert-foot">{icon('shield',15)} Approved entry → automatic stop/target management → exit → realized result. Inactive until integration.</div>
-     </section>
- );
- const resultsPanel=(
-<section className="itt-card itt-activity-panel"><div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('chart',18)}</span><div><div className="itt-eyebrow">TRADE PERFORMANCE</div><h3>Today's Results</h3></div></div><div className="itt-panel-buttons"><span className="itt-muted-badge">BROKER SYNC PENDING</span>{popButton('results')}</div></div>
-      <div className="itt-pnl-grid"><div><small>Realized P/L</small><strong>—</strong></div><div><small>Trades Closed</small><strong>—</strong></div><div><small>Win Rate</small><strong>—</strong></div><div><small>Open Position</small><strong>—</strong></div></div>
-      <div className="itt-empty-log"><span>{icon('clock',22)}</span><div><strong>No verified trade history yet</strong><p>Completed approved trades and actual account results will appear here after the Schwab integration is operational.</p></div></div>
-     </section>
- );
  const watchlistPanel=(
 <section className="itt-card itt-watchlist">
       <div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('radar',18)}</span><div><div className="itt-eyebrow">MARKET RADAR</div><h3>Watchlist</h3></div></div><div className="itt-panel-buttons"><span className="itt-mini-dot">QUOTES</span>{popButton('watchlist')}</div></div>
       <div className="itt-watch-tabs">{Object.keys(groups).map(k=><button type="button" aria-pressed={group===k} key={k} className={group===k?'active':''} onClick={()=>{setGroup(k);if(!groups[k].includes(selected))setSelected(groups[k][0])}}>{k}</button>)}</div>
       <form className="itt-add-ticker" onSubmit={addTicker}><input value={newTicker} onChange={e=>setNewTicker(e.target.value.toUpperCase())} maxLength={10} aria-label="Add ticker" placeholder="Add ticker, e.g. NVDA"/><button type="submit">＋ ADD</button></form>{tickerError&&<p role="alert" className="itt-watch-error">{tickerError}</p>}
        <div className="itt-watch-labels"><span>SYMBOL</span><span>LAST</span><span>SCAN</span></div>
-      <div className="itt-watch-rows">{groups[group].map(sym=><button type="button" className={sym===selected?'itt-selected':''} key={sym} onClick={()=>setSelected(sym)}><span><strong>{sym}</strong><small>{descriptions[sym]||"Custom ticker"}</small></span><span className="itt-blank-price">{typeof watchQuotes.find(q=>q.symbol===sym)?.last==='number'?'$'+watchQuotes.find(q=>q.symbol===sym).last.toFixed(2):'—'}</span><span className="itt-ticker-state">WAIT</span></button>)}</div>
+      <div className="itt-watch-rows">{groups[group].map(sym=><button type="button" className={sym===selected?'itt-selected':''} key={sym} onClick={()=>setSelected(sym)}><span><strong>{sym}</strong><small>{descriptions[sym]||"Custom ticker"}</small></span><span className="itt-blank-price">{typeof watchQuotes.find(q=>q.symbol===sym)?.last==='number'?'$'+watchQuotes.find(q=>q.symbol===sym).last.toFixed(2):'—'}</span><span className="itt-ticker-state">{paperSnapshot?.scanHistory?.find(entry=>entry.symbol===sym)?.state?.replaceAll('_',' ')||'NOT CHECKED'}</span></button>)}</div>
       {group==='Favorites'&&extraTickers.length>0&&<div className="itt-custom-tickers">{extraTickers.map(t=><button type="button" onClick={()=>removeTicker(t)} key={t} title={'Remove '+t}>Remove {t} ×</button>)}</div>}
        <div className="itt-watch-foot">Schwab quotes poll every 15 seconds when connected. Select a symbol to update both charts and the options chain.</div>
-     </section>
- );
- const scannerPanel=(
-<section className="itt-card itt-scan-panel"><div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('crosshair',18)}</span><div><div className="itt-eyebrow">SCANNER CONTROLS</div><h3>High-Probability Scan</h3></div></div>{popButton('scanner')}</div>
-      <div className="itt-scanner-center"><span className="itt-large-status"><i/> PAPER CONTROL CENTER</span><p>Use the Paper Money control center above to start or pause setup scanning.</p><button type="button" disabled className="itt-start-scan">{icon('radar',20)} START SCAN</button></div>
-      <label className="itt-autostart"><span><strong>Auto-start at 9:30 AM ET</strong><small>Preference saved on this device. Activates when the server scanner is ready.</small></span><input type="checkbox" checked={autoStart} onChange={toggleAuto}/><span className="itt-switch" aria-hidden="true"/></label>
-      <div className="itt-scan-note">{icon('clock',14)} Planned scanner runs server-side when connected, even if you close ICA Master.</div>
      </section>
  );
  const chainPanel=(
@@ -220,14 +192,23 @@ export default function TradingOwnerPanel(){
       <div className="itt-rule-checks">{ruleChecks.map(([heading,desc])=><div key={heading}><span>◇</span><div><strong>{heading}</strong><small>{desc}</small></div></div>)}</div>
      </section>
  );
- const standAlone={chart:chartPanel,alert:alertPanel,results:resultsPanel,watchlist:watchlistPanel,scanner:scannerPanel,chain:chainPanel,risk:riskPanel};
+ const standAlone={chart:chartPanel,
+  alert:<PaperSession connected={!!schwabStatus?.connected} initialTab="opportunities"/>,
+  results:<PaperSession connected={!!schwabStatus?.connected} initialTab="closed"/>,
+  watchlist:watchlistPanel,
+  scanner:<PaperSession connected={!!schwabStatus?.connected}/>,
+  chain:chainPanel,risk:riskPanel};
  if(popPanel)return <section className="ica-trading-terminal itt-expanded itt-popout-window">
   <header className="itt-popout-header">
    <div><span className="itt-eyebrow">ICA PRIME / DETACHED PANEL</span><h2>{popPanel==='chart'?selected+' MARKET CHART':popPanel.toUpperCase()}</h2></div>
-   <button type="button" className="itt-wide-button" onClick={()=>window.close()}>✕ Close Window</button>
+   <button type="button" className="itt-wide-button" onClick={()=>{
+      if(window.opener){window.close();return;}
+      const url=new URL(window.location.href);url.searchParams.delete('panel');window.location.assign(url.toString());
+     }}>↙ Return to Trading Dashboard</button>
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
-  {standAlone[popPanel]}
+  {['alert','results','scanner'].includes(popPanel)&&<SchwabConnection symbol={selected} onStatus={setSchwabStatus}/>}
+   {standAlone[popPanel]}
  </section>;
  return <section className={'ica-trading-terminal'+(expanded?' itt-expanded itt-monitor-view':'')}>
   <header className="itt-hero">
@@ -235,10 +216,15 @@ export default function TradingOwnerPanel(){
     <span className="itt-brand-emblem">{icon('radar',27)}</span>
     <div><div className="itt-eyebrow">PRIVATE ICA MASTER / TRADING INTELLIGENCE</div><h2>ICA <span>PRIME</span></h2><p>High-Probability Trading Workstation</p></div>
    </div>
-   <div className="itt-status-bar"><div className="itt-trade-mode" role="group" aria-label="Trading mode"><button className="selected">PAPER TRADE</button><button disabled title="Live mode requires verified broker routing and safety tests">LIVE TRADE · LOCKED</button></div><span className="itt-status itt-off"><span className="itt-status-dot"/> {schwabStatus?.connected?'SCHWAB AUTHORIZED':'SCHWAB DISCONNECTED'}</span><span className="itt-status itt-off">PAPER CONTROLS ABOVE</span><span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
+   <div className="itt-status-bar"><div className="itt-trade-mode" role="group" aria-label="Trading mode"><button type="button" className="selected" onClick={()=>document.getElementById('ica-paper-control-center')?.scrollIntoView({behavior:'smooth',block:'start'})} title="Go to the paper scanner controls">PAPER TRADE</button><button disabled title="Live mode requires verified broker routing and safety tests">LIVE TRADE · LOCKED</button></div><span className={'itt-status '+(schwabStatus?.connected?'itt-on':'itt-off')}><span className="itt-status-dot"/> {schwabStatus?.connected?'SCHWAB AUTHORIZED':'SCHWAB DISCONNECTED'}</span><span className="itt-status itt-off">PAPER CONTROLS ABOVE</span><span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
-  <PaperSession connected={!!schwabStatus?.connected}/>
+  <PaperSession connected={!!schwabStatus?.connected} onSnapshot={setPaperSnapshot}/>
+  <div className="itt-panel-buttons" aria-label="Open separate trading windows" style={{display:'flex',flexWrap:'wrap',gap:9,margin:'10px 0'}}>
+   <button type="button" className="itt-popout-button" onClick={()=>openPopout('scanner')}>↗ Scanner window</button>
+   <button type="button" className="itt-popout-button" onClick={()=>openPopout('alert')}>↗ Alert Center</button>
+   <button type="button" className="itt-popout-button" onClick={()=>openPopout('results')}>↗ Paper Results</button>
+  </div>
   <SchwabWatchPrices symbols={groups[group]} enabled={!!schwabStatus?.connected} onQuotes={setWatchQuotes}/>
   <button type="button" className="itt-diagnostics-toggle" onClick={()=>setShowDiagnostics(v=>!v)} aria-expanded={showDiagnostics}>{showDiagnostics?'Hide connections and diagnostics':'Connections and advanced settings'} ▾</button>
   <div className={showDiagnostics?'itt-diagnostics':'itt-diagnostics itt-hidden'}><SchwabConnection symbol={selected} onStatus={setSchwabStatus}/>{showDiagnostics&&<TradingAiBillingPanel billingState={aiBillingState} onStateChange={setAiBillingState}/>}</div>

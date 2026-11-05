@@ -134,9 +134,9 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
     const keys=['premiumBudget','startingCash','stopLossPct','takeProfitPct','trailActivatePct','trailDistancePct','maxDailyLoss','maxLossPerTrade','maxTradesPerDay','maxHoldMinutes','dailyGoal'];
     const safeRules=Object.fromEntries(keys.filter(k=>Number.isFinite(rules[k])).map(k=>[k,rules[k]]));
     return {
-      source:'SCHWAB_NOT_CONNECTED',
+      source:'NO_VERIFIED_MARKET_DATA_IN_CHAT',
       asOf:new Date().toISOString(),
-      note:'No Schwab market data or brokerage connection is active in ICA. This assistant can discuss strategy but must not claim to see current quotes or submit orders.',
+      note:'This AI chat has no verified live quote, open position, or brokerage order context. The separate Schwab chart may be connected, but the AI has not been given market snapshots. Never claim current prices or submit orders.',
       rules:safeRules,opportunities:relevant,optionQuotes:options,paper:report?.summary||null
     };
   },[ranked,report,rules,quotes,barName,quoteName]);
@@ -175,7 +175,7 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
           <h3 style={{fontSize:20,color:'#dafff6',margin:'8px 0'}}>Ask ICA Trading AI</h3>
           <p style={{...muted,margin:'6px 0 0',maxWidth:750}}>
             Discuss options setups, contract liquidity, entries, exits and risk settings.
-            Schwab market data and trade execution are not connected yet.
+            Market quotes are not sent to this chat, and brokerage order execution is disabled.
           </p>
         </div>
         <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:7}}>
@@ -199,7 +199,7 @@ export default function TradingAiAssistant({ranked=[],report=null,rules={},quote
         </div>
       </div>
       <div aria-live="polite" style={{display:'flex',flexDirection:'column',gap:12,minHeight:190,maxHeight:440,overflowY:'auto',padding:'17px 2px',marginTop:8}}>
-        {messages.length===0&&<p style={{...muted,margin:'10px auto',maxWidth:660,textAlign:'center'}}>Ask about technical setups, contract spreads, stop-loss rules and profit-taking. Current market quotes will require Schwab integration.</p>}
+        {messages.length===0&&<p style={{...muted,margin:'10px auto',maxWidth:660,textAlign:'center'}}>Ask about technical setups, contract spreads, stop-loss rules and profit-taking. Only verified market snapshots explicitly provided to this chat may be analyzed as current.</p>}
         {messages.map(item=><article key={item.id} style={{
           whiteSpace:'pre-wrap',overflowWrap:'anywhere',alignSelf:item.role==='user'?'flex-end':'flex-start',
           background:item.role==='user'?'#164a4c':'#142c43',border:'1px solid '+(item.role==='user'?'#3a8b83':'#375671'),

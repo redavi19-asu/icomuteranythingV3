@@ -128,3 +128,32 @@ test('Close All wins an in-flight approval and invalidates approvals queued unde
   const oldApproval=new Request('https://test/platform/paper',{method:'POST',headers:{Origin:'https://icomputeranything.com'},body:JSON.stringify({action:'accept',id:'alert-1',epoch:0})});const rejected=await paperApi(oldApproval,env,owner);assert.equal(rejected.status,409);assert.match((await rejected.json()).error,/Close All/);
  }finally{Date.now=date;globalThis.fetch=fetcher}
 });
+
+test('server-backed 9:30 schedule only enables opted-in PAPER scanner once per ET day',async()=>{
+ const {env}=await fixture(),originalNow=Date.now;
+ try{
+  let time=Date.parse('2026-11-04T14:29:00Z');Date.now=()=>time;
+  await paperApi(req(),env,owner);
+  assert.equal((await paperApi(req('auto_start'),env,owner)).status,409,'missing boolean must fail');
+  const optIn=new Request('https://test/platform/paper',{method:'POST',headers:{Origin:'https://icomputeranything.com'},body:JSON.stringify({action:'auto_start',enabled:true})});
+  assert.equal((await paperApi(optIn,env,owner)).status,200);
+  let state=await runPaperTick(env,owner,{scan:false,scheduled:true});
+  assert.equal(state.enabled,false,'not yet 9:30 AM ET');
+  assert.equal(state.autoStart,true);
+  time=Date.parse('2026-11-04T14:30:00Z');
+  state=await runPaperTick(env,owner,{scan:false,scheduled:true});
+  assert.equal(state.enabled,true,'server schedule actually starts scanner at 9:30 ET');
+  assert.equal(state.lastAutoStartDay,'2026-11-04');
+  assert.equal(state.realOrdersEnabled,false);
+  assert.equal((await paperApi(req('pause'),env,owner)).status,200);
+  time=Date.parse('2026-11-04T14:31:00Z');
+  state=await runPaperTick(env,owner,{scan:false,scheduled:true});
+  assert.equal(state.enabled,false,'manual pause must persist for the trading day');
+  time=Date.parse('2026-11-05T14:30:00Z');
+  state=await runPaperTick(env,owner,{scan:false,scheduled:true});
+  assert.equal(state.enabled,true,'opted-in schedule resumes on the next weekday');
+  const optOut=new Request('https://test/platform/paper',{method:'POST',headers:{Origin:'https://icomputeranything.com'},body:JSON.stringify({action:'auto_start',enabled:false})});
+  assert.equal((await paperApi(optOut,env,owner)).status,200);
+  assert.equal((await(await paperApi(req(),env,owner)).json()).autoStart,false);
+ }finally{Date.now=originalNow}
+});
