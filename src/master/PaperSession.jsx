@@ -1,7 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {summarizePaperExits} from './paper-session.js';
 import {marketTime} from './trading-paper-engine.js';
-import {marketBellEvent,playMoneyCountingAlert} from './trading-session-audio.js';
+import {marketBellEvent,playMoneyCountingAlert,loadMoneyRecordings} from './trading-session-audio.js';
 import './PaperExitNotice.css';
 import PaperScanCoverage from './PaperScanCoverage.jsx';
 import './PaperStopSettings.css';
@@ -37,11 +37,11 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  const [singleTickerDraft,setSingleTickerDraft]=useState('SPY'),[singleTickerDirty,setSingleTickerDirty]=useState(false);
  const [soundOn,setSoundOn]=useState(false),[soundWarning,setSoundWarning]=useState(''),[soundLoading,setSoundLoading]=useState(false);
  const [scanStatus,setScanStatus]=useState({phase:'idle'}),[operationNotice,setOperationNotice]=useState('');
- const audioRef=useRef(null),bellBuffer=useRef(null),soundEnabledRef=useRef(false),scanRequested=useRef(false),seenAlerts=useRef(null),requests=useRef(0),queue=useRef(Promise.resolve()),queueEpoch=useRef(0),latestRevision=useRef(-1),pendingAccepts=useRef(new Set());
+ const audioRef=useRef(null),bellBuffer=useRef(null),moneyRecordingsRef=useRef(null),moneyLoadRef=useRef(null),soundEnabledRef=useRef(false),scanRequested=useRef(false),seenAlerts=useRef(null),requests=useRef(0),queue=useRef(Promise.resolve()),queueEpoch=useRef(0),latestRevision=useRef(-1),pendingAccepts=useRef(new Set());
  function applyState(data){const revision=data.revision??0;if(revision>=latestRevision.current){latestRevision.current=revision;setS(data);onSnapshot?.(data)}}
  function warnIfAudioPaused(){
    if(soundEnabledRef.current&&document.visibilityState==='visible'&&audioRef.current?.state!=='running'){
-    setSoundWarning('The phone paused browser audio. Tap Test Bell to restore sound. Background alerts need notifications, not a web-page bell.');
+    setSoundWarning('The browser paused audio. Tap Test Money Alert or Test Bell to restore sound; background alerts need notifications.');
    }
   }
   async function loadBellRecording(ctx){
@@ -55,6 +55,17 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    }catch{
     if(soundEnabledRef.current)setSoundWarning('Recorded bell unavailable. Backup bell remains active.');
    }
+  }
+  async function ensureMoneyRecordings(ctx){
+   if(moneyRecordingsRef.current)return moneyRecordingsRef.current;
+   if(moneyLoadRef.current)return moneyLoadRef.current;
+   const loading=loadMoneyRecordings(ctx).then(value=>{
+    moneyRecordingsRef.current=value;
+    return value;
+   });
+   moneyLoadRef.current=loading;
+   try{return await loading}
+   finally{if(moneyLoadRef.current===loading)moneyLoadRef.current=null}
   }
   async function toggleAlertSound(){
    if(soundOn){soundEnabledRef.current=false;setSoundOn(false);setSoundWarning('');return}
@@ -72,6 +83,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     setSoundWarning('');
     // Unlock audio on tap without playing a different preview sound.
     if(!bellBuffer.current)void loadBellRecording(ctx);
+    void ensureMoneyRecordings(ctx).catch(()=>setSoundWarning('The recorded money alert could not be loaded. Use Test Money Alert to retry; the market bell is unchanged.'));
    }catch(e){
     soundEnabledRef.current=false;setSoundOn(false);setSoundWarning(e.message);
    }finally{setSoundLoading(false)}
@@ -99,18 +111,26 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     setSoundWarning('Recorded bell could not play. Backup bell is active.');
    }
   }
-  function playTradeOpportunitySound(){
-   if(!soundEnabledRef.current||document.visibilityState!=='visible')return;
-   if(!playMoneyCountingAlert(audioRef.current))
-    setSoundWarning('The phone paused browser audio. Tap Test Money Alert to restore sound.');
+  async function playTradeOpportunitySound(){
+   const ctx=audioRef.current;
+   if(!soundEnabledRef.current||document.visibilityState!=='visible'||ctx?.state!=='running')return;
+   try{
+    const recordings=await ensureMoneyRecordings(ctx);
+    if(!soundEnabledRef.current||document.visibilityState!=='visible')return;
+    if(!playMoneyCountingAlert(ctx,recordings))throw Error('Recorded money alert could not play. Tap Test Money Alert.');
+    setSoundWarning('');
+   }catch(e){setSoundWarning(e.message||'Recorded money alert unavailable.')}
   }
   async function testMoneyAlert(){
    try{
-    if(!soundEnabledRef.current||!audioRef.current)throw Error('Enable Alert Sounds first.');
-    if(audioRef.current.state!=='running')await audioRef.current.resume();
-    if(!playMoneyCountingAlert(audioRef.current))throw Error('Browser audio paused; tap Enable Alert Sounds again.');
+    const ctx=audioRef.current;
+    if(!soundEnabledRef.current||!ctx)throw Error('Enable Alert Sounds first.');
+    if(ctx.state!=='running')await ctx.resume();
+    if(ctx.state!=='running')throw Error('Browser audio paused. Check device volume.');
+    const recordings=await ensureMoneyRecordings(ctx);
+    if(!playMoneyCountingAlert(ctx,recordings))throw Error('Recorded money alert could not play.');
     setSoundWarning('');
-   }catch(e){setSoundWarning(e.message||'Money alert unavailable.')}
+   }catch(e){setSoundWarning(e.message||'Recorded money alert unavailable.')}
   }
   async function testAlertBell(){
    try{
@@ -260,7 +280,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
      <span>Simulated exit {money(t.exitFill)} · Final realized P/L <b>{signed(t.pnl)}</b></span>
     </div>)}
    </section>}
-   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Preparing sound…':soundOn?'🔔 SOUNDS ON':'ENABLE ALERT SOUNDS'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Test Bell</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testMoneyAlert}>Test Money Alert</button><small>{soundWarning||'Opening/closing bell at 9:30 AM and 4:00 PM ET; money-counting ding-ding for new setups. Page must be active and audio enabled.'}</small></div>
+   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Preparing sound…':soundOn?'🔔 SOUNDS ON':'ENABLE ALERT SOUNDS'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Test Bell</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testMoneyAlert}>Test Money Alert</button><small>{soundWarning||'New setups: real cash-counting machine + two recorded beeps, mastered loud. Opening/closing bell stays at 9:30 AM and 4:00 PM ET. Active page and device volume required.'}</small><small><a href="https://orangefreesounds.com/money-counting-machine/" target="_blank" rel="noopener noreferrer">Cash counter sound credit</a> · <a href="https://orangefreesounds.com/security-beep-sound/" target="_blank" rel="noopener noreferrer">Beep sound credit</a> (CC BY 4.0)</small></div>
    <button type="button" className="itt-wide-button itt-trade-center-button" onClick={()=>openWindow()}>TRADING OPPORTUNITIES &amp; TRADES · {liveAlerts.length} awaiting · {positions.length} open · {history.length} closed</button>
   </div><aside className="itt-paper-radar" aria-label="Scanner live status and recent ticker checks"><div className="itt-paper-radar-heading"><div><span className="itt-eyebrow">ICA MARKET RADAR</span><h3>Scanner Activity</h3></div><span className={'itt-radar-state '+(radarActive?'active':'')}>{phase}</span></div>
    <div className="itt-scan-scope" role="group" aria-label="Scan only one ticker or multiple tickers">

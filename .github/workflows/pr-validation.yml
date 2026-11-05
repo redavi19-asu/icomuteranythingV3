@@ -21,5 +21,6 @@ jobs:
       - run: node --test platform-worker/trading-assistant.test.js platform-worker/trading-router.test.js platform-worker/schwab-connection.test.js src/master/trading-paper-engine.test.js src/master/trading-entry-chase.test.js src/master/trading-swing-levels.test.js src/master/trading-approval-engine.test.js src/master/paper-session.test.js platform-worker/paper-runner.test.js platform-worker/trading-smart-money.test.js src/master/schwab-quote-freshness.test.js platform-worker/schwab-quote-freshness.test.js
       - run: node --test platform-worker/paper-stream-policy.test.js platform-worker/paper-scan-coverage.test.js
       - run: node --test src/master/paper-session-clock.test.js src/master/trading-session-audio.test.js
+      - run: bash scripts/fetch-money-alert-audio.sh
       - run: npm run build
       - run: npx --yes wrangler@latest deploy --dry-run --config platform-worker/wrangler.jsonc

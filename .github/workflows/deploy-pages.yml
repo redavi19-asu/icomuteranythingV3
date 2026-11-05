@@ -37,6 +37,9 @@ jobs:
       - name: Verify owner-only Trading AI and order-safety boundaries
         run: node --test platform-worker/trading-assistant.test.js platform-worker/trading-router.test.js platform-worker/schwab-connection.test.js src/master/trading-paper-engine.test.js src/master/trading-approval-engine.test.js src/master/paper-session.test.js platform-worker/paper-runner.test.js
 
+      - name: Fetch and verify licensed cash-counter recordings
+        run: bash scripts/fetch-money-alert-audio.sh
+
       - name: Build
         env:
           VITE_ICA_MASTER_API_URL: https://ica-master-platform.ryanedavis.workers.dev
