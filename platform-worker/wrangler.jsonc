@@ -31,6 +31,20 @@
       "migrations_dir": "migrations"
     }
   ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PAPER_QUOTE_STREAM",
+        "class_name": "PaperQuoteStream"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "paper-quote-stream-v1",
+      "new_sqlite_classes": ["PaperQuoteStream"]
+    }
+  ],
   "triggers": {
     "crons": [
       "* * * * *"
