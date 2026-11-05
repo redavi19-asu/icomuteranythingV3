@@ -22,15 +22,15 @@ function ringOpportunityBell(ctx){
 const positionsOf=data=>Array.isArray(data?.paper?.positions)?data.paper.positions:data?.paper?.position?[{...data.paper.position,id:data.paper.position.id||data.paper.position.symbol,mark:data.mark,closeRequested:data.closeRequested}]:[];
 const percent=(pnl,cost)=>Number.isFinite(pnl)&&Number.isFinite(cost)&&cost>0?(pnl>=0?'+':'')+(pnl/cost*100).toFixed(2)+'%':'—';
 const signed=n=>Number.isFinite(n)?(n>0?'+':'')+money(n):'—';
-export default function PaperSession({connected}){
+export default function PaperSession({connected,initialTab=null,onSnapshot}){
  const [s,setS]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[now,setNow]=useState(Date.now());
- const [showWindow,setShowWindow]=useState(false),[windowTab,setWindowTab]=useState('opportunities'),[selected,setSelected]=useState(null);
+ const [showWindow,setShowWindow]=useState(Boolean(initialTab)),[windowTab,setWindowTab]=useState(initialTab||'opportunities'),[selected,setSelected]=useState(null);
  const [feedback,setFeedback]=useState({}),[queued,setQueued]=useState({}),[exitFeedback,setExitFeedback]=useState('');
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
  const [soundOn,setSoundOn]=useState(false),[soundWarning,setSoundWarning]=useState(''),[soundLoading,setSoundLoading]=useState(false);
  const [scanStatus,setScanStatus]=useState({phase:'idle'}),[operationNotice,setOperationNotice]=useState('');
  const audioRef=useRef(null),bellBuffer=useRef(null),soundEnabledRef=useRef(false),scanRequested=useRef(false),seenAlerts=useRef(null),requests=useRef(0),queue=useRef(Promise.resolve()),queueEpoch=useRef(0),latestRevision=useRef(-1),pendingAccepts=useRef(new Set());
- function applyState(data){const revision=data.revision??0;if(revision>=latestRevision.current){latestRevision.current=revision;setS(data)}}
+ function applyState(data){const revision=data.revision??0;if(revision>=latestRevision.current){latestRevision.current=revision;setS(data);onSnapshot?.(data)}}
  function warnIfAudioPaused(){
    if(soundEnabledRef.current&&document.visibilityState==='visible'&&audioRef.current?.state!=='running'){
     setSoundWarning('The phone paused browser audio. Tap Test Bell to restore sound. Background alerts need notifications, not a web-page bell.');
@@ -117,7 +117,7 @@ export default function PaperSession({connected}){
   },[]);
   async function call(action,id,epoch){
   const token=localStorage.getItem('ica_master_token');
-  const body=action==='settings'?{action,...id}:{action,id,...(epoch!==undefined?{epoch}:{})};
+  const body=action==='settings'?{action,...id}:action==='auto_start'?{action,enabled:id}:{action,id,...(epoch!==undefined?{epoch}:{})};
   const r=await fetch(API+'/platform/paper',{method:action?'POST':'GET',headers:{Authorization:'Bearer '+token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify(body)}:{})});
   const data=await r.json();if(!r.ok){const e=Error(data.error||'Paper server unavailable.');e.code=data.code;e.serverState=data.status;throw e}return data;
  }
@@ -146,6 +146,7 @@ export default function PaperSession({connected}){
     }
     if(action==='start')setOperationNotice('Scanner started. Scheduled setup checks are enabled.');
     if(action==='pause')setOperationNotice('Scanner paused. Open paper trades remain under protective management.');
+     if(action==='auto_start')setOperationNotice(data.autoStart?'Automatic PAPER scans scheduled at/after 9:30 AM ET on market weekdays.':'Automatic paper scanner start disabled.');
     if(action==='settings')setOperationNotice('Scan settings saved.');
     if(action==='accept')setFeedback(v=>({...v,[id]:{kind:'success',message:'Accepted into Open Trades. Select Open Trade to see profit/loss and close controls.'}}));
     if(action==='settings')setSettingsDirty(false);
@@ -186,12 +187,16 @@ export default function PaperSession({connected}){
   {(p.lastError||p.closeRequested)&&<p role="status" className="itt-paper-approval-error">{p.lastError||'Manual close requested. Waiting for a fresh positive bid.'}</p>}
 
  </article>}
- return <section className="itt-card itt-paper-compact" aria-label="Paper trading control center">
+ return <section id="ica-paper-control-center" className="itt-card itt-paper-compact" aria-label="Paper trading control center">
   <div className="itt-paper-top-grid"><div className="itt-paper-command"><div className="itt-eyebrow">ICA MASTER · PAPER TRADING</div><h3>Scanner &amp; paper trades</h3>
    <div className="itt-scan-buttons"><button type="button" className="itt-wide-button" disabled={busy||!connected||s?.enabled} onClick={()=>act('start')}>START SCAN</button><button type="button" className="itt-wide-button" disabled={!s?.enabled} onClick={()=>act('pause')}>PAUSE SCAN</button><button type="button" className={'itt-wide-button itt-run-now '+(['queued','checking'].includes(scanStatus.phase)?'checking':'')} disabled={busy||['queued','checking'].includes(scanStatus.phase)} aria-busy={['queued','checking'].includes(scanStatus.phase)} onClick={()=>act('tick')}>{['queued','checking'].includes(scanStatus.phase)?<><span className="itt-action-spinner" aria-hidden="true"/> CHECKING…</>:'RUN SCAN & UPDATE TRADES NOW'}</button></div>
    {scanStatus.phase!=='idle'&&<div className={'itt-check-feedback '+scanStatus.phase} role={scanStatus.phase==='error'?'alert':'status'} aria-live="polite"><strong>{scanStatus.message}</strong>{scanStatus.check&&<><span>Updated {scanStatus.check.positionsUpdated} of {scanStatus.check.positionsChecked} open contracts · Checked {scanStatus.check.scannedSymbols?.length||0} tickers{scanStatus.check.scannedSymbols?.length?' ('+scanStatus.check.scannedSymbols.join(', ')+')':''} · {scanStatus.check.newAlerts} new opportunities</span>{scanStatus.check.positionsClosed>0&&<span>{scanStatus.check.positionsClosed} paper contract(s) closed by exit rules.</span>}{!scanStatus.check.scannedSymbols?.length&&<span>{s?.enabled?'No ticker scans were due during this check.':'Scanner paused; only open trades were checked.'}</span>}{scanStatus.check.holds?.length>0&&<details><summary>Quote holds ({scanStatus.check.holds.length})</summary>{scanStatus.check.holds.map((h,i)=><p key={i}>{h.symbol||'Check'}: {h.reason}</p>)}</details>}</>}{scanStatus.completedAt&&<small>Completed {time(scanStatus.completedAt)} ET</small>}</div>}
    {operationNotice&&<p role="status" className="itt-operation-notice">{operationNotice}</p>}
    <p><strong>{s?.enabled?'SCANNER ENABLED':'SCANNER PAUSED'} · {positions.length} OPEN PAPER CONTRACT{positions.length===1?'':'S'}</strong></p>
+    <label className="itt-autostart" style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+     <span><strong>Auto-start paper scanner at 9:30 AM ET</strong><small style={{display:'block'}}>Saved on the server for this owner. Trading weekdays only; no real orders. A manual Pause stays paused for the day.</small></span>
+     <input type="checkbox" checked={!!s?.autoStart} disabled={!s||busy} onChange={e=>act('auto_start',e.target.checked)} aria-label="Automatically start paper scanner at 9:30 AM Eastern"/>
+    </label>
    <div className="itt-paper-summary"><div><small>PAPER BUYING POWER</small><strong>{money(s?.paper?.cash)}</strong></div><div><small>REALIZED PROFIT / LOSS</small><strong>{signed(s?.paper?.realized)}</strong></div><div><small>OPEN PROFIT / LOSS</small><strong>{signed(totalPnl)}</strong><small>{marked.length!==positions.length?'Some quotes unavailable; see each trade':''}</small></div></div>
    <p className="itt-scanner-disclaimer">Scheduled checks manage every open contract and scan the next three tickers, approximately once per minute. Run Now performs that same check early; it does not analyze every stock at once. Pausing the scanner leaves open-trade protection running.</p>
    <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Loading bell…':soundOn?'🔔 Alert Bell ON · Turn Off':'🔕 Enable Alert Bell'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Test Bell</button><small>{soundWarning||'Sound is available while this page stays active. Enable it after each reload; iPhone background/lock-screen ringing needs push notifications.'}</small></div>
