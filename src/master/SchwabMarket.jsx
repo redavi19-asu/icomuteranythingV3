@@ -15,6 +15,26 @@ function useSchwabQuoteStream(symbol,enabled){
  const [state,setState]=useState({status:'offline',quote:null,lastMessage:0,error:''});
  useEffect(()=>{
   let active=true,socket=null,retry=null,attempt=0,watchedOption=null;
+  let lastQuotePaint=0,quoteTimer=null,latestQuote=null;
+  // Render the latest Schwab quote at most four times a second on mobile/iPad.
+  // Only browser painting is coalesced; this does not throttle Schwab's server
+  // data feed, the live paper scanner, or option-contract risk validation.
+  function flushQuote(){
+   if(quoteTimer){clearTimeout(quoteTimer);quoteTimer=null}
+   if(!active||!latestQuote)return;
+   const m=latestQuote;latestQuote=null;lastQuotePaint=Date.now();
+   setState(v=>({status:'connected',error:'',lastMessage:lastQuotePaint,
+    quote:{symbol:m.symbol,bid:typeof m.bid==='number'?m.bid:v.quote?.bid??null,
+     ask:typeof m.ask==='number'?m.ask:v.quote?.ask??null,
+     last:typeof m.last==='number'?m.last:v.quote?.last??null,
+     quoteTime:m.quoteTime||v.quote?.quoteTime||null,delayed:m.delayed,receivedAt:m.receivedAt}}));
+  }
+  function stageQuote(m){
+   latestQuote=m;
+   const remaining=Math.max(0,250-(Date.now()-lastQuotePaint));
+   if(remaining===0)flushQuote();
+   else if(!quoteTimer)quoteTimer=setTimeout(flushQuote,remaining);
+  }
   setState({status:enabled?'connecting':'offline',quote:null,lastMessage:0,error:''});
   async function connect(){
    try{
@@ -28,9 +48,8 @@ function useSchwabQuoteStream(symbol,enabled){
      try{
       const m=JSON.parse(e.data);
       if(m.type==='connected'){attempt=0;setState(v=>({...v,status:'connected',error:''}));if(watchedOption)socket.send(JSON.stringify({type:'watch_option',symbol:watchedOption}))}
-      else if(m.type==='quote'){
-       setState(v=>({status:'connected',error:'',lastMessage:Date.now(),quote:{symbol:m.symbol,bid:typeof m.bid==='number'?m.bid:v.quote?.bid??null,ask:typeof m.ask==='number'?m.ask:v.quote?.ask??null,last:typeof m.last==='number'?m.last:v.quote?.last??null,quoteTime:m.quoteTime||v.quote?.quoteTime||null,delayed:m.delayed,receivedAt:m.receivedAt}}));
-      }else if(m.type==='option_quote'){
+      else if(m.type==='quote'){stageQuote(m)}
+      else if(m.type==='option_quote'){
        window.dispatchEvent(new CustomEvent('ica-option-quote-stream',{detail:m}));
       }else if(m.type==='error'||m.type==='disconnected')setState(v=>({...v,status:'error',error:m.message||'Stream disconnected.'}));
      }catch{}
@@ -50,7 +69,7 @@ function useSchwabQuoteStream(symbol,enabled){
   function watchOption(e){if(!active||typeof e.detail?.symbol!=='string')return;watchedOption=e.detail.symbol;if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type:'watch_option',symbol:watchedOption}))}
   window.addEventListener('ica-watch-option-stream',watchOption);
   if(enabled)connect();
-  return()=>{active=false;clearTimeout(retry);window.removeEventListener('ica-watch-option-stream',watchOption);if(socket)socket.close()};
+  return()=>{active=false;clearTimeout(retry);clearTimeout(quoteTimer);window.removeEventListener('ica-watch-option-stream',watchOption);if(socket)socket.close()};
  },[symbol,enabled]);
  return state;
 }

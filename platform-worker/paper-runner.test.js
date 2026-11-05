@@ -4,7 +4,7 @@ import {stepPaper,newPaper} from '../src/master/paper-session.js';import {sealTo
 const owner={id:'owner-test',role:'owner'},now=Date.parse('2026-11-04T15:00:00Z');
 const req=(action,id)=>new Request('https://test/platform/paper',{method:action?'POST':'GET',headers:{Origin:'https://icomputeranything.com'},...(action?{body:JSON.stringify({action,id})}:{})});
 async function fixture(){const db=new DatabaseSync(':memory:');for(const f of ['0007_schwab_market_data.sql','0009_paper_runner.sql'])db.exec(readFileSync(new URL('./migrations/'+f,import.meta.url),'utf8'));const DB={prepare(sql){let a=[];const p={bind(...args){a=args;return p},async first(){return db.prepare(sql).get(...a)},async run(){return {meta:{changes:db.prepare(sql).run(...a).changes}}}};return p}};const env={DB,SCHWAB_TOKEN_ENCRYPTION_KEY:btoa('12345678901234567890123456789012')};const payload=await sealTokens(env,owner.id,{access_token:'fixture-token',refresh_token:'fixture-refresh',expires_at:now+86400000});db.prepare('INSERT INTO schwab_connections(owner_id,generation,payload,updated_at) VALUES(?,?,?,?)').run(owner.id,'test',payload,now);return {db,env}}
-function pending(){return {id:'setup',expires:now+120000,qualification:{marketData:{provider:'SCHWAB',realtime:true},confluence:{confirmed:true}},contract:{symbol:'TEST OPTION',underlying:'SPY',bid:1.95,ask:2,quoteTime:now,delta:0.5,volume:200,openInterest:500}}}
+function pending(){const asOf='2026-11-04T14:59:00.000Z';return {id:'setup',expires:now+120000,signal:{state:'TECHNICAL_WATCH',asOf,direction:'CALL'},qualification:{technical:{confirmed:true,asOf,direction:'CALL'},marketData:{provider:'SCHWAB',realtime:true},confluence:{confirmed:false}},contract:{symbol:'TEST OPTION',underlying:'SPY',bid:1.95,ask:2,quoteTime:now,delta:0.5,volume:200,openInterest:500}}}
 test('paper routes deny public access',async()=>{for(const method of ['GET','POST'])assert.equal((await worker.fetch(new Request('https://test/platform/paper',{method}),{})).status,403)});
 test('approval is single use, state survives reload, emergency close persists',async()=>{const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});try{
  await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
@@ -17,7 +17,7 @@ test('valid paper setup can be approved without paid options-flow confirmation',
  try{
   await paperApi(req(),env,owner);
   const s=freshRunner();s.enabled=true;s.alerts=[{...pending(),status:'PENDING',qualification:{
-   marketData:{provider:'SCHWAB',realtime:true},confluence:{confirmed:true},
+   marketData:{provider:'SCHWAB',realtime:true},confluence:{confirmed:false},technical:pending().qualification.technical,
    flow:{confirmed:false,provider:'UNUSUAL_WHALES',reason:'Not subscribed'}
   }}];
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
@@ -29,6 +29,41 @@ test('valid paper setup can be approved without paid options-flow confirmation',
   assert.equal(state.realOrdersEnabled,false);
  }finally{Date.now=date;globalThis.fetch=fetcher}
 });
+test('Nov 4 momentum alert path still produces a Schwab-verified paper opportunity without 150-bar confluence',async()=>{
+ const originalDate=Date.now,originalFetch=globalThis.fetch;Date.now=()=>now;
+ const bars=Array.from({length:52},(_,i)=>{
+  const close=100+i*.025+Math.sin(i*.8)*.15+(i===51?.2:0);
+  return {datetime:now-53*60000+i*60000,open:close-.06,high:close+.09,low:close-.1,close,volume:i===51?2300:1000};
+ });
+ const contract='SPY   261106C00100000';
+ const chain={isDelayed:false,callExpDateMap:{'2026-11-06:2':{'100':[{symbol:contract,strikePrice:100,
+  bid:1.95,ask:2,delta:0.52,totalVolume:220,openInterest:600,quoteTimeInLong:now,nonStandard:false}]}},putExpDateMap:{}};
+ globalThis.fetch=async input=>{
+  const url=new URL(input);
+  if(url.pathname.endsWith('/pricehistory'))return Response.json({candles:bars});
+  if(url.pathname.endsWith('/chains'))return Response.json(chain);
+  if(url.pathname.endsWith('/quotes')){
+   const sym=url.searchParams.get('symbols');
+   return Response.json({[sym]:{realtime:true,quote:{lastPrice:100,bidPrice:1.95,askPrice:2,quoteTime:now}}});
+  }
+  throw Error('Unexpected fixture endpoint: '+url.pathname);
+ };
+ try{
+  const {db,env}=await fixture();
+  await paperApi(req(),env,owner); // Create the paper runner row before updating its fixture.
+  const state=freshRunner();state.enabled=true;state.scanMode='SINGLE';state.singleTicker='SPY';
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
+  const result=await runPaperTick(env,owner,{scan:true,scanSymbol:'SPY'});
+  assert.equal(result.lastCheck.newAlerts,1,'verified Nov 4 technical signal should produce a paper opportunity: '+JSON.stringify({lastScan:result.lastScan,check:result.lastCheck,history:result.scanHistory.slice(0,4)}));
+  assert.equal(result.alerts.length,1);
+  assert.equal(result.alerts[0].qualification.technical.confirmed,true);
+  assert.equal(result.alerts[0].qualification.confluence.confirmed,false,'extra MACD/OBV confluence is advisory');
+  assert.equal(result.alerts[0].qualification.marketData.provider,'SCHWAB');
+  assert.equal(result.scanHistory[0].state,'TECHNICAL_SETUP_REVIEW');
+  assert.equal(result.realOrdersEnabled,false);
+ }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
+});
+
 test('server scanner does not depend on a paid options-flow API',()=>{
  const code=readFileSync(new URL('./paper-runner.js',import.meta.url),'utf8');
  assert.doesNotMatch(code,/getContractFlow|evaluateVerifiedFlow|FLOW_HOLD|UNUSUAL_WHALES/);
@@ -187,7 +222,7 @@ test('legacy paper alerts without verified Schwab data and technical confluence 
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
   globalThis.fetch=async()=>{throw Error('Legacy acceptance should not request market data')};
   const response=await paperApi(req('accept','setup'),env,owner);
-  assert.equal(response.status,409);assert.match((await response.json()).error,/Verified Schwab market data|expired|already accepted/i);
+  assert.equal(response.status,409);assert.match((await response.json()).error,/Verified Schwab quotes|expired|already accepted/i);
   const after=await(await paperApi(req(),env,owner)).json();
   assert.equal(after.paper.positions.length,0);
  }finally{Date.now=oldNow;globalThis.fetch=fetcher}
