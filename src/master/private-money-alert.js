@@ -104,13 +104,13 @@ export async function preparePersonalMoneyClip(ctx,file){
 export async function decodePersonalMoneyClip(ctx,bytes){
  if(!ctx||!bytes||!(bytes instanceof ArrayBuffer))return null;
  const decoded=await ctx.decodeAudioData(bytes.slice(0));
- if(!decoded||decoded.duration<3.9||decoded.duration>4.1)
+ if(!decoded||decoded.duration<3.7||decoded.duration>8.0)
   throw Error('The saved personal clip is invalid. Choose the file again.');
  return decoded;
 }
 export function playPersonalMoneyClip(ctx,buffer){
- if(!ctx||ctx.state!=='running'||!buffer||buffer.duration<3.9)return false;
- const duration=Math.min(4,buffer.duration);
+ if(!ctx||ctx.state!=='running'||!buffer||buffer.duration<3.7)return false;
+ const duration=Math.min(8,buffer.duration);
  const compressor=ctx.createDynamicsCompressor(),master=ctx.createGain(),
   gain=ctx.createGain(),source=ctx.createBufferSource(),at=ctx.currentTime+.02;
  compressor.threshold.value=-16;compressor.ratio.value=5;
