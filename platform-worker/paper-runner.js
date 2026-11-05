@@ -5,6 +5,7 @@ import {schwabMarket,schwabQuotes,schwabContractQuote} from './schwab-connection
 import {schwabQuoteFreshness} from '../src/master/schwab-quote-freshness.js';
 import {evaluateAristotleConfluence,evaluateDailySwing,classifyTradeHorizon} from '../src/master/trading-smart-money.js';
 import {assessEntryChase} from '../src/master/trading-entry-chase.js';
+import {assessSwing55Entry} from '../src/master/trading-swing-levels.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 // Bounded liquid options universe. This is NOT a claim to scan every exchange-listed stock.
 export const PAPER_SCAN_UNIVERSE=Object.freeze(['SPY','QQQ','IWM','DIA','XLK','XLF','XLE','USO','BNO','AAPL','NVDA','TSLA','AMZN','META','MSFT','AMD','GOOGL','TLT','GLD','SLV']);
@@ -32,7 +33,7 @@ async function notifyPaperOpportunity(env,owner,alert){
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
 export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],scanMode:'MULTI',singleTicker:'SPY',dailySignals:{},dailyCheckedDay:{},
- flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[]});
+ flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[],swingLevels:{}});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
@@ -126,6 +127,12 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
       s.scanHistory.unshift({symbol,time:checkedAt,state:'FEED_HOLD',reason:'Real-time Schwab underlying quote was not freshly verified: '+(s.marketFeed?.label||'UNAVAILABLE')});
       s.scanHistory=s.scanHistory.slice(0,30);continue;
      }
+     // Completed 5/5 swing levels are structural context for entry decisions.
+     // Preserve them for dashboard diagnostics even when Don't Chase holds.
+     // Do not modify stops or open positions based on underlying stock levels.
+     const swing55=assessSwing55Entry(bars,signal);
+     s.swingLevels||={};
+     s.swingLevels[symbol]={...swing55,checkedAt};
      // Keep detection and execution timing separate: yesterday's XLE/AAPL
      // puts found technical bearish momentum, but a mature morning decline
      // can be too stretched for a favorable *new* entry. This guard is
@@ -136,6 +143,12 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
        reason:entryTiming.reason});
       s.scanHistory=s.scanHistory.slice(0,30);
       continue; // No option chain, alert bell or new paper entry from a chase.
+     }
+     if(swing55.hold){
+      s.scanHistory.unshift({symbol,time:checkedAt,state:swing55.status,
+       reason:swing55.reason});
+      s.scanHistory=s.scanHistory.slice(0,30);
+      continue; // Wait for a support break / resistance break; no new paper entry.
      }
      const confluence=evaluateAristotleConfluence(bars,signal.direction);
      // Nov 4 paper-scanner behavior: a verified technical breakout may
@@ -175,7 +188,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      if(!s.seen.includes(id)){
       const alert={id,created:Date.now(),expires:Date.now()+120000,
        contract:{...actionable,underlying:symbol},signal,style,
-       qualification:{technical:{confirmed:true,asOf:signal.asOf,direction:signal.direction},confluence,entryTiming,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
+       qualification:{technical:{confirmed:true,asOf:signal.asOf,direction:signal.direction},confluence,entryTiming,swing55,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
       check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);
       s.seen=[...s.seen,id].slice(-200);
       s.scanHistory.unshift({symbol,time:checkedAt,state:confluence.confirmed?'HIGH_CONFLUENCE_REVIEW':'TECHNICAL_SETUP_REVIEW',
@@ -184,7 +197,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
         ': Nov 4-style momentum breakout and fresh Schwab contract checks passed; additional 5/15-minute confirmation is not established.')+
         ' Review before paper entry; neither tier is a measured win probability.'});
       s.scanHistory=s.scanHistory.slice(0,30);
-      event(s,(confluence.confirmed?'HIGH-CONFLUENCE':'TECHNICAL')+' SCHWAB PAPER SETUP awaiting owner approval: '+contract.symbol+' · '+style.label+' · Entry timing: '+entryTiming.status);
+      event(s,(confluence.confirmed?'HIGH-CONFLUENCE':'TECHNICAL')+' SCHWAB PAPER SETUP awaiting owner approval: '+contract.symbol+' · '+style.label+' · Entry timing: '+entryTiming.status+' · 5/5 levels: '+swing55.status);
       try{await notifyPaperOpportunity(env,owner,alert)}catch(e){event(s,'Email notification unavailable: '+e.message)}
      }
     }catch(error){
