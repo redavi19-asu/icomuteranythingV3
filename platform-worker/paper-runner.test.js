@@ -201,6 +201,8 @@ test('Single Ticker mode scans only SPY on scheduler and Run Now, and Multiple T
  }finally{Date.now=date;globalThis.fetch=fetcher}
 });
 test('Single Ticker scope invalidates unrelated pending setups but preserves open paper positions',async()=>{
+ const originalNow=Date.now;Date.now=()=>now;
+ try{
  const {env,db}=await fixture();await paperApi(req(),env,owner);
  const state=freshRunner();state.enabled=true;
  state.alerts=[{...pending(),id:'other',status:'PENDING',contract:{...pending().contract,underlying:'QQQ'}}];
@@ -215,4 +217,5 @@ test('Single Ticker scope invalidates unrelated pending setups but preserves ope
  assert.equal(after.paper.positions.length,1);
  assert.equal(after.paper.positions[0].underlying,'QQQ');
  assert.equal((await paperApi(req('accept','other'),env,owner)).status,409,'out-of-scope approvals must fail closed');
+ }finally{Date.now=originalNow}
 });
