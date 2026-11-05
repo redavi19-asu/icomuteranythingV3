@@ -149,9 +149,13 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      const exact=await schwabContractQuote(env,owner,contract.symbol);
      const exactFreshness=schwabQuoteFreshness({...exact,realtime:true},Date.now(),10000);
      const actionable={...contract,bid:exact.bid,ask:exact.ask,quoteTime:exact.quoteTime};
-     if(exactFreshness.code!=='VERIFIED_FRESH'||!eligiblePaperQuote(actionable,{...paperRules,premiumBudget:budget(s)})){
+     const contractRiskFailure=eligiblePaperQuote(actionable,{...paperRules,premiumBudget:budget(s)});
+     // eligiblePaperQuote returns NULL for a valid contract and a reason code
+     // for a rejected contract. Never negate it: that inverted check was
+     // rejecting every otherwise-qualified November 5 scalp opportunity.
+     if(exactFreshness.code!=='VERIFIED_FRESH'||contractRiskFailure!==null){
       s.scanHistory.unshift({symbol,time:checkedAt,state:'CONTRACT_HOLD',
-       reason:'Exact Schwab option quote was stale, unavailable or failed live spread/risk checks.'});
+       reason:'Exact Schwab option quote held: '+(exactFreshness.code!=='VERIFIED_FRESH'?exactFreshness.code:contractRiskFailure)+'.'});
       s.scanHistory=s.scanHistory.slice(0,30);continue;
      }
      const style=classifyTradeHorizon({bars,signal,contract:actionable,
