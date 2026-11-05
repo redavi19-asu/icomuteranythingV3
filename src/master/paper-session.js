@@ -11,7 +11,7 @@ export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperR
  if(s.position){
   const p=s.position;if(p.symbol!==quote.symbol)throw Error('Waiting for the open contract quote.');
   p.bestBid=Math.max(p.bestBid,quote.bid);
-  const reason=close?'MANUAL_CLOSE':quote.bid<=p.fill*0.8?'STOP_LOSS':quote.bid>=p.fill*1.3?'PROFIT_TARGET':p.bestBid>=p.fill*1.15&&quote.bid<=p.bestBid*0.9?'TRAILING_STOP':now-p.time>=30*60000?'MAX_HOLD':session.day!==p.day||session.minute>=955?'SESSION_END':null;
+  const reason=close?'MANUAL_CLOSE':quote.bid<=p.fill*0.8?'STOP_LOSS':quote.bid>=p.fill*1.3?'PROFIT_TARGET':p.bestBid>=p.fill*1.15&&quote.bid<=p.bestBid*0.9?'TRAILING_STOP':now-p.time>=Math.min(390,Math.max(1,Number(p.maxHoldMinutes)||30))*60000?'MAX_HOLD':session.day!==p.day||session.minute>=955?'SESSION_END':null;
   if(reason){if(quote.bid<=0)throw Error('No positive bid available; simulated position remains open.');const credit=round(Math.max(0,quote.bid-0.01)*100-0.65),pnl=round(credit-p.cost);s.cash=round(s.cash+credit);s.realized=round(s.realized+pnl);s.dayPnl=round(s.dayPnl+pnl);s.trades.push({...p,exitTime:now,exitFill:quote.bid-0.01,pnl,reason});s.position=null}
  }else if(enter){
   if(['Sat','Sun'].includes(session.weekday)||session.minute<575||session.minute>=945)throw Error('Paper entries run 9:35 AM–3:45 PM ET on weekdays.');
