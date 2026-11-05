@@ -1,7 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import TradingAiAssistant, {TradingAiBillingPanel} from './TradingAiAssistant';
 import './TradingTerminal.css';
-import SchwabConnection from './SchwabConnection';
+import SchwabConnection,{request as schwabRequest} from './SchwabConnection';
 import PaperSession from './PaperSession';
 import {SchwabChart,SchwabOptions,SchwabWatchPrices} from './SchwabMarket';
 
@@ -102,6 +102,17 @@ export default function TradingOwnerPanel(){
  const [tab,setTab]=useState('dashboard');
  const [showDiagnostics,setShowDiagnostics]=useState(false);
  const [schwabStatus,setSchwabStatus]=useState(null);
+ const [reconnectBusy,setReconnectBusy]=useState(false),[reconnectError,setReconnectError]=useState('');
+ const beginSchwabReconnect=async()=>{
+  if(reconnectBusy)return;
+  setReconnectBusy(true);setReconnectError('');
+  try{
+   const d=await schwabRequest('authorize',true);
+   const u=new URL(d.authorizationUrl);
+   if(u.origin!=='https://api.schwabapi.com'||u.pathname!=='/v1/oauth/authorize')throw Error('Schwab returned an unrecognized sign-in address.');
+   window.location.assign(u.toString());
+  }catch(error){setReconnectError(error.message||'Unable to start Schwab sign-in.');setReconnectBusy(false)}
+ };
  const [watchQuotes,setWatchQuotes]=useState([]);
  const [paperSnapshot,setPaperSnapshot]=useState(null);
  const [aiBillingState,setAiBillingState]=useState('not_checked');
@@ -207,6 +218,7 @@ export default function TradingOwnerPanel(){
      }}>↙ Return to Trading Dashboard</button>
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
+  {reconnectError&&<p role="alert" className="itt-pop-notice">{reconnectError}</p>}
   {['alert','results','scanner'].includes(popPanel)&&<SchwabConnection symbol={selected} onStatus={setSchwabStatus}/>}
    {standAlone[popPanel]}
  </section>;
@@ -216,7 +228,7 @@ export default function TradingOwnerPanel(){
     <span className="itt-brand-emblem">{icon('radar',27)}</span>
     <div><div className="itt-eyebrow">PRIVATE ICA MASTER / TRADING INTELLIGENCE</div><h2>ICA <span>PRIME</span></h2><p>High-Probability Trading Workstation</p></div>
    </div>
-   <div className="itt-status-bar"><div className="itt-trade-mode" role="group" aria-label="Trading mode"><button type="button" className="selected" onClick={()=>document.getElementById('ica-paper-control-center')?.scrollIntoView({behavior:'smooth',block:'start'})} title="Go to the paper scanner controls">PAPER TRADE</button><button disabled title="Live mode requires verified broker routing and safety tests">LIVE TRADE · LOCKED</button></div><span className={'itt-status '+(schwabStatus?.connected?'itt-on':'itt-off')}><span className="itt-status-dot"/> {schwabStatus?.connected?'SCHWAB AUTHORIZED':'SCHWAB DISCONNECTED'}</span><span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
+   <div className="itt-status-bar"><div className="itt-trade-mode" role="group" aria-label="Trading mode"><button type="button" className="selected" onClick={()=>document.getElementById('ica-paper-control-center')?.scrollIntoView({behavior:'smooth',block:'start'})} title="Go to the paper scanner controls">PAPER TRADE</button><button disabled title="Live mode requires verified broker routing and safety tests">LIVE TRADE · LOCKED</button></div><span className={'itt-status '+(schwabStatus?.connected?'itt-on':'itt-off')}><span className="itt-status-dot"/> {schwabStatus===null?'CHECKING SCHWAB':schwabStatus.connected?'SCHWAB AUTHORIZED':schwabStatus.stage==='OWNER_AUTHORIZATION_REQUIRED'?'SCHWAB SIGN-IN REQUIRED':schwabStatus.stage==='STATUS_UNAVAILABLE'?'SCHWAB CHECK UNAVAILABLE':'SCHWAB DISCONNECTED'}</span>{schwabStatus?.connected===false&&schwabStatus?.authorizationReady===true&&<button type="button" className="itt-wide-button itt-reconnect-schwab" disabled={reconnectBusy} onClick={beginSchwabReconnect}>{reconnectBusy?'Connecting…':'Reconnect Schwab'}</button>}<span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
   <PaperSession connected={!!schwabStatus?.connected} onSnapshot={setPaperSnapshot}/>
