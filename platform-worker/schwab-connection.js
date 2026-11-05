@@ -202,14 +202,16 @@ export async function schwabMarket(request,env,owner,kind){
  const frequency=Number(input.searchParams.get('frequency')||5);
  if(kind==='history'&&![1,5,15,30,60].includes(frequency))return json({error:'Invalid interval.'},400);
  try{
-  const auth=await accessToken(env,owner),url=new URL(MARKET_URL+(kind==='history'?'/pricehistory':'/chains'));
+  const auth=await accessToken(env,owner),url=new URL(MARKET_URL+(['history','daily'].includes(kind)?'/pricehistory':'/chains'));
   url.searchParams.set('symbol',symbol);
-  const params=kind==='history'?{periodType:'day',startDate:String(Date.now()-2*86400000),endDate:String(Date.now()),frequencyType:'minute',frequency:String(frequency),needExtendedHoursData:'true'}:{contractType:'ALL',strikeCount:'12',strategy:'SINGLE',range:'NTM',fromDate:new Date().toISOString().slice(0,10),toDate:new Date(Date.now()+14*86400000).toISOString().slice(0,10)};
+  const params=kind==='history'?{periodType:'day',startDate:String(Date.now()-2*86400000),endDate:String(Date.now()),frequencyType:'minute',frequency:String(frequency),needExtendedHoursData:'true'}:
+    kind==='daily'?{periodType:'year',startDate:String(Date.now()-125*86400000),endDate:String(Date.now()),frequencyType:'daily',frequency:'1',needExtendedHoursData:'false'}:
+    {contractType:'ALL',strikeCount:'12',strategy:'SINGLE',range:'NTM',fromDate:new Date().toISOString().slice(0,10),toDate:new Date(Date.now()+14*86400000).toISOString().slice(0,10)};
   for(const [k,v] of Object.entries(params))url.searchParams.set(k,v);
   const r=await fetch(url,{headers:{Authorization:'Bearer '+auth.token,Accept:'application/json'},signal:AbortSignal.timeout(12000),redirect:'manual'});
   if(!r.ok)return json({error:'Schwab market data unavailable.',providerStatus:r.status},503);
   const d=await boundedJson(r,4000000),num=v=>typeof v==='number'&&Number.isFinite(v)?v:null;
-  if(kind==='history')return json({symbol,provider:'Schwab',receivedAt:new Date().toISOString(),candles:(d.candles||[]).filter(c=>[c.datetime,c.open,c.high,c.low,c.close].every(v=>num(v)!==null)).map(c=>({time:c.datetime,open:c.open,high:c.high,low:c.low,close:c.close,volume:num(c.volume)})),realOrdersEnabled:false});
+  if(kind==='history'||kind==='daily')return json({symbol,provider:'Schwab',frequencyType:kind==='daily'?'daily':'minute',receivedAt:new Date().toISOString(),candles:(d.candles||[]).filter(c=>[c.datetime,c.open,c.high,c.low,c.close].every(v=>num(v)!==null)).map(c=>({time:c.datetime,open:c.open,high:c.high,low:c.low,close:c.close,volume:num(c.volume)})),realOrdersEnabled:false});
   const contracts=[];
   for(const [side,map] of [['CALL',d.callExpDateMap],['PUT',d.putExpDateMap]])for(const [expiration,strikes] of Object.entries(map||{}))for(const list of Object.values(strikes))for(const c of list){
    if(typeof c.symbol!=='string')continue;
