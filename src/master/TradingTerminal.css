@@ -614,3 +614,14 @@
  background:#303137!important;
  box-shadow:0 0 14px rgba(240,74,87,.4)!important
 }
+
+/* ICA PRIME wordmark only: a banknote-green MONEY MACHINE label.
+   The existing graphite/orange/red dashboard and yellow active controls remain untouched. */
+.itt-brand h2 .itt-brand-divider{
+ background:none!important;color:#a9aaaf!important;-webkit-text-fill-color:#a9aaaf!important;
+ font-weight:500;letter-spacing:0
+}
+.itt-brand h2 .itt-money-machine{
+ background:none!important;color:#80c978!important;-webkit-text-fill-color:#80c978!important;
+ font-size:.65em;font-weight:850;letter-spacing:.065em;white-space:nowrap;
+}
