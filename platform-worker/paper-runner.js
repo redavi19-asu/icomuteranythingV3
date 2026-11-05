@@ -48,8 +48,12 @@ async function validateUnderlyingQuote(env,owner,symbol,now=Date.now()){
   return {...status,symbol,quoteTime:quote.quoteTime??null,checkedAt:now};
  }catch{return empty}
 }
-export async function runPaperTick(env,owner,{scan=true,scheduled=false}={}){
+export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymbol=null}={}){
  const row=await load(env,owner.id),s=row.state;s.heartbeat=Date.now();s.lastError=null;
+ if(scanSymbol!==null){
+  if(!validTicker(scanSymbol))throw Error('Invalid live scan symbol.');
+  s.lastStreamTriggeredAt=Date.now();
+ }
  // Server-side opt-in schedule: a real setting, not a browser-local checkbox.
  // Only start the PAPER scanner during the market session, once per NY trading day.
  if(scheduled&&s.autoStart===true){
@@ -79,7 +83,9 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false}={}){
   if(scan&&s.enabled){
    const now=Date.now(),session=marketTime(now);
    if(!['Sat','Sun'].includes(session.weekday)&&session.minute>=575&&session.minute<945){
-    const universe=scannerUniverse(s),attempts=Math.min(3,universe.length);
+    const allowed=scannerUniverse(s);
+    const universe=scanSymbol===null?allowed:allowed.filter(t=>t===scanSymbol);
+    const attempts=scanSymbol===null?Math.min(3,universe.length):universe.length;
    for(let i=0;i<attempts;i++){
     const symbol=universe[(s.scanIndex++%universe.length)],checkedAt=Date.now();check.scannedSymbols.push(symbol);
     try{
@@ -125,6 +131,11 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false}={}){
       s.scanHistory.unshift({symbol,time:checkedAt,state:'CONTRACT_HOLD',reason:'No fresh, liquid contract passed premium, spread, delta and risk checks.'});
       s.scanHistory=s.scanHistory.slice(0,30);continue;
      }
+     // Pre-subscribe candidate to live option updates. This cannot override the
+     // independently verified real-time contract bid/ask checks on paper entry.
+     if(env.PAPER_QUOTE_STREAM&&scanSymbol!==null)try{
+      await env.PAPER_QUOTE_STREAM.getByName(owner.id).watchOption(contract.symbol,symbol);
+     }catch{}
      const flow=evaluateVerifiedFlow(await getContractFlow(env,contract.symbol),
       {contractSymbol:contract.symbol,side:signal.direction,now:Date.now()});
      s.flowGate={...flow,checkedAt:Date.now(),symbol,contractSymbol:contract.symbol};
@@ -243,5 +254,21 @@ export async function paperApi(request,env,owner){
 }
 export async function scheduledPaper(env){
  const rows=await env.DB.prepare("SELECT p.owner_id FROM paper_runners p JOIN users u ON u.id=p.owner_id WHERE u.role='owner' AND u.status='active'").all();
- for(const row of rows.results||[])try{await runPaperTick(env,{id:row.owner_id,role:'owner'},{scheduled:true})}catch{}
+ for(const row of rows.results||[])try{
+  const owner={id:row.owner_id,role:'owner'},session=marketTime(Date.now());
+  let streamConnected=false;
+  if(env.PAPER_QUOTE_STREAM){
+   const previous=(await load(env,owner.id)).state;
+   const sessionActive=!['Sat','Sun'].includes(session.weekday)&&session.minute>=570&&session.minute<945;
+   const scannerWanted=previous.enabled===true||(previous.autoStart===true&&previous.lastAutoStartDay!==session.day);
+   const stub=env.PAPER_QUOTE_STREAM.getByName(owner.id);
+   if(sessionActive&&scannerWanted){
+    try{const health=await stub.enable(owner.id,scannerUniverse(previous),previous.scanMode);
+     streamConnected=health.connected===true&&Number.isFinite(health.quoteAgeMs)&&health.quoteAgeMs<20000;
+    }catch{}
+   }else try{await stub.disable()}catch{}
+  }
+  // A denied, broken or stale stream never stops the legacy scheduled scanner.
+  await runPaperTick(env,owner,{scheduled:true,scan:!streamConnected});
+ }catch{}
 }
