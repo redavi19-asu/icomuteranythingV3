@@ -151,6 +151,7 @@ export default function TradingOwnerPanel(){
  const [now,setNow]=useState(()=>Date.now());
  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),30000);return ()=>clearInterval(id)},[]);
  const clockText=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).format(now);
+ const todayNY=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
  const chartUrl='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSymbols[selected]||selected);
  const toggleWide=()=>setExpanded(v=>{
   const next=!v;
@@ -186,9 +187,9 @@ export default function TradingOwnerPanel(){
       <div className="itt-watch-tabs">{Object.keys(groups).map(k=><button type="button" aria-pressed={group===k} key={k} className={group===k?'active':''} onClick={()=>{setGroup(k);if(!groups[k].includes(selected))setSelected(groups[k][0])}}>{k}</button>)}</div>
       <form className="itt-add-ticker" onSubmit={addTicker}><input value={newTicker} onChange={e=>setNewTicker(e.target.value.toUpperCase())} maxLength={10} aria-label="Add ticker" placeholder="Add ticker, e.g. NVDA"/><button type="submit">＋ ADD</button></form>{tickerError&&<p role="alert" className="itt-watch-error">{tickerError}</p>}
        <div className="itt-watch-labels"><span>SYMBOL</span><span>LAST</span><span>SCAN</span></div>
-      <div className="itt-watch-rows">{groups[group].map(sym=><button type="button" className={sym===selected?'itt-selected':''} key={sym} onClick={()=>setSelected(sym)}><span><strong>{sym}</strong><small>{descriptions[sym]||"Custom ticker"}</small></span><span className="itt-blank-price">{typeof watchQuotes.find(q=>q.symbol===sym)?.last==='number'?'$'+watchQuotes.find(q=>q.symbol===sym).last.toFixed(2):'—'}</span><span className="itt-ticker-state">{paperSnapshot?.scanHistory?.find(entry=>entry.symbol===sym)?.state?.replaceAll('_',' ')||'NOT CHECKED'}</span></button>)}</div>
+      <div className="itt-watch-rows">{groups[group].map(sym=><button type="button" className={sym===selected?'itt-selected':''} key={sym} onClick={()=>setSelected(sym)}><span><strong>{sym}</strong><small>{descriptions[sym]||"Custom ticker"}</small></span><span className="itt-blank-price">{typeof watchQuotes.find(q=>q.symbol===sym)?.last==='number'?'$'+watchQuotes.find(q=>q.symbol===sym).last.toFixed(2):'—'}</span><span className="itt-ticker-state">{paperSnapshot?.scanUniverse?.includes(sym)?(paperSnapshot?.scanCoverage?.[sym]?.day===todayNY?(paperSnapshot.scanCoverage[sym].state?.replaceAll('_',' ')||'UNAVAILABLE'):'AWAITING CHECK'):'NOT IN SCANNER'}</span></button>)}</div>
       {group==='Favorites'&&extraTickers.length>0&&<div className="itt-custom-tickers">{extraTickers.map(t=><button type="button" onClick={()=>removeTicker(t)} key={t} title={'Remove '+t}>Remove {t} ×</button>)}</div>}
-       <div className="itt-watch-foot">Schwab quotes poll every 15 seconds when connected. Select a symbol to update both charts and the options chain.</div>
+       <div className="itt-watch-foot">Favorites and the paper scanner are separate lists. NOT IN SCANNER: add the ticker under Scan Coverage → Extra Tickers and save. AWAITING CHECK: in the scanner but no tracked check today. Select a symbol to update both charts and the options chain.</div>
      </section>
  );
  const chainPanel=(
