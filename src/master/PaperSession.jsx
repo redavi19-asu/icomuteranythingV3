@@ -29,33 +29,93 @@ export default function PaperSession({connected}){
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
  const [soundOn,setSoundOn]=useState(false),[soundWarning,setSoundWarning]=useState(''),[soundLoading,setSoundLoading]=useState(false);
  const [scanStatus,setScanStatus]=useState({phase:'idle'}),[operationNotice,setOperationNotice]=useState('');
- const audioRef=useRef(null),bellBuffer=useRef(null),scanRequested=useRef(false),seenAlerts=useRef(null),requests=useRef(0),queue=useRef(Promise.resolve()),queueEpoch=useRef(0),latestRevision=useRef(-1),pendingAccepts=useRef(new Set());
+ const audioRef=useRef(null),bellBuffer=useRef(null),soundEnabledRef=useRef(false),scanRequested=useRef(false),seenAlerts=useRef(null),requests=useRef(0),queue=useRef(Promise.resolve()),queueEpoch=useRef(0),latestRevision=useRef(-1),pendingAccepts=useRef(new Set());
  function applyState(data){const revision=data.revision??0;if(revision>=latestRevision.current){latestRevision.current=revision;setS(data)}}
- async function toggleAlertSound(){
-  if(soundOn){setSoundOn(false);setSoundWarning('');return}
-  if(soundLoading)return;setSoundLoading(true);
-  try{const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)throw Error('Audio is unavailable in this browser.');
-   if(!audioRef.current)audioRef.current=new Constructor();await audioRef.current.resume();
-   if(audioRef.current.state!=='running')throw Error('Tap Enable Alert Bell again and check device volume.');
+ function warnIfAudioPaused(){
+   if(soundEnabledRef.current&&document.visibilityState==='visible'&&audioRef.current?.state!=='running'){
+    setSoundWarning('The phone paused browser audio. Tap Test Bell to restore sound. Background alerts need notifications, not a web-page bell.');
+   }
+  }
+  async function loadBellRecording(ctx){
+   if(bellBuffer.current)return;
    try{
-    if(!bellBuffer.current){const response=await fetch('/audio/nyse-opening-bell.wav');if(!response.ok)throw Error('Bell recording unavailable');bellBuffer.current=await audioRef.current.decodeAudioData(await response.arrayBuffer())}
+    const response=await fetch('/audio/nyse-opening-bell.wav',{cache:'force-cache'});
+    if(!response.ok)throw Error('Bell recording unavailable');
+    const decoded=await ctx.decodeAudioData(await response.arrayBuffer());
+    if(decoded.duration<=0)throw Error('Invalid bell recording');
+    bellBuffer.current=decoded;
+   }catch{
+    if(soundEnabledRef.current)setSoundWarning('Recorded bell unavailable. Backup bell remains active.');
+   }
+  }
+  async function toggleAlertSound(){
+   if(soundOn){soundEnabledRef.current=false;setSoundOn(false);setSoundWarning('');return}
+   if(soundLoading)return;
+   setSoundLoading(true);
+   try{
+    const Constructor=window.AudioContext||window.webkitAudioContext;
+    if(!Constructor)throw Error('Audio is unavailable in this browser.');
+    if(!audioRef.current){audioRef.current=new Constructor();audioRef.current.onstatechange=warnIfAudioPaused}
+    const ctx=audioRef.current;
+    await ctx.resume();
+    if(ctx.state!=='running')throw Error('Sound was blocked. Tap Enable Alert Bell again and check device volume.');
+    soundEnabledRef.current=true;
+    setSoundOn(true);
     setSoundWarning('');
-   }catch{setSoundWarning('Recorded bell could not load; using backup bell.')}
-   setSoundOn(true);playAlertBell();
-  }catch(e){setSoundOn(false);setSoundWarning(e.message)}finally{setSoundLoading(false)}
- }
- function playAlertBell(){
-  const ctx=audioRef.current;if(!ctx||ctx.state!=='running'){setSoundWarning('Sound is paused. Tap Test Bell to resume it.');return}
-  if(bellBuffer.current){
-   const source=ctx.createBufferSource(),gain=ctx.createGain(),start=ctx.currentTime,duration=bellBuffer.current.duration/2;
-   source.buffer=bellBuffer.current;source.connect(gain);gain.connect(ctx.destination);
-   gain.gain.setValueAtTime(1,start);gain.gain.setValueAtTime(1,start+Math.max(0,duration-0.06));gain.gain.linearRampToValueAtTime(0,start+duration);
-   source.onended=()=>{source.disconnect();gain.disconnect()};source.start(start,0,duration);
-  }else ringOpportunityBell(ctx);
- }
- async function testAlertBell(){try{await audioRef.current?.resume();playAlertBell()}catch{setSoundWarning('Tap Enable Alert Bell again and check device volume.')}}
- useEffect(()=>()=>{audioRef.current?.close().catch(()=>{});audioRef.current=null},[]);
- async function call(action,id,epoch){
+    // Play from the tap gesture immediately; do not wait for the WAV download.
+    ringOpportunityBell(ctx);
+    if(!bellBuffer.current)void loadBellRecording(ctx);
+   }catch(e){
+    soundEnabledRef.current=false;setSoundOn(false);setSoundWarning(e.message);
+   }finally{setSoundLoading(false)}
+  }
+  function playAlertBell(){
+   const ctx=audioRef.current;
+   if(!ctx||ctx.state!=='running'){
+    setSoundWarning('The phone paused browser audio. Tap Test Bell to restore sound.');
+    return;
+   }
+   try{
+    if(bellBuffer.current){
+     const source=ctx.createBufferSource(),gain=ctx.createGain(),start=ctx.currentTime;
+     // Never truncate the recording halfway through, as the old implementation did.
+     const duration=bellBuffer.current.duration;
+     source.buffer=bellBuffer.current;source.connect(gain);gain.connect(ctx.destination);
+     gain.gain.setValueAtTime(1,start);
+     gain.gain.setValueAtTime(1,start+Math.max(0,duration-0.12));
+     gain.gain.linearRampToValueAtTime(0,start+duration);
+     source.onended=()=>{source.disconnect();gain.disconnect()};
+     source.start(start,0,duration);
+    }else ringOpportunityBell(ctx);
+   }catch{
+    ringOpportunityBell(ctx);
+    setSoundWarning('Recorded bell could not play. Backup bell is active.');
+   }
+  }
+  async function testAlertBell(){
+   try{
+    if(!soundEnabledRef.current||!audioRef.current)throw Error('Enable Alert Bell first.');
+    if(audioRef.current.state!=='running')await audioRef.current.resume();
+    if(audioRef.current.state!=='running')throw Error('Browser audio is still paused. Check silent mode and tap again.');
+    setSoundWarning('');
+    playAlertBell();
+   }catch(e){setSoundWarning(e.message||'Tap Enable Alert Bell again and check device volume.')}
+  }
+  useEffect(()=>{
+   document.addEventListener('visibilitychange',warnIfAudioPaused);
+   window.addEventListener('pageshow',warnIfAudioPaused);
+   return ()=>{
+    document.removeEventListener('visibilitychange',warnIfAudioPaused);
+    window.removeEventListener('pageshow',warnIfAudioPaused);
+    soundEnabledRef.current=false;
+    if(audioRef.current){
+     audioRef.current.onstatechange=null;
+     audioRef.current.close().catch(()=>{});
+     audioRef.current=null;
+    }
+   };
+  },[]);
+  async function call(action,id,epoch){
   const token=localStorage.getItem('ica_master_token');
   const body=action==='settings'?{action,...id}:{action,id,...(epoch!==undefined?{epoch}:{})};
   const r=await fetch(API+'/platform/paper',{method:action?'POST':'GET',headers:{Authorization:'Bearer '+token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify(body)}:{})});
@@ -134,7 +194,7 @@ export default function PaperSession({connected}){
    <p><strong>{s?.enabled?'SCANNER ENABLED':'SCANNER PAUSED'} · {positions.length} OPEN PAPER CONTRACT{positions.length===1?'':'S'}</strong></p>
    <div className="itt-paper-summary"><div><small>PAPER BUYING POWER</small><strong>{money(s?.paper?.cash)}</strong></div><div><small>REALIZED PROFIT / LOSS</small><strong>{signed(s?.paper?.realized)}</strong></div><div><small>OPEN PROFIT / LOSS</small><strong>{signed(totalPnl)}</strong><small>{marked.length!==positions.length?'Some quotes unavailable; see each trade':''}</small></div></div>
    <p className="itt-scanner-disclaimer">Scheduled checks manage every open contract and scan the next three tickers, approximately once per minute. Run Now performs that same check early; it does not analyze every stock at once. Pausing the scanner leaves open-trade protection running.</p>
-   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Loading bell…':soundOn?'🔔 Alert Bell ON · Turn Off':'🔕 Enable Alert Bell'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Test Bell</button><small>{soundWarning||'Tap Enable Alert Bell after opening or reloading on each device. Keep the page active for sound; background push alerts are not configured.'}</small></div>
+   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Loading bell…':soundOn?'🔔 Alert Bell ON · Turn Off':'🔕 Enable Alert Bell'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Test Bell</button><small>{soundWarning||'Sound is available while this page stays active. Enable it after each reload; iPhone background/lock-screen ringing needs push notifications.'}</small></div>
    <button type="button" className="itt-wide-button itt-trade-center-button" onClick={()=>openWindow()}>TRADING OPPORTUNITIES &amp; TRADES · {liveAlerts.length} awaiting · {positions.length} open · {history.length} closed</button>
   </div><aside className="itt-paper-radar" aria-label="Scanner live status and recent ticker checks"><div className="itt-paper-radar-heading"><div><span className="itt-eyebrow">ICA MARKET RADAR</span><h3>Scanner Activity</h3></div><span className={'itt-radar-state '+(radarActive?'active':'')}>{phase}</span></div>
    <div className="itt-radar-dashboard"><div className={'itt-radar-visual '+(radarActive?'running':'')} aria-hidden="true"><div className="itt-radar-rings"/><div className="itt-radar-sweep"/><div className="itt-radar-core">⌖</div></div><div className="itt-radar-primary"><small>LAST RECORDED SCAN</small><strong>{latest?.symbol||'—'}</strong><span>{latest?.state?.replaceAll('_',' ')||'NO SCANS YET'}</span><p>{latest?.reason||'Waiting for the next scheduled scan.'}</p></div></div>
