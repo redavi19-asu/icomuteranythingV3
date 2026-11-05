@@ -1,5 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {summarizePaperExits} from './paper-session.js';
+import {marketTime} from './trading-paper-engine.js';
 import {marketBellEvent,playMoneyCountingAlert} from './trading-session-audio.js';
 import './PaperExitNotice.css';
 import PaperScanCoverage from './PaperScanCoverage.jsx';
@@ -240,7 +241,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
   {p.style&&<p className="itt-play-style"><strong>{p.style.label}</strong> · {p.style.window}. {p.style.reason}</p>}
   <button type="button" className="itt-wide-button itt-position-exit" onClick={()=>act('close',p.id)}>{p.closeRequested?'RETRY CLOSE CONTRACT':'CLOSE CONTRACT · PAPER'}</button>
   <div className="itt-opportunity-numbers"><span>Entry cost · 1 contract<strong>{money(p.cost)}</strong></span><span>Entry fill / share<strong>{money(p.fill)}</strong></span><span>Current bid / ask<strong>{money(p.mark?.bid)} / {money(p.mark?.ask)}</strong></span><span>Quote timestamp<strong>{time(p.mark?.quoteTime)} ET · {quoteStale?'STALE / UNAVAILABLE':'FRESH'}</strong></span></div>
-  {selected===p.id&&<div className="itt-position-details"><p>Strike {money(p.strike)} · Expiration {p.expiration||'—'} · Opened {time(p.time)} ET</p><p>Stop {money(p.fill*(1-(p.stopLossPct??20)/100))} ({p.stopLossPct??20}%) · Profit target {money(p.fill*1.3)} · Trailing {p.bestBid>=p.fill*1.15?money(p.bestBid*.9):'activates at '+money(p.fill*1.15)} · {p.expiration&&p.expiration>new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(now)?'OVERNIGHT ELIGIBLE · no automatic 30-minute exit · expiry-day exit at 3:55 PM ET':'Maximum duration '+(p.maxHoldMinutes??30)+' min · expiry-day exit at 3:55 PM ET'} · stop/target/trail protection remains active</p></div>}
+  {selected===p.id&&<div className="itt-position-details"><p>Strike {money(p.strike)} · Expiration {p.expiration||'—'} · Opened {time(p.time)} ET</p><p>Stop {money(p.fill*(1-(p.stopLossPct??20)/100))} ({p.stopLossPct??20}%) · Profit target {money(p.fill*1.3)} · Trailing {p.bestBid>=p.fill*1.15?money(p.bestBid*.9):'activates at '+money(p.fill*1.15)} · {p.expiration&&p.expiration>marketTime(now).day?'OVERNIGHT ELIGIBLE · no automatic 30-minute exit · expiry-day exit at 3:55 PM ET':'Maximum duration '+(p.maxHoldMinutes??30)+' min · expiry-day exit at 3:55 PM ET'} · stop/target/trail protection remains active</p></div>}
   {(p.lastError||p.closeRequested)&&<p role="status" className="itt-paper-approval-error">{p.lastError||'Manual close requested. Waiting for a fresh positive bid.'}</p>}
 
  </article>}
