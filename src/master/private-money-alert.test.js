@@ -39,8 +39,60 @@ test('only four seconds are retained in a compact standalone WAV',()=>{
  assert.equal(view.getUint32(40,true),4*rate*2);
  assert.equal(view.getInt16(44,true),Math.round(.8*32767));
 });
-test('audio shorter than 1:52 is rejected instead of silently trimming something else',()=>{
- assert.throws(()=>trimPersonalAudio(ctx(),decoded(111.9)),/at least 1 minute 52 seconds/);
+test('slightly shortened full source gets requested 1:48 section, padded to four seconds',()=>{
+ const audio=trimPersonalAudio(ctx(),decoded(111.9));
+ assert.equal(audio.length,4*rate);
+ assert.equal(audio.getChannelData(0)[0],Math.fround(.8));
+ assert.equal(audio.getChannelData(0).at(-1),0);
+});
+test('already-cut four-second file is accepted directly with no 1:48 requirement',async()=>{
+ const samples=new Float32Array(4*rate);
+ samples[0]=.75;samples.at(-1);samples[samples.length-1]=-.6;
+ const source={duration:4,sampleRate:rate,numberOfChannels:1,getChannelData:()=>samples};
+ const methods={...ctx(),decodeAudioData:async()=>source};
+ const file={name:'my-money-alert.m4a',type:'audio/mp4',size:12000,
+  arrayBuffer:async()=>new ArrayBuffer(12000)};
+ const bytes=await preparePersonalMoneyClip(methods,file);
+ const view=new DataView(bytes);
+ assert.equal(view.getUint32(40,true),4*rate*2);
+ assert.equal(view.getInt16(44,true),Math.round(.75*32767));
+ assert.equal(view.getInt16(bytes.byteLength-2,true),Math.round(-.6*32768));
+});
+test('MP3 length rounding to 3.97 seconds does not reject a pre-cut clip',async()=>{
+ const samples=new Float32Array(Math.floor(3.97*rate));
+ samples[0]=.85;
+ const audio={duration:3.97,sampleRate:rate,numberOfChannels:1,getChannelData:()=>samples};
+ const methods={...ctx(),decodeAudioData:async()=>audio};
+ const file={name:'snippet.mp3',type:'audio/mpeg',size:6000,
+  arrayBuffer:async()=>new ArrayBuffer(6000)};
+ const bytes=await preparePersonalMoneyClip(methods,file);
+ const view=new DataView(bytes);
+ assert.equal(view.getUint32(40,true),4*rate*2);
+ assert.equal(view.getInt16(44,true),Math.round(.85*32767));
+ assert.equal(view.getInt16(bytes.byteLength-2,true),0);
+});
+test('longer pre-edited clip under 1:48 uses its first four seconds',async()=>{
+ const samples=new Float32Array(6*rate);
+ samples[0]=.6;
+ samples[5*rate]=-.8;
+ const source={duration:6,sampleRate:rate,numberOfChannels:1,getChannelData:()=>samples};
+ const methods={...ctx(),decodeAudioData:async()=>source};
+ const bytes=await preparePersonalMoneyClip(methods,{
+  name:'separated-sound.wav',type:'audio/wav',size:24000,
+  arrayBuffer:async()=>new ArrayBuffer(24000)
+ });
+ const view=new DataView(bytes);
+ assert.equal(view.getInt16(44,true),Math.round(.6*32767));
+ assert.equal(view.getInt16(bytes.byteLength-2,true),0);
+});
+test('unusable tiny audio is rejected with a clear error',async()=>{
+ const methods={...ctx(),decodeAudioData:async()=>({
+  duration:.2,sampleRate:rate,numberOfChannels:1,getChannelData:()=>new Float32Array(1600)
+ })};
+ await assert.rejects(preparePersonalMoneyClip(methods,{
+  name:'tiny.m4a',type:'audio/mp4',size:1300,
+  arrayBuffer:async()=>new ArrayBuffer(1300)
+ }),/too short/);
 });
 test('local audio chooser decodes the file, extracts clip and never uploads it',async()=>{
  const audio=decoded(),methods={
