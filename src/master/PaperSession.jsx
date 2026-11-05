@@ -2,6 +2,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import {summarizePaperExits} from './paper-session.js';
 import './PaperExitNotice.css';
 import PaperScanCoverage from './PaperScanCoverage.jsx';
+import './PaperStopSettings.css';
 const API=import.meta.env.VITE_ICA_MASTER_API_URL||'https://ica-master-platform.ryanedavis.workers.dev';
 const money=n=>Number.isFinite(n)?(n<0?'-$':'$')+Math.abs(n).toFixed(2):'—';
 const time=n=>n?new Date(n).toLocaleTimeString('en-US',{timeZone:'America/New_York'}):'Not checked yet';
