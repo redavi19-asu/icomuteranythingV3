@@ -15,6 +15,9 @@ export class PaperQuoteStream extends DurableObject {
   this.socket=null;this.session=null;this.ready=false;this.connecting=false;
   this.active=false;this.retryAt=0;this.failures=0;this.error='';
   this.lastQuoteAt=0;this.lastScanAt=0;this.scanning=false;
+  // Keep all per-owner scan writes serialized through this Durable Object.
+  // Cron rotation takes priority over faster stream-triggered checks.
+  this.streamScanPromise=null;this.rotationPromise=null;this.rotationActive=false;
   this.symbolScanAt=new Map();this.quoteActivity=new Map();this.watched=new Map();this.watchTimes=new Map();
  }
  status(){
@@ -166,8 +169,33 @@ export class PaperQuoteStream extends DurableObject {
   this.quoteActivity.set(symbol,receivedAt);
   this.pumpQueuedScan();
  }
+ /**
+  * One durable coordinator per owner. Cron and manual full-universe scans
+  * wait for any in-flight streamed symbol before starting, then temporarily
+  * prevent new streaming evaluations until their database save completes.
+  * This avoids optimistic-revision conflicts that had silently discarded
+  * rotation results whenever GOOGL or another busy ticker updated.
+  */
+ async runRotation(ownerId,streamHealth=null,scheduled=false){
+  if(typeof ownerId!=='string'||!ownerId||ownerId.length>160)throw Error('Invalid owner.');
+  if(this.ownerId&&this.ownerId!==ownerId)throw Error('Scan coordinator owner mismatch.');
+  if(this.rotationPromise)return this.rotationPromise;
+  this.rotationActive=true;
+  const work=(async()=>{
+   if(this.streamScanPromise)await this.streamScanPromise.catch(()=>{});
+   const result=await runPaperTick(this.env,{id:ownerId,role:'owner'},
+    {scan:true,scheduled,streamHealth});
+   return result;
+  })();
+  this.rotationPromise=work.finally(()=>{
+   this.rotationActive=false;
+   this.rotationPromise=null;
+   this.pumpQueuedScan();
+  });
+  return this.rotationPromise;
+ }
  pumpQueuedScan(){
-  if(!this.active||!this.ready||this.scanning)return;
+  if(!this.active||!this.ready||this.scanning||this.rotationActive)return;
   const now=Date.now(),session=marketTime(now);
   // Preserve the existing 9:35–15:45 paper-entry window.
   if(['Sat','Sun'].includes(session.weekday)||session.minute<575||session.minute>=945)return;
@@ -180,7 +208,12 @@ export class PaperQuoteStream extends DurableObject {
   // liquidity and risk before the owner receives an actionable setup.
   const scan=runPaperTick(this.env,{id:this.ownerId,role:'owner'},{scan:true,scanSymbol:symbol})
    .catch(e=>{this.error='Live-triggered paper scan held: '+String(e?.message||'unavailable').slice(0,110)})
-   .finally(()=>{this.scanning=false;this.pumpQueuedScan();});
+   .finally(()=>{
+    this.scanning=false;
+    this.streamScanPromise=null;
+    this.pumpQueuedScan();
+   });
+  this.streamScanPromise=scan;
   this.ctx.waitUntil(scan);
  }
 }

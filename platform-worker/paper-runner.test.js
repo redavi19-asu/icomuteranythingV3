@@ -302,3 +302,48 @@ test('owner saves adjustable risk for future paper entries without rewriting ope
   assert.equal(changed.paper.positions[0].stopLossPct,35,'open trade retains saved entry risk');
  }finally{Date.now=date;globalThis.fetch=fetcher}
 });
+
+test('stream-origin GOOGL scan is deduplicated across DO restarts using persisted per-symbol coverage',async()=>{
+ const originalDate=Date.now,originalFetch=globalThis.fetch;
+ // Match the valid, fixture-sealed Schwab token date, not the next day.
+ let clock=now,historyRequests=0;
+ Date.now=()=>clock;
+ globalThis.fetch=async input=>{
+  const pathname=new URL(input).pathname;
+  if(pathname.endsWith('/pricehistory')){historyRequests++;return Response.json({candles:[]})}
+  return Response.json({});
+ };
+ try{
+  const {db,env}=await fixture();
+  await paperApi(req(),env,owner);
+  const state=freshRunner();state.enabled=true;state.scanMode='MULTI';
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
+  const first=await runPaperTick(env,owner,{scan:true,scanSymbol:'GOOGL'});
+  assert.deepEqual(first.lastCheck.scannedSymbols,['GOOGL']);
+  assert.equal(first.scanCoverage.GOOGL.scansToday,1);
+  // First check fetches 1-minute OHLCV and once-per-day daily OHLCV.
+  const fetchedFirst=historyRequests;
+  assert.ok(fetchedFirst>=1,'first check must request Schwab market history');
+  clock+=30000;
+  const duplicate=await runPaperTick(env,owner,{scan:true,scanSymbol:'GOOGL'});
+  assert.deepEqual(duplicate.lastCheck.scannedSymbols,[],'same completed candles should not be scanned a second time');
+  assert.equal(duplicate.scanCoverage.GOOGL.scansToday,1);
+  assert.equal(historyRequests,fetchedFirst,'no second Schwab history fetch after 30 seconds');
+  clock+=31000;
+  const renewed=await runPaperTick(env,owner,{scan:true,scanSymbol:'GOOGL'});
+  assert.deepEqual(renewed.lastCheck.scannedSymbols,['GOOGL']);
+  assert.equal(renewed.scanCoverage.GOOGL.scansToday,2);
+  assert.ok(historyRequests>fetchedFirst,'once the cooldown passes, the fresh-minute scan resumes');
+ }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
+});
+
+test('manual Run Scan uses the same owner Durable Object scan coordinator as streaming',async()=>{
+ const {env}=await fixture(),calls=[];
+ env.PAPER_QUOTE_STREAM={getByName:key=>({
+  runRotation:async(...args)=>{calls.push({key,args});return {source:'COORDINATED',scannedSymbols:['SPY']}}
+ })};
+ const result=await paperApi(req('tick'),env,owner);
+ assert.equal(result.status,200);
+ assert.equal((await result.json()).source,'COORDINATED');
+ assert.deepEqual(calls,[{key:owner.id,args:[owner.id,null,false]}]);
+});
