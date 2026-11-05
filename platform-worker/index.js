@@ -1,5 +1,4 @@
 import {paperApi,scheduledPaper} from './paper-runner.js';
-export {PaperQuoteStream} from './paper-quote-stream.js';
 import {issueStreamTicket,openSchwabStream} from './schwab-stream.js';
 import {schwabMarket,schwabPreflight,schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabDisconnect,schwabQuotes,schwabAccountSnapshot} from './schwab-connection.js';
 import { saveFreeAccess, revokeFreeAccess, ensureAccessGrantSchema } from './access-grants.js';
