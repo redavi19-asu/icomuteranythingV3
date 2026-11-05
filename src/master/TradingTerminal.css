@@ -656,7 +656,7 @@
 }
 .itt-brand h2 .itt-money-machine-note::before,
 .itt-brand h2 .itt-money-machine-note::after{
- content:';
+ content:"\0024";
  position:absolute;
  z-index:1;
  top:50%;
