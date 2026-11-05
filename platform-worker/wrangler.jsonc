@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "ica-master-platform",
-  "main": "index.js",
+  "main": "worker-entry.js",
   "compatibility_date": "2026-09-07",
   "compatibility_flags": [
     "global_fetch_strictly_public"
@@ -29,6 +29,20 @@
       "database_name": "ica-saas-db",
       "database_id": "888f63b8-f1bb-4419-b806-6b306579c632",
       "migrations_dir": "migrations"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PAPER_QUOTE_STREAM",
+        "class_name": "PaperQuoteStream"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "paper-quote-stream-v1",
+      "new_sqlite_classes": ["PaperQuoteStream"]
     }
   ],
   "triggers": {
