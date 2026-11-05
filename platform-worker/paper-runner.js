@@ -269,7 +269,14 @@ export async function paperApi(request,env,owner){
    s.maxPremium=Math.round(amount*100)/100;s.extraSymbols=[...new Set(input.extraSymbols)];
    event(s,'Paper scan settings updated.');
   }
-    else if(action==='pause'){
+   else if(action==='stop_settings'){
+   // User may alter the default for NEXT entries even if a trade is open.
+   // Each existing position retains its own entry-time risk percentage.
+   if(!PAPER_STOP_LOSS_CHOICES.includes(id))throw Error('Choose 15, 20, 35 or 50 percent.');
+   s.stopLossPct=id;
+   event(s,'Owner selected '+id+' percent protective stop for future paper trades.');
+  }
+   else if(action==='pause'){
     s.enabled=false;
     // An explicit pause must not be undone by the next minute's cron run.
     s.lastAutoStartDay=marketTime(Date.now()).day;
