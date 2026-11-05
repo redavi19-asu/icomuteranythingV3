@@ -1,9 +1,10 @@
 import React from 'react';
 import './PaperScanCoverage.css';
 
-const dayOf=now=>new Intl.DateTimeFormat('en-CA',{
+const dayOf=now=>{const parts=new Intl.DateTimeFormat('en-US',{
  timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'
-}).format(now);
+}).formatToParts(now);const field=key=>parts.find(p=>p.type===key)?.value;
+ return field('year')+'-'+field('month')+'-'+field('day');};
 const timeOf=ms=>new Date(ms).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',second:'2-digit'});
 
 export default function PaperScanCoverage({snapshot,now=Date.now()}){
