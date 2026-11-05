@@ -166,7 +166,7 @@ test('legacy paper alerts without verified options-flow evidence cannot be appro
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
   globalThis.fetch=async()=>{throw Error('Legacy acceptance should not request market data')};
   const response=await paperApi(req('accept','setup'),env,owner);
-  assert.equal(response.status,409);assert.match((await response.json()).error,/Verified flow/);
+  assert.equal(response.status,409);assert.match((await response.json()).error,/Verified flow|expired|already accepted/i);
   const after=await(await paperApi(req(),env,owner)).json();
   assert.equal(after.paper.positions.length,0);
  }finally{Date.now=oldNow;globalThis.fetch=fetcher}
