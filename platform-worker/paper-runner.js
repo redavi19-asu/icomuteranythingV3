@@ -48,8 +48,15 @@ async function validateUnderlyingQuote(env,owner,symbol,now=Date.now()){
   return {...status,symbol,quoteTime:quote.quoteTime??null,checkedAt:now};
  }catch{return empty}
 }
-export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymbol=null}={}){
+export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymbol=null,streamHealth=null}={}){
  const row=await load(env,owner.id),s=row.state;s.heartbeat=Date.now();s.lastError=null;
+ if(streamHealth){
+  // Status is diagnostic only. No streamer metadata is accepted as a quote entitlement.
+  s.marketStream={transport:String(streamHealth.transport||'NOT_CONNECTED').slice(0,50),
+   connected:streamHealth.connected===true,quoteAgeMs:Number.isFinite(streamHealth.quoteAgeMs)?streamHealth.quoteAgeMs:null,
+   error:String(streamHealth.error||'').slice(0,160),checkedAt:Date.now(),
+   realOrdersEnabled:false,quoteEntitlementVerified:false};
+ }
  if(scanSymbol!==null){
   if(!validTicker(scanSymbol))throw Error('Invalid live scan symbol.');
   s.lastStreamTriggeredAt=Date.now();
@@ -267,7 +274,7 @@ export async function scheduledPaper(env){
  const rows=await env.DB.prepare("SELECT p.owner_id FROM paper_runners p JOIN users u ON u.id=p.owner_id WHERE u.role='owner' AND u.status='active'").all();
  for(const row of rows.results||[])try{
   const owner={id:row.owner_id,role:'owner'},session=marketTime(Date.now());
-  let streamConnected=false;
+  let streamConnected=false,streamHealth={connected:false,transport:'NOT_CONNECTED',error:'',quoteAgeMs:null};
   if(env.PAPER_QUOTE_STREAM){
    const previous=(await load(env,owner.id)).state;
    const sessionActive=!['Sat','Sun'].includes(session.weekday)&&session.minute>=570&&session.minute<945;
@@ -275,11 +282,12 @@ export async function scheduledPaper(env){
    const stub=env.PAPER_QUOTE_STREAM.getByName(owner.id);
    if(sessionActive&&scannerWanted){
     try{const health=await stub.enable(owner.id,scannerUniverse(previous),previous.scanMode);
+     streamHealth=health;
      streamConnected=health.connected===true&&Number.isFinite(health.quoteAgeMs)&&health.quoteAgeMs<20000;
-    }catch{}
-   }else try{await stub.disable()}catch{}
+    }catch{streamHealth={connected:false,transport:'ERROR',error:'Schwab stream coordinator unavailable.',quoteAgeMs:null}}
+   }else try{await stub.disable();streamHealth={connected:false,transport:'STOPPED',error:'',quoteAgeMs:null}}catch{}
   }
   // A denied, broken or stale stream never stops the legacy scheduled scanner.
-  await runPaperTick(env,owner,{scheduled:true,scan:!streamConnected});
+  await runPaperTick(env,owner,{scheduled:true,scan:!streamConnected,streamHealth:env.PAPER_QUOTE_STREAM?streamHealth:null});
  }catch{}
 }
