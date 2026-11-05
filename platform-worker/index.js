@@ -1,4 +1,5 @@
 import {paperApi,scheduledPaper} from './paper-runner.js';
+import {ownerMoneyAlertApi} from './owner-alert-audio.js';
 import {issueStreamTicket,openSchwabStream} from './schwab-stream.js';
 import {schwabMarket,schwabPreflight,schwabConnectionStatus,schwabCallback,schwabAuthorize,schwabDisconnect,schwabQuotes,schwabAccountSnapshot} from './schwab-connection.js';
 import { saveFreeAccess, revokeFreeAccess, ensureAccessGrantSchema } from './access-grants.js';
@@ -1285,6 +1286,10 @@ export default {
       } else if (url.pathname === '/platform/paper' && ['GET','POST'].includes(request.method)) {
         const auth = await requireOwner(request,env);
         response = auth.response || await paperApi(request,env,auth.owner);
+      }
+      else if (url.pathname === '/platform/personal-money-alert' && ['GET','DELETE'].includes(request.method)) {
+        const auth = await requireOwner(request,env);
+        response = auth.response || await ownerMoneyAlertApi(request,env,auth.owner);
       } else if (url.pathname === "/platform/schwab/callback" && request.method === "GET") {
         response = await schwabCallback(request,env);
       } else if (['/platform/schwab/history','/platform/schwab/options'].includes(url.pathname) && request.method === 'GET') {
