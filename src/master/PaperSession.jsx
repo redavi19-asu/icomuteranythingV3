@@ -6,8 +6,8 @@ const time=n=>n?new Date(n).toLocaleTimeString('en-US',{timeZone:'America/New_Yo
 function ringOpportunityBell(ctx){
  if(!ctx||ctx.state!=='running')return;
  const start=ctx.currentTime+0.02;
- [0,0.34,0.68].forEach((offset,i)=>{
-  const note=start+offset/2;
+ [0,0.9,1.8,2.7].forEach((offset,i)=>{
+  const note=start+offset;
   [[740,0.45],[1120,0.26],[1660,0.10]].forEach(([frequency,volume])=>{
    const oscillator=ctx.createOscillator(),gain=ctx.createGain();
    oscillator.type='sine';oscillator.frequency.setValueAtTime(frequency*(i===1?1.018:1),note);
@@ -63,8 +63,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     soundEnabledRef.current=true;
     setSoundOn(true);
     setSoundWarning('');
-    // Play from the tap gesture immediately; do not wait for the WAV download.
-    ringOpportunityBell(ctx);
+    // Unlock audio on tap without playing a different preview sound.
     if(!bellBuffer.current)void loadBellRecording(ctx);
    }catch(e){
     soundEnabledRef.current=false;setSoundOn(false);setSoundWarning(e.message);
@@ -79,11 +78,11 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    try{
     if(bellBuffer.current){
      const source=ctx.createBufferSource(),gain=ctx.createGain(),start=ctx.currentTime;
-     // Never truncate the recording halfway through, as the old implementation did.
-     const duration=bellBuffer.current.duration;
+     // Keep the recognizable WAV, but a real alert finishes in at most 3.5 seconds.
+     const duration=Math.min(bellBuffer.current.duration,3.5);
      source.buffer=bellBuffer.current;source.connect(gain);gain.connect(ctx.destination);
      gain.gain.setValueAtTime(1,start);
-     gain.gain.setValueAtTime(1,start+Math.max(0,duration-0.12));
+     gain.gain.setValueAtTime(1,start+Math.max(0,duration-0.32));
      gain.gain.linearRampToValueAtTime(0,start+duration);
      source.onended=()=>{source.disconnect();gain.disconnect()};
      source.start(start,0,duration);
@@ -99,6 +98,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     if(audioRef.current.state!=='running')await audioRef.current.resume();
     if(audioRef.current.state!=='running')throw Error('Browser audio is still paused. Check silent mode and tap again.');
     setSoundWarning('');
+    if(!bellBuffer.current)await loadBellRecording(audioRef.current);
     playAlertBell();
    }catch(e){setSoundWarning(e.message||'Tap Enable Alert Bell again and check device volume.')}
   }
@@ -203,44 +203,34 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  </article>}
  return <section id="ica-paper-control-center" className="itt-card itt-paper-compact" aria-label="Paper trading control center">
   <div className="itt-paper-top-grid"><div className="itt-paper-command"><div className="itt-eyebrow">ICA MASTER · PAPER TRADING</div><h3>Scanner &amp; paper trades</h3>
+   <div className="itt-scan-buttons"><button type="button" className={'itt-wide-button itt-scan-start '+(s?.enabled?'is-active':'')} aria-pressed={!!s?.enabled} disabled={busy||!connected||s?.enabled} onClick={()=>act('start')}>START SCAN</button><button type="button" className={'itt-wide-button itt-scan-pause '+(s&&!s.enabled?'is-paused':'')} aria-pressed={!!s&&!s.enabled} disabled={!s?.enabled} onClick={()=>act('pause')}>PAUSE SCAN</button><button type="button" className={'itt-wide-button itt-run-now '+(['queued','checking'].includes(scanStatus.phase)?'checking':'')} disabled={busy||['queued','checking'].includes(scanStatus.phase)} aria-busy={['queued','checking'].includes(scanStatus.phase)} onClick={()=>act('tick')}>{['queued','checking'].includes(scanStatus.phase)?<><span className="itt-action-spinner" aria-hidden="true"/> CHECKING…</>:'RUN SCAN & UPDATE TRADES NOW'}</button></div>
+   {scanStatus.phase!=='idle'&&<div className={'itt-check-feedback '+scanStatus.phase} role={scanStatus.phase==='error'?'alert':'status'} aria-live="polite"><strong>{scanStatus.message}</strong>{scanStatus.check&&<><span>Updated {scanStatus.check.positionsUpdated} of {scanStatus.check.positionsChecked} open contracts · Checked {scanStatus.check.scannedSymbols?.length||0} tickers{scanStatus.check.scannedSymbols?.length?' ('+scanStatus.check.scannedSymbols.join(', ')+')':''} · {scanStatus.check.newAlerts} new opportunities</span>{scanStatus.check.positionsClosed>0&&<span>{scanStatus.check.positionsClosed} paper contract(s) closed by exit rules.</span>}{!scanStatus.check.scannedSymbols?.length&&<span>{s?.enabled?'No ticker scans were due during this check.':'Scanner paused; only open trades were checked.'}</span>}{scanStatus.check.holds?.length>0&&<details><summary>Quote holds ({scanStatus.check.holds.length})</summary>{scanStatus.check.holds.map((h,i)=><p key={i}>{h.symbol||'Check'}: {h.reason}</p>)}</details>}</>}{scanStatus.completedAt&&<small>Completed {time(scanStatus.completedAt)} ET</small>}</div>}
+   {operationNotice&&<p role="status" className="itt-operation-notice">{operationNotice}</p>}
+   <p><strong>{s?.enabled?'SCANNER ENABLED':'SCANNER PAUSED'} · {positions.length} OPEN PAPER CONTRACT{positions.length===1?'':'S'}</strong></p>
+
+   <div className="itt-paper-summary"><div><small>PAPER BUYING POWER</small><strong>{money(s?.paper?.cash)}</strong></div><div><small>REALIZED PROFIT / LOSS</small><strong>{signed(s?.paper?.realized)}</strong></div><div><small>OPEN PROFIT / LOSS</small><strong>{signed(totalPnl)}</strong><small>{marked.length!==positions.length?'Some quotes unavailable; see each trade':''}</small></div></div>
+   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Preparing sound…':soundOn?'🔔 ALERT BELL ON':'ENABLE ALERT BELL'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Test Bell</button><small>{soundWarning||'Recorded alert lasts up to 3.5 seconds while the page is active. Background alerts need notifications.'}</small></div>
+   <button type="button" className="itt-wide-button itt-trade-center-button" onClick={()=>openWindow()}>TRADING OPPORTUNITIES &amp; TRADES · {liveAlerts.length} awaiting · {positions.length} open · {history.length} closed</button>
+  </div><aside className="itt-paper-radar" aria-label="Scanner live status and recent ticker checks"><div className="itt-paper-radar-heading"><div><span className="itt-eyebrow">ICA MARKET RADAR</span><h3>Scanner Activity</h3></div><span className={'itt-radar-state '+(radarActive?'active':'')}>{phase}</span></div>
    <div className="itt-scan-scope" role="group" aria-label="Scan only one ticker or multiple tickers">
-    <div className="itt-scope-heading"><strong>SCAN SCOPE · {s?.scanMode==='SINGLE'?(s.singleTicker||'SPY')+' ONLY':'MULTIPLE TICKERS'}</strong><small>Choose which tickers the server scans for NEW setups. Open paper positions remain monitored.</small></div>
+    <div className="itt-scope-heading"><strong>SCAN SCOPE · {s?.scanMode==='SINGLE'?(s.singleTicker||'SPY')+' ONLY':'MULTIPLE TICKERS'}</strong></div>
     <div className="itt-scope-switch">
      <button type="button" className={'itt-wide-button '+(s?.scanMode==='SINGLE'?'selected':'')} aria-pressed={s?.scanMode==='SINGLE'} disabled={!s||busy} onClick={()=>setScope('SINGLE')}>◎ Single Ticker</button>
      <button type="button" className={'itt-wide-button '+(s?.scanMode!=='SINGLE'?'selected':'')} aria-pressed={s?.scanMode!=='SINGLE'} disabled={!s||busy} onClick={()=>setScope('MULTI')}>▦ Multiple Tickers</button>
     </div>
-    <form className="itt-scope-ticker" onSubmit={e=>{e.preventDefault();setScope('SINGLE')}}>
+    {s?.scanMode==='SINGLE'&&<form className="itt-scope-ticker" onSubmit={e=>{e.preventDefault();setScope('SINGLE')}}>
      <label htmlFor="itt-single-ticker-input">Single ticker symbol</label>
      <input id="itt-single-ticker-input" name="singleTicker" value={singleTickerDraft} maxLength={10} autoCapitalize="characters" spellCheck={false}
       onChange={e=>{setSingleTickerDraft(e.target.value.toUpperCase());setSingleTickerDirty(true)}} placeholder="SPY" aria-label="Single ticker symbol, for example SPY"/>
      <button className="itt-wide-button" type="submit" disabled={!s||busy}>Apply Ticker</button>
-    </form>
-    <small className="itt-scope-footnote">Single Ticker means the next scheduled check and Run Now scan that ticker alone. This switch does not place trades or enable a paused scanner.</small>
+    </form>}
+    <small className="itt-scope-footnote">Server setting. Existing paper positions stay monitored.</small>
    </div>
-   <div className="itt-scan-buttons"><button type="button" className="itt-wide-button" disabled={busy||!connected||s?.enabled} onClick={()=>act('start')}>START SCAN</button><button type="button" className="itt-wide-button" disabled={!s?.enabled} onClick={()=>act('pause')}>PAUSE SCAN</button><button type="button" className={'itt-wide-button itt-run-now '+(['queued','checking'].includes(scanStatus.phase)?'checking':'')} disabled={busy||['queued','checking'].includes(scanStatus.phase)} aria-busy={['queued','checking'].includes(scanStatus.phase)} onClick={()=>act('tick')}>{['queued','checking'].includes(scanStatus.phase)?<><span className="itt-action-spinner" aria-hidden="true"/> CHECKING…</>:'RUN SCAN & UPDATE TRADES NOW'}</button></div>
-   {scanStatus.phase!=='idle'&&<div className={'itt-check-feedback '+scanStatus.phase} role={scanStatus.phase==='error'?'alert':'status'} aria-live="polite"><strong>{scanStatus.message}</strong>{scanStatus.check&&<><span>Updated {scanStatus.check.positionsUpdated} of {scanStatus.check.positionsChecked} open contracts · Checked {scanStatus.check.scannedSymbols?.length||0} tickers{scanStatus.check.scannedSymbols?.length?' ('+scanStatus.check.scannedSymbols.join(', ')+')':''} · {scanStatus.check.newAlerts} new opportunities</span>{scanStatus.check.positionsClosed>0&&<span>{scanStatus.check.positionsClosed} paper contract(s) closed by exit rules.</span>}{!scanStatus.check.scannedSymbols?.length&&<span>{s?.enabled?'No ticker scans were due during this check.':'Scanner paused; only open trades were checked.'}</span>}{scanStatus.check.holds?.length>0&&<details><summary>Quote holds ({scanStatus.check.holds.length})</summary>{scanStatus.check.holds.map((h,i)=><p key={i}>{h.symbol||'Check'}: {h.reason}</p>)}</details>}</>}{scanStatus.completedAt&&<small>Completed {time(scanStatus.completedAt)} ET</small>}</div>}
-   {operationNotice&&<p role="status" className="itt-operation-notice">{operationNotice}</p>}
-   <p><strong>{s?.enabled?'SCANNER ENABLED':'SCANNER PAUSED'} · {positions.length} OPEN PAPER CONTRACT{positions.length===1?'':'S'}</strong></p>
     <label className="itt-autostart" style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
      <span><strong>Auto-start paper scanner at 9:30 AM ET</strong><small style={{display:'block'}}>Saved on the server for this owner. Trading weekdays only; no real orders. A manual Pause stays paused for the day.</small></span>
      <input type="checkbox" checked={!!s?.autoStart} disabled={!s||busy} onChange={e=>act('auto_start',e.target.checked)} aria-label="Automatically start paper scanner at 9:30 AM Eastern"/>
      <span className="itt-switch" aria-hidden="true"/>
     </label>
-   <div className="itt-flow-status" role="status">
-    <strong>SCHWAB MARKET FEED · {s?.marketFeed?.checkedAt&&now-s.marketFeed.checkedAt>120000?'STALE · RECHECK REQUIRED':s?.marketFeed?.label||'NOT VERIFIED'}</strong>
-    <p>{s?.marketFeed?.symbol||'No symbol checked'} · Quote as of {time(s?.marketFeed?.quoteTime)} ET · Server check {time(s?.marketFeed?.checkedAt)} ET. A connection alone does not verify quote freshness.</p>
-    <small>Only a fresh quote explicitly marked real-time by Schwab qualifies for actionable paper setups. The options chain and exact contract quote are checked separately.</small>
-   </div>
-   <div className="itt-flow-status" role="status">
-    <strong>HIGH-CONFLUENCE GATE · {s?.flowGate?.status?.replaceAll('_',' ')||'NOT CHECKED'}</strong>
-    <p>{s?.flowGate?.reason||'Verified options-flow feed has not been checked. Only technical watches can appear until licensed tape confirms aggressive same-contract activity.'}</p>
-    <small>Golden Sweep identity: NOT VERIFIED · Level II: NOT CONNECTED · Technical watches never ring as high-probability options.</small>
-   </div>
-   <div className="itt-paper-summary"><div><small>PAPER BUYING POWER</small><strong>{money(s?.paper?.cash)}</strong></div><div><small>REALIZED PROFIT / LOSS</small><strong>{signed(s?.paper?.realized)}</strong></div><div><small>OPEN PROFIT / LOSS</small><strong>{signed(totalPnl)}</strong><small>{marked.length!==positions.length?'Some quotes unavailable; see each trade':''}</small></div></div>
-   <p className="itt-scanner-disclaimer">Scheduled checks manage every open contract and scan the next three tickers, approximately once per minute. Run Now performs that same check early; it does not analyze every stock at once. Pausing the scanner leaves open-trade protection running.</p>
-   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Loading bell…':soundOn?'🔔 Alert Bell ON · Turn Off':'🔕 Enable Alert Bell'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Test Bell</button><small>{soundWarning||'Sound is available while this page stays active. Enable it after each reload; iPhone background/lock-screen ringing needs push notifications.'}</small></div>
-   <button type="button" className="itt-wide-button itt-trade-center-button" onClick={()=>openWindow()}>TRADING OPPORTUNITIES &amp; TRADES · {liveAlerts.length} awaiting · {positions.length} open · {history.length} closed</button>
-  </div><aside className="itt-paper-radar" aria-label="Scanner live status and recent ticker checks"><div className="itt-paper-radar-heading"><div><span className="itt-eyebrow">ICA MARKET RADAR</span><h3>Scanner Activity</h3></div><span className={'itt-radar-state '+(radarActive?'active':'')}>{phase}</span></div>
    <div className="itt-radar-dashboard"><div className={'itt-radar-visual '+(radarActive?'running':'')} aria-hidden="true"><div className="itt-radar-rings"/><div className="itt-radar-sweep"/><div className="itt-radar-core">⌖</div></div><div className="itt-radar-primary"><small>LAST RECORDED SCAN</small><strong>{latest?.symbol||'—'}</strong><span>{latest?.state?.replaceAll('_',' ')||'NO SCANS YET'}</span><p>{latest?.reason||'Waiting for the next scheduled scan.'}</p></div></div>
    <div className="itt-radar-metrics"><div><small>UNIVERSE</small><strong>{s?.scanUniverse?.length??'—'} tickers</strong></div><div><small>OPEN TRADES</small><strong>{positions.length} managed separately</strong></div><div><small>SERVER</small><strong>{stale?'STALE':'RESPONDING'}</strong></div></div>
    <div className="itt-radar-cycle"><div className="itt-radar-cycle-title"><span>{radarActive?'Next scheduled check (approx.)':'Checks paused / outside session'}</span><span>{radarActive&&elapsed!==null?Math.max(0,60-elapsed)+'s':'—'}</span></div><div className="itt-radar-track"><span style={{width:radarActive&&elapsed!==null?Math.min(100,elapsed/60*100)+'%':'0%'}}/></div></div>
