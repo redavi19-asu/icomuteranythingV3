@@ -1,0 +1,15 @@
+ICA PRIME — recorded cash-counting opportunity alert
+Recording #1: "Money Counting Machine" by Alexander
+Source: https://orangefreesounds.com/money-counting-machine/
+Licensed Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+Recording #2: "Security Beep Sound" by Alexander
+Source: https://orangefreesounds.com/security-beep-sound/
+Licensed Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Changes in ICA PRIME: Recordings are trimmed, gain-normalized, dynamically
+compressed for a clear alert, and a short beep clip is replayed twice after
+the cash-counting-machine excerpt. No fabricated bill-flip sound is used.
+These assets are fetched at build time and served locally with the website.
+Audio output is limited by the device's volume, mute, browser and speakers.
