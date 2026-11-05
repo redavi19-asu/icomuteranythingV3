@@ -252,6 +252,19 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    <div className="itt-radar-cycle"><div className="itt-radar-cycle-title"><span>{radarActive?'Next scheduled check (approx.)':'Checks paused / outside session'}</span><span>{radarActive&&elapsed!==null?Math.max(0,60-elapsed)+'s':'—'}</span></div><div className="itt-radar-track"><span style={{width:radarActive&&elapsed!==null?Math.min(100,elapsed/60*100)+'%':'0%'}}/></div></div>
    <div className="itt-radar-recent"><strong>RECENT TICKER CHECKS</strong>{recent.slice(0,4).map((r,i)=><div className="itt-radar-recent-item" key={r.symbol+String(r.time)+i}><span>{r.symbol}</span><span>{r.state?.replaceAll('_',' ')}</span><time>{time(r.time)}</time></div>)}</div><p className="itt-radar-foot"><strong>DON'T CHASE · ACTIVE</strong> — New CALLS and PUTS are held if today's move is already stretched without a fresh pullback or consolidation breakout. No 11 AM or lunch trading ban. The radar keeps showing WAIT FOR BOUNCE / WAIT FOR PULLBACK while it waits. Existing trades keep their stop-loss protection.</p>
   </aside></div>
+  <section className="itt-scanner-settings itt-stop-settings" aria-label="Paper stop loss control">
+   <h4>STOP LOSS CONTROL · NEXT PAPER TRADE</h4>
+   <label htmlFor="itt-stop-pct">Protective stop on option premium</label>
+   <div className="itt-stop-settings-row">
+    <select id="itt-stop-pct" aria-label="Paper stop loss percentage" value={stopLossDraft}
+     onChange={e=>{setStopLossDraft(e.target.value);setStopLossDirty(true)}}>
+     {[15,20,35,50].map(pct=><option key={pct} value={pct}>{pct}%</option>)}
+    </select>
+    <button type="button" className="itt-wide-button" disabled={!s||busy||!stopLossDirty}
+     onClick={()=>act('stop_settings',Number(stopLossDraft))}>SAVE STOP LOSS</button>
+   </div>
+   <p><strong>Saved for new entries: {s?.stopLossPct??20}%.</strong> Changing this does not alter any open contract; each trade retains its entry-time stop. A 35% or 50% stop allows a much larger loss, and fast prices can gap through the threshold. Applies to both CALL and PUT paper trades.</p>
+  </section>
   <PaperScanCoverage snapshot={s} now={now}/>
   <details className="itt-scanner-settings">
    <summary>Confirmed 5/5 support &amp; resistance · Schwab (30-minute lookback)</summary>
