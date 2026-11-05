@@ -19,38 +19,84 @@ export function marketBellEvent(previousMs,currentMs){
  if(prev.minute<960&&next.minute===960)return 'CLOSE';
  return null;
 }
-/** Original cash-counter-like paper-opportunity sound: quick bill flips, then two short dings. */
-export function playMoneyCountingAlert(ctx){
- if(!ctx||ctx.state!=='running')return false;
- const start=ctx.currentTime+0.015,rate=ctx.sampleRate;
- // A stack of short bright filtered transients sounds like paper notes flicking
- // through a counting machine. Self-generated noise: no recorded/licensed asset.
- const length=Math.max(1,Math.floor(rate*0.047));
- const buffer=ctx.createBuffer(1,length,rate);
- const samples=buffer.getChannelData(0);
- let seed=0x1234ab;
- for(let i=0;i<length;i++){seed=(1664525*seed+1013904223)>>>0;samples[i]=((seed/4294967296)*2-1)*(1-i/length);}
- for(let i=0;i<12;i++){
-  const at=start+i*0.074,source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();
-  source.buffer=buffer;filter.type='highpass';filter.frequency.value=1250+(i%3)*280;
+/** Recorded, licensed samples are bundled into the GitHub Pages build.
+ * No fake bill-flip synthesis and no sound file is fetched from third parties
+ * by the user's browser.
+ */
+export const MONEY_ALERT_ASSETS = Object.freeze({
+ money:'/audio/ica-real-money-counter.mp3',
+ beep:'/audio/ica-real-machine-beep.mp3'
+});
+export async function loadMoneyRecordings(ctx, fetchAudio=fetch){
+ if(!ctx||typeof ctx.decodeAudioData!=='function')throw Error('Audio decoder unavailable.');
+ const load=async(path)=>{
+  const response=await fetchAudio(path,{cache:'force-cache'});
+  if(!response.ok)throw Error('Recorded money-alert asset unavailable.');
+  const bytes=await response.arrayBuffer();
+  if(bytes.byteLength<5000||bytes.byteLength>2500000)throw Error('Invalid recorded money-alert asset.');
+  const buffer=await ctx.decodeAudioData(bytes);
+  if(!buffer||buffer.duration<0.15||buffer.duration>15||buffer.numberOfChannels<1)
+   throw Error('Recorded money-alert sample could not be decoded.');
+  return buffer;
+ };
+ const [money,beep]=await Promise.all([load(MONEY_ALERT_ASSETS.money),load(MONEY_ALERT_ASSETS.beep)]);
+ return {money,beep};
+}
+function peakGain(buffer){
+ // Raise quiet recording levels without asking Web Audio to go beyond safe
+ // output level; the shared dynamics compressor limits transients.
+ let peak=0;
+ for(let ch=0;ch<buffer.numberOfChannels;ch++){
+  const a=buffer.getChannelData(ch);
+  for(let i=0;i<a.length;i++)peak=Math.max(peak,Math.abs(a[i]));
+ }
+ return Math.min(3.4,Math.max(0.9,0.96/Math.max(peak,0.1)));
+}
+function loudBeepStart(buffer,duration){
+ // Some recorded beeps contain a short gap before the actual tone. Locate
+ // its loudest brief window instead of accidentally playing silence.
+ const a=buffer.getChannelData(0),sr=buffer.sampleRate;
+ const len=Math.min(a.length,Math.max(1,Math.floor(duration*sr)));
+ const maxStart=Math.max(0,a.length-len),step=Math.max(1,Math.floor(sr*.025));
+ let best=0,bestEnergy=-1;
+ for(let start=0;start<=maxStart;start+=step){
+  let energy=0;
+  for(let i=start;i<start+len;i+=4)energy+=a[i]*a[i];
+  if(energy>bestEnergy){bestEnergy=energy;best=start;}
+ }
+ return best/sr;
+}
+/** Real money-counter machine recording, followed by two sampled machine beeps.
+ * Sound is browser-opt-in only; the playback level cannot override device volume.
+ */
+export function playMoneyCountingAlert(ctx,recordings){
+ if(!ctx||ctx.state!=='running'||!recordings?.money||!recordings?.beep)return false;
+ const {money,beep}=recordings;
+ if(money.duration<.2||beep.duration<.15)return false;
+ const now=ctx.currentTime+.02;
+ const compressor=ctx.createDynamicsCompressor(),master=ctx.createGain();
+ compressor.threshold.value=-15;compressor.knee.value=8;compressor.ratio.value=5;
+ compressor.attack.value=.002;compressor.release.value=.14;
+ master.gain.value=.98;
+ compressor.connect(master);master.connect(ctx.destination);
+ const machineDuration=Math.min(money.duration,3.2),beepDuration=Math.min(.23,beep.duration);
+ const beepOffset=loudBeepStart(beep,beepDuration),beepGain=peakGain(beep);
+ const play=(buffer,at,offset,duration,inputGain)=>{
+  const source=ctx.createBufferSource(),gain=ctx.createGain();
+  source.buffer=buffer;
   gain.gain.setValueAtTime(0,at);
-  gain.gain.linearRampToValueAtTime(i%3===0?.19:.14,at+.004);
-  gain.gain.exponentialRampToValueAtTime(.0001,at+.048);
-  source.connect(filter);filter.connect(gain);gain.connect(ctx.destination);
-  source.start(at);source.stop(at+.048);
-  source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect()};
- }
- for(const [offset,frequency] of [[1.00,1080],[1.29,1400]]){
-  const at=start+offset;
-  for(const [ratio,level] of [[1,.15],[1.5,.055],[2.02,.025]]){
-   const osc=ctx.createOscillator(),gain=ctx.createGain();
-   osc.type='sine';osc.frequency.setValueAtTime(frequency*ratio,at);
-   gain.gain.setValueAtTime(0,at);
-   gain.gain.linearRampToValueAtTime(level,at+.006);
-   gain.gain.exponentialRampToValueAtTime(.0001,at+.40);
-   osc.connect(gain);gain.connect(ctx.destination);osc.start(at);osc.stop(at+.42);
-   osc.onended=()=>{osc.disconnect();gain.disconnect()};
-  }
- }
- return true;
+  gain.gain.linearRampToValueAtTime(inputGain,at+.014);
+  gain.gain.setValueAtTime(inputGain,at+Math.max(.015,duration-.07));
+  gain.gain.linearRampToValueAtTime(0,at+duration);
+  source.connect(gain);gain.connect(compressor);
+  source.start(at,offset,duration);
+  source.onended=()=>{source.disconnect();gain.disconnect()};
+ };
+ try{
+  play(money,now,0,machineDuration,peakGain(money));
+  const first=now+machineDuration+.10;
+  play(beep,first,beepOffset,beepDuration,beepGain);
+  play(beep,first+.34,beepOffset,beepDuration,beepGain);
+  return true;
+ }catch{return false;}
 }
