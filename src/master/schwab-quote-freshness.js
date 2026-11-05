@@ -11,3 +11,14 @@ export function schwabQuoteFreshness({realtime,quoteTime}={},now=Date.now(),maxA
  if(age>maxAgeMs)return {code:'STALE',label:'REAL-TIME FEED · QUOTE STALE'};
  return {code:'VERIFIED_FRESH',label:'SCHWAB REAL-TIME · FRESH QUOTE'};
 }
+
+// Keep independently verified Schwab REST quotes authoritative when stream payloads
+// omit a delay flag (Schwab LEVELONE messages may omit it). Do not combine a
+// stream's unverified bid/ask/time with the REST quote's real-time entitlement.
+export function selectSchwabDisplayQuote(rest,stream,streamConnected=false){
+ if(!streamConnected||!stream)return rest||null;
+ if(stream.delayed===false&&stream.quoteTime&&Number.isFinite(Number(stream.quoteTime)))
+  return {...(rest||{}),...stream,realtime:true};
+ if(rest)return rest;
+ return {...stream,realtime:stream.delayed===true?false:null};
+}
