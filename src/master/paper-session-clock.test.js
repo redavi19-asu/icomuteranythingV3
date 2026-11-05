@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {expiryStatus,paperSessionOpen,paperExpirationCloseDue,paperEntryEligible} from './paper-session-clock.js';
+import {expiryStatus,paperSessionOpen,paperExpirationCloseDue,paperEntryEligible,scheduledRotationDue,PAPER_SCAN_OPEN_MINUTE} from './paper-session-clock.js';
 import {marketTime} from './trading-paper-engine.js';
 import {newPaper,stepPaper} from './paper-session.js';
 const nyTime=utc=>Date.parse(utc);
@@ -69,4 +69,28 @@ test('legacy unknown-expiration position exits conservatively at 3:55; no synthe
  const exited=stepPaper(entered,{quote:{...q,quoteTime:end},now:end});
  assert.equal(exited.trades[0].reason,'SESSION_END');
  assert.equal(paperExpirationCloseDue(undefined,marketTime(end)),true);
+});
+
+test('Friday November 6 paper scanner eligibility opens exactly at 9:30 AM ET, not 9:35',()=>{
+ assert.equal(PAPER_SCAN_OPEN_MINUTE,570);
+ const before=marketTime(Date.parse('2026-11-06T14:29:59Z'));
+ const opening=marketTime(Date.parse('2026-11-06T14:30:00Z'));
+ const afternoon=marketTime(Date.parse('2026-11-06T20:59:00Z'));
+ assert.equal(paperSessionOpen(before),false);
+ assert.equal(paperSessionOpen(opening),true);
+ assert.equal(paperSessionOpen(afternoon),true);
+ assert.equal(paperEntryEligible('2026-11-06',opening),true);
+ assert.equal(paperSessionOpen(marketTime(Date.parse('2026-11-07T14:30:00Z'))),false);
+});
+test('9:30 AM cron is never suppressed by a recent 9:29 pre-open rotation',()=>{
+ const last=Date.parse('2026-11-06T14:29:45Z');
+ const opening=Date.parse('2026-11-06T14:30:00Z');
+ assert.equal(scheduledRotationDue(opening,last,marketTime(opening),marketTime(last)),true);
+ const repeat=Date.parse('2026-11-06T14:30:20Z');
+ assert.equal(scheduledRotationDue(repeat,opening,marketTime(repeat),marketTime(opening)),false);
+ const next=Date.parse('2026-11-06T14:31:00Z');
+ assert.equal(scheduledRotationDue(next,opening,marketTime(next),marketTime(opening)),true);
+ const saturday=Date.parse('2026-11-07T14:30:00Z');
+ const saturdayPre=Date.parse('2026-11-07T14:29:45Z');
+ assert.equal(scheduledRotationDue(saturday,saturdayPre,marketTime(saturday),marketTime(saturdayPre)),false);
 });
