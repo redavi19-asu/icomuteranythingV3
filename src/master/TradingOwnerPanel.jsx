@@ -196,12 +196,15 @@ export default function TradingOwnerPanel(){
   alert:<PaperSession connected={!!schwabStatus?.connected} initialTab="opportunities"/>,
   results:<PaperSession connected={!!schwabStatus?.connected} initialTab="closed"/>,
   watchlist:watchlistPanel,
-  scanner:<PaperSession connected={!!schwabStatus?.connected} onSnapshot={setPaperSnapshot}/>,
+  scanner:<PaperSession connected={!!schwabStatus?.connected}/>,
   chain:chainPanel,risk:riskPanel};
  if(popPanel)return <section className="ica-trading-terminal itt-expanded itt-popout-window">
   <header className="itt-popout-header">
    <div><span className="itt-eyebrow">ICA PRIME / DETACHED PANEL</span><h2>{popPanel==='chart'?selected+' MARKET CHART':popPanel.toUpperCase()}</h2></div>
-   <button type="button" className="itt-wide-button" onClick={()=>window.close()}>✕ Close Window</button>
+   <button type="button" className="itt-wide-button" onClick={()=>{
+      if(window.opener){window.close();return;}
+      const url=new URL(window.location.href);url.searchParams.delete('panel');window.location.assign(url.toString());
+     }}>↙ Return to Trading Dashboard</button>
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
   {['alert','results','scanner'].includes(popPanel)&&<SchwabConnection symbol={selected} onStatus={setSchwabStatus}/>}
@@ -216,7 +219,12 @@ export default function TradingOwnerPanel(){
    <div className="itt-status-bar"><div className="itt-trade-mode" role="group" aria-label="Trading mode"><button type="button" className="selected" onClick={()=>document.getElementById('ica-paper-control-center')?.scrollIntoView({behavior:'smooth',block:'start'})} title="Go to the paper scanner controls">PAPER TRADE</button><button disabled title="Live mode requires verified broker routing and safety tests">LIVE TRADE · LOCKED</button></div><span className="itt-status itt-off"><span className="itt-status-dot"/> {schwabStatus?.connected?'SCHWAB AUTHORIZED':'SCHWAB DISCONNECTED'}</span><span className="itt-status itt-off">PAPER CONTROLS ABOVE</span><span className="itt-clock">{icon('clock',15)} {clockText} ET</span><button type="button" className="itt-wide-button" aria-pressed={expanded} onClick={toggleWide}>{expanded?'↙ Exit Expanded View':'⛶ Expand Workstation'}</button></div>
   </header>
   {popNotice&&<p role="alert" className="itt-pop-notice">{popNotice}</p>}
-  <PaperSession connected={!!schwabStatus?.connected}/>
+  <PaperSession connected={!!schwabStatus?.connected} onSnapshot={setPaperSnapshot}/>
+  <div className="itt-panel-buttons" aria-label="Open separate trading windows" style={{display:'flex',flexWrap:'wrap',gap:9,margin:'10px 0'}}>
+   <button type="button" className="itt-popout-button" onClick={()=>openPopout('scanner')}>↗ Scanner window</button>
+   <button type="button" className="itt-popout-button" onClick={()=>openPopout('alert')}>↗ Alert Center</button>
+   <button type="button" className="itt-popout-button" onClick={()=>openPopout('results')}>↗ Paper Results</button>
+  </div>
   <SchwabWatchPrices symbols={groups[group]} enabled={!!schwabStatus?.connected} onQuotes={setWatchQuotes}/>
   <button type="button" className="itt-diagnostics-toggle" onClick={()=>setShowDiagnostics(v=>!v)} aria-expanded={showDiagnostics}>{showDiagnostics?'Hide connections and diagnostics':'Connections and advanced settings'} ▾</button>
   <div className={showDiagnostics?'itt-diagnostics':'itt-diagnostics itt-hidden'}><SchwabConnection symbol={selected} onStatus={setSchwabStatus}/>{showDiagnostics&&<TradingAiBillingPanel billingState={aiBillingState} onStateChange={setAiBillingState}/>}</div>
