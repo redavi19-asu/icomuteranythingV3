@@ -64,6 +64,14 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
  if(scanSymbol!==null){
   if(!validTicker(scanSymbol))throw Error('Invalid live scan symbol.');
   s.lastStreamTriggeredAt=Date.now();
+  // Durable cooldown: the DO's in-memory map can reset on a restart.
+  // Never repeatedly re-evaluate a symbol's same closed 1-minute candles.
+  // Existing open positions remain managed by this tick regardless.
+  const previous=s.scanCoverage?.[scanSymbol],now=Date.now(),day=marketTime(now).day;
+  if(s.scanMode!=='SINGLE'&&previous?.day===day&&
+   Number.isFinite(previous.checkedAt)&&now-previous.checkedAt<60000){
+   scan=false;
+  }
  }
  // Server-side opt-in schedule: a real setting, not a browser-local checkbox.
  // Only start the PAPER scanner during the market session, once per NY trading day.
@@ -235,7 +243,15 @@ export async function paperApi(request,env,owner){
  if(!['https://icomputeranything.com','https://www.icomputeranything.com','https://redavi19-asu.github.io'].includes(request.headers.get('Origin')))return response({error:'Unrecognized origin.'},403);
  try{
   const body=await request.text();if(body.length>2048)return response({error:'Request too large.'},413);const {action,id}=JSON.parse(body);
-  if(action==='tick')return response(await runPaperTick(env,owner));
+  if(action==='tick'){
+   // A manual full-universe check must use the SAME coordinator as the
+   // streaming scanner and cron, otherwise its final D1 save can collide.
+   if(env.PAPER_QUOTE_STREAM){
+    const stub=env.PAPER_QUOTE_STREAM.getByName(owner.id);
+    return response(await stub.runRotation(owner.id,null,false));
+   }
+   return response(await runPaperTick(env,owner));
+  }
   const row=await load(env,owner.id),s=row.state;expireAlerts(s);
   if(action==='auto_start'){
     const input=JSON.parse(body);
@@ -336,9 +352,13 @@ export async function scheduledPaper(env){
     }catch{streamHealth={connected:false,transport:'ERROR',error:'Schwab stream coordinator unavailable.',quoteAgeMs:null}}
    }else try{await stub.disable();streamHealth={connected:false,transport:'STOPPED',error:'',quoteAgeMs:null}}catch{}
   }
-  // Keep the November 4 full-universe rotation every minute EVEN when Schwab
-  // streaming works. Streaming adds faster symbol-specific checks; it must not
-  // replace broad coverage with whichever symbols report the most quotes.
-  await runPaperTick(env,owner,{scheduled:true,scan:true,streamHealth:env.PAPER_QUOTE_STREAM?streamHealth:null});
+  // Keep scheduled full-universe scanning even during healthy streaming.
+  // Both paths MUST share the DO coordinator: without serialized database
+  // writes, rapid GOOGL stream ticks can continuously win the optimistic
+  // revision race and silently discard every scheduled rotation result.
+  if(env.PAPER_QUOTE_STREAM){
+   const stub=env.PAPER_QUOTE_STREAM.getByName(owner.id);
+   await stub.runRotation(owner.id,streamHealth,true);
+  }else await runPaperTick(env,owner,{scheduled:true,scan:true});
  }catch{}
 }
