@@ -27,7 +27,7 @@ test('wrong option, repeated IDs, stale tape, bid-side or multi-leg cannot quali
   [{...base[0],canceled:true},base[1]]
  ])assert.equal(evaluateVerifiedFlow(flow(items),{contractSymbol:contract,side:'CALL',now}).confirmed,false);
 });
-const minutes=Array.from({length:300},(_,i)=>{const close=100+i*.025;return {time:now-(300-i)*60000,open:close-.012,high:close+.02,low:close-.02,close,volume:1000+(i%3)*100}});
+const minutes=Array.from({length:300},(_,i)=>{const close=100+i*.006+i*i*.00013;return {time:now-(300-i)*60000,open:close-.012,high:close+.02,low:close-.02,close,volume:1000+(i%3)*100}});
 test('technical confluence reads MACD OBV 5- and 15-minute bars separately',()=>{
  const x=evaluateAristotleConfluence(minutes,'CALL');
  assert.equal(x.macd,true);assert.equal(x.obv,true);assert.equal(x.fiveMinute,true);assert.equal(x.fifteenMinute,true);
