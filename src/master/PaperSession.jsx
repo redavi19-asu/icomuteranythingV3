@@ -269,7 +269,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
   <PaperScanCoverage snapshot={s} now={now}/>
   <details className="itt-scanner-settings">
    <summary>Confirmed 5/5 support &amp; resistance · Schwab (30-minute lookback)</summary>
-   <p>Levels use completed one-minute Schwab candles and require five bars on either side of each swing. They may differ from your TradingView indicator. They improve NEW paper entries only; the 20% protective option stop stays unchanged.</p>
+   <p>Levels use completed one-minute Schwab candles and require five bars on either side of each swing. They may differ from your TradingView indicator. They improve NEW paper entries only; the chosen per-trade protective option stop remains unchanged.</p>
    {swingChecks.length?swingChecks.map(([sym,x])=><p key={sym}><strong>{sym} · Support {money(x.support)} · Resistance {money(x.resistance)}</strong> — {x.status?.replaceAll('_',' ')} · Checked {time(x.checkedAt)} ET. {x.hold?x.reason:''}</p>):
     <p>No confirmed support/resistance checks in the last 30 minutes of scanner activity.</p>}
   </details>
