@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import {request} from './SchwabConnection';
-import {schwabQuoteFreshness} from './schwab-quote-freshness';
+import {schwabQuoteFreshness,selectSchwabDisplayQuote} from './schwab-quote-freshness';
 const stamp=v=>v?new Date(v).toLocaleTimeString('en-US',{timeZone:'America/New_York'}):'Unavailable';
 const money=v=>typeof v==='number'?'$'+v.toFixed(2):'—';
 function useMarket(path,enabled,period=30000){
@@ -69,7 +69,7 @@ export function SchwabChart({symbol,enabled}){
  const clampedOffset=Math.min(offset,maxOffset);
  const endIndex=allCandles.length-clampedOffset;
  const candles=allCandles.slice(Math.max(0,endIndex-count),endIndex);
- const q=(stream.status==='connected'&&stream.quote)?{...quote.data?.quotes?.[0],...stream.quote,realtime:typeof stream.quote.delayed==='boolean'?!stream.quote.delayed:null}:quote.data?.quotes?.[0];
+ const q=selectSchwabDisplayQuote(quote.data?.quotes?.[0],stream.quote,stream.status==='connected');
  const quoteStatus=schwabQuoteFreshness(q,clockNow);
  const statusLabel=!enabled?'SCHWAB SIGN-IN REQUIRED':!q?'AWAITING SCHWAB QUOTE':quoteStatus.label;
  const values=candles.flatMap(c=>[c.low,c.high]),low=values.length?Math.min(...values):0,high=values.length?Math.max(...values):1;
@@ -94,14 +94,14 @@ export function SchwabChart({symbol,enabled}){
  return <section className="itt-card itt-schwab-interactive" style={expanded?{position:'fixed',inset:20,zIndex:10000,overflow:'auto',background:'#101722'}:{}} aria-label="Interactive Schwab price chart">
  <div className="itt-card-heading"><div><div className="itt-eyebrow">SCHWAB MARKET DATA · INTERACTIVE</div><h3>{symbol} · Price chart</h3></div><button className="itt-wide-button" onClick={()=>setExpanded(!expanded)}>{expanded?'Close expanded chart':'Expand chart'}</button></div>
  <div className="itt-schwab-chart-content">
- <div className="itt-schwab-quote"><strong>{money(q?.last)} · Bid {money(q?.bid)} · Ask {money(q?.ask)}</strong><span>Quote {stamp(q?.quoteTime)} ET · {statusLabel} · {stream.status==='connected'?'STREAM CONNECTED · QUOTE VALIDATED SEPARATELY':stream.status==='unavailable'?'STREAM NOT AUTHORIZED · 15s polling':stream.status==='reconnecting'?'RECONNECTING · 15s polling':'15s polling fallback'}</span></div>
- <div className={'itt-stream-state '+(stream.status==='connected'&&quoteStatus.code==='VERIFIED_FRESH'?'itt-stream-on':'')} role="status">{stream.status==='connected'?'● SCHWAB LIVE STREAM':stream.status==='offline'&&!enabled?'○ SIGN-IN REQUIRED':stream.status==='offline'?'○ CONNECTING':'○ '+stream.status.toUpperCase()} {stream.error&&' — '+stream.error} · {statusLabel}</div>
+ <div className="itt-schwab-quote"><strong>{money(q?.last)} · Bid {money(q?.bid)} · Ask {money(q?.ask)}</strong><span>Quote {stamp(q?.quoteTime)} ET · {statusLabel} · {stream.status==='connected'&&stream.quote?.delayed===false?'VERIFIED STREAM QUOTE':stream.status==='connected'?'REST QUOTE · 15s refresh':stream.status==='unavailable'?'REST QUOTE · 15s refresh':stream.status==='reconnecting'?'REST QUOTE · 15s refresh':'15s quote refresh'}</span></div>
+ 
  <div className="itt-schwab-toolbar"><div>{[1,5,15,30,60].map(f=><button type="button" key={f} className={frequency===f?'selected':''} aria-pressed={frequency===f} onClick={()=>{setFrequency(f);range(65)}}>{f}m</button>)}</div><div><button onClick={()=>zoom(-1)} title="Zoom in">＋ Zoom</button><button onClick={()=>zoom(1)} title="Zoom out">－ Zoom</button><button onClick={()=>{setOffset(0);setHover(null)}}>Latest ↦</button></div></div>
  {!enabled?<p>Connect Schwab under Connections & advanced settings to load candles.</p>:error||quote.error?<p role="alert">{error||quote.error}</p>:loading&&!allCandles.length?<p>Loading Schwab candles…</p>:candles.length?<div className="itt-schwab-canvas">
  <svg viewBox="0 0 800 310" role="img" aria-label={symbol+' interactive Schwab candle chart. Hover for values, drag to pan, use zoom buttons.'} className="itt-schwab-svg" onPointerMove={onMove} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);setDragStart({x:e.clientX,offset:clampedOffset})}} onPointerUp={e=>{setDragStart(null);e.currentTarget.releasePointerCapture(e.pointerId)}} onPointerCancel={()=>setDragStart(null)} onPointerLeave={()=>{if(!dragStart)setHover(null)}} onWheel={e=>{if(e.deltaY!==0){zoom(e.deltaY>0?1:-1)}}}>
  {[0,1,2,3,4].map(i=>{const p=min+span*i/4;return <g key={i}><line x1="10" x2="725" y1={y(p)} y2={y(p)} stroke="#253246"/><text x="735" y={y(p)+4} fill="#aabbd0" fontSize="11">{p.toFixed(2)}</text></g>})}
  {candles.map((c,i)=>{const cx=x(i),w=Math.max(2,Math.min(12,500/candles.length)),color=c.close>=c.open?'#32d5a0':'#ff6581';return <g key={c.time}><line x1={cx} x2={cx} y1={y(c.high)} y2={y(c.low)} stroke={color}/><rect x={cx-w/2} y={Math.min(y(c.open),y(c.close))} width={w} height={Math.max(1,Math.abs(y(c.open)-y(c.close)))} fill={color}/></g>})}
- {stream.status==='connected'&&Number.isFinite(q?.last)&&q.last>=min&&q.last<=max&&<g pointerEvents="none"><line x1="10" x2="724" y1={y(q.last)} y2={y(q.last)} stroke="#71ecb6" strokeWidth="1.5" strokeDasharray="6 4"/><text x="735" y={y(q.last)-7} fill="#8df5c8" fontSize="11">LIVE</text></g>}
+ {quoteStatus.code==='VERIFIED_FRESH'&&Number.isFinite(q?.last)&&q.last>=min&&q.last<=max&&<g pointerEvents="none"><line x1="10" x2="724" y1={y(q.last)} y2={y(q.last)} stroke="#71ecb6" strokeWidth="1.5" strokeDasharray="6 4"/><text x="735" y={y(q.last)-7} fill="#8df5c8" fontSize="11">LIVE</text></g>}
  {hover!==null&&candles[hover]&&<g pointerEvents="none"><line x1={x(hover)} x2={x(hover)} y1="20" y2="270" stroke="#b3daef" strokeDasharray="4 4" opacity=".8"/><line x1="12" x2="724" y1={y(candles[hover].close)} y2={y(candles[hover].close)} stroke="#b3daef" strokeDasharray="4 4" opacity=".55"/></g>}
  <text x="15" y="298" fill="#aabbd0" fontSize="11">{stamp(candles[0].time)} ET</text><text x="610" y="298" fill="#aabbd0" fontSize="11">{stamp(candles.at(-1).time)} ET</text>
  </svg>
