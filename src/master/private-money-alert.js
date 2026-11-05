@@ -101,7 +101,7 @@ export async function preparePersonalMoneyClip(ctx,file){
  const start=fullSong?PERSONAL_ALERT_START_SECONDS:0;
  // The owner already edited this specific five-second sound. Preserve
  // everything, including the final beep, rather than chopping off 0.9s.
- const length=!fullSong&&decoded.duration>=3.7&&decoded.duration<=5.3?
+ const length=!fullSong&&decoded.duration>4.05&&decoded.duration<=5.3?
   decoded.duration:4;
  return encodePersonalClipWav(trimPersonalAudio(ctx,decoded,start,start+length));
 }
