@@ -266,8 +266,7 @@ export async function paperApi(request,env,owner){
    const input=JSON.parse(body),amount=Number(input.maxPremium);
    if(!Number.isFinite(amount)||amount<1||amount>5000)throw Error('Paper max premium must be between $1 and $5,000.');
    if(!Array.isArray(input.extraSymbols)||input.extraSymbols.length>20||!input.extraSymbols.every(v=>typeof v==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(v)))throw Error('Up to 20 valid uppercase symbols are allowed.');
-   if(!PAPER_STOP_LOSS_CHOICES.includes(input.stopLossPct))throw Error('Select a risk percentage: 15, 20, 35 or 50.');
-   s.maxPremium=Math.round(amount*100)/100;s.extraSymbols=[...new Set(input.extraSymbols)];s.stopLossPct=input.stopLossPct;
+   s.maxPremium=Math.round(amount*100)/100;s.extraSymbols=[...new Set(input.extraSymbols)];
    event(s,'Paper scan settings updated.');
   }
     else if(action==='pause'){
