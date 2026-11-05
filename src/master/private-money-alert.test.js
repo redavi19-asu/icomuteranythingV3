@@ -120,7 +120,7 @@ test('saved clip is decoded into a four-second AudioBuffer',async()=>{
  },new ArrayBuffer(44+4*rate*2));
  assert.equal(decodedClip.duration,4);
  await assert.rejects(decodePersonalMoneyClip({
-  decodeAudioData:async()=>({duration:8})
+  decodeAudioData:async()=>({duration:9})
  },new ArrayBuffer(5000)),/invalid/);
 });
 test('personal clip playback requires unlocked audio and decoded sample',()=>{
@@ -147,4 +147,20 @@ test('personal clip uses recorded sample only (no generated synth)',()=>{
 });
 test('refuse to store invalid tiny audio payloads',()=>{
  assert.throws(()=>savePersonalMoneyClip(new ArrayBuffer(12)),/Invalid personal alert/);
+});
+
+test('owner uploaded five-second audio plays in full without four-second truncation',()=>{
+ let played;
+ const fakeNode=()=>({connect(){},disconnect(){}});
+ const gainNode=()=>({...fakeNode(),gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){}}});
+ const ctx={
+  state:'running',currentTime:10,destination:{},
+  createBufferSource(){return {...fakeNode(),start:(at,offset,duration)=>{played={at,offset,duration}}}},
+  createDynamicsCompressor(){return {...fakeNode(),threshold:{},ratio:{},knee:{},attack:{},release:{}}},
+  createGain:gainNode
+ };
+ const samples=new Float32Array(24000);samples[10]=.45;
+ const buffer={duration:5,numberOfChannels:1,getChannelData:()=>samples};
+ assert.equal(playPersonalMoneyClip(ctx,buffer),true);
+ assert.equal(played.duration,5);
 });
