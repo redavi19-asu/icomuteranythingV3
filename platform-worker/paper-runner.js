@@ -7,6 +7,7 @@ import {evaluateAristotleConfluence,evaluateDailySwing,classifyTradeHorizon} fro
 import {assessEntryChase} from '../src/master/trading-entry-chase.js';
 import {assessSwing55Entry} from '../src/master/trading-swing-levels.js';
 import {rotatingTickerBatch,saveSymbolScanCoverage} from './paper-scan-coverage.js';
+import {paperEntryEligible,paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE} from '../src/master/paper-session-clock.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 // Bounded liquid options universe. This is NOT a claim to scan every exchange-listed stock.
 export const PAPER_SCAN_UNIVERSE=Object.freeze(['SPY','QQQ','IWM','DIA','XLK','XLF','XLE','USO','BNO','AAPL','NVDA','TSLA','AMZN','META','MSFT','AMD','GOOGL','TLT','GLD','SLV']);
@@ -77,7 +78,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
  // Only start the PAPER scanner during the market session, once per NY trading day.
  if(scheduled&&s.autoStart===true){
   const session=marketTime(Date.now());
-  if(!['Sat','Sun'].includes(session.weekday)&&session.minute>=570&&session.minute<945&&s.lastAutoStartDay!==session.day){
+  if(!['Sat','Sun'].includes(session.weekday)&&session.minute>=570&&session.minute<PAPER_MARKET_CLOSE_MINUTE&&s.lastAutoStartDay!==session.day){
    s.enabled=true;s.lastAutoStartDay=session.day;event(s,'Scheduled paper scanner enabled for '+session.day+' at/after 9:30 AM ET.');
   }
  }
@@ -101,7 +102,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
   }
   if(scan&&s.enabled){
    const now=Date.now(),session=marketTime(now);
-   if(!['Sat','Sun'].includes(session.weekday)&&session.minute>=575&&session.minute<945){
+   if(paperSessionOpen(session)){
     const allowed=scannerUniverse(s);
     // Advance five distinct default ticker slots per scheduled/owner scan.
     // Streaming scans do not advance this cursor; their only role is to
@@ -171,7 +172,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      // never imply a measured win probability when it is absent.
      const chain=await data(env,owner,'options',symbol);
      if(chain.delayed!==false)throw Error('Options delay status unconfirmed; skipping setup.');
-     const candidates=(chain.contracts||[]).filter(c=>c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!eligiblePaperQuote(c,{...paperRules,premiumBudget:budget(s)})).sort((a,b)=>(a.ask-a.bid)/a.ask-(b.ask-b.bid)/b.ask);
+     const candidates=(chain.contracts||[]).filter(c=>paperEntryEligible(c.expiration,session)&&c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!eligiblePaperQuote(c,{...paperRules,premiumBudget:budget(s)})).sort((a,b)=>(a.ask-a.bid)/a.ask-(b.ask-b.bid)/b.ask);
      const contract=candidates[0],id=symbol+'|'+signal.asOf;
      if(!contract){
       s.scanHistory.unshift({symbol,time:checkedAt,state:'CONTRACT_HOLD',reason:'No fresh, liquid contract passed premium, spread, delta and risk checks.'});
@@ -231,7 +232,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      });
     }
    }
-   }else s.lastScan={time:now,note:'Outside paper entry session (9:35 AM–3:45 PM ET weekdays).'};
+   }else s.lastScan={time:now,note:'Outside regular paper scanning session (9:35 AM–4:00 PM ET weekdays).'};
   }
  }catch(e){s.lastError=e.message;check.holds.push({reason:e.message});event(s,'Data/risk hold: '+e.message)}
  check.completedAt=Date.now();s.lastCheck=check;
@@ -342,7 +343,7 @@ export async function scheduledPaper(env){
   let streamConnected=false,streamHealth={connected:false,transport:'NOT_CONNECTED',error:'',quoteAgeMs:null};
   if(env.PAPER_QUOTE_STREAM){
    const previous=(await load(env,owner.id)).state;
-   const sessionActive=!['Sat','Sun'].includes(session.weekday)&&session.minute>=570&&session.minute<945;
+   const sessionActive=!['Sat','Sun'].includes(session.weekday)&&session.minute>=570&&session.minute<PAPER_MARKET_CLOSE_MINUTE;
    const scannerWanted=previous.enabled===true||(previous.autoStart===true&&previous.lastAutoStartDay!==session.day);
    const stub=env.PAPER_QUOTE_STREAM.getByName(owner.id);
    if(sessionActive&&scannerWanted){
