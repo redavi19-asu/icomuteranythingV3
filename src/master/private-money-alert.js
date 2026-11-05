@@ -1,7 +1,8 @@
 /**
  * Owner-selected personal opportunity alert.
- * Converts 1:48–1:52 of a file explicitly chosen on this device into a
- * standalone four-second WAV. Only that trimmed excerpt is saved in IndexedDB.
+ * Accepts either the already-edited alert clip or an original source song.
+ * For the song, cuts 1:48–1:52; for a short edited file, uses the first
+ * four seconds. Stores only a four-second WAV locally in IndexedDB.
  * No YouTube ripping, external upload, or song asset in public deployment.
  */
 export const PERSONAL_ALERT_START_SECONDS=108;
@@ -44,17 +45,22 @@ export const savePersonalMoneyClip=bytes=>{
 export const clearPersonalMoneyClip=()=>operation('readwrite',store=>store.delete(KEY));
 export function trimPersonalAudio(ctx,decoded,start=PERSONAL_ALERT_START_SECONDS,end=PERSONAL_ALERT_END_SECONDS){
  if(!ctx?.createBuffer||!decoded||!Number.isFinite(decoded.duration)||
-    decoded.duration<end||!Number.isFinite(decoded.sampleRate)||decoded.sampleRate<8000)
-  throw Error('Select an audio file lasting at least 1 minute 52 seconds.');
- if(!(start>=0&&end>start&&end<=decoded.duration))throw Error('Invalid clip boundaries.');
+    !Number.isFinite(decoded.sampleRate)||decoded.sampleRate<8000)
+  throw Error('This file could not be decoded as audio.');
+ if(!(start>=0&&end>start&&decoded.duration>=start+.5))
+  throw Error('Audio is too short or the selected section is unavailable.');
  const rate=decoded.sampleRate,from=Math.floor(start*rate),
   frames=Math.floor((end-start)*rate),count=Math.min(decoded.numberOfChannels,2);
  if(count<1||frames<1)throw Error('Audio could not be decoded.');
  const result=ctx.createBuffer(count,frames,rate);
  for(let ch=0;ch<count;ch++){
   const source=decoded.getChannelData(ch),dest=result.getChannelData(ch);
-  if(source.length<from+frames)throw Error('The audio file ends before 1:52.');
-  dest.set(source.subarray(from,from+frames));
+  // Short, already-trimmed recordings (including e.g. 3.97s MP3s) are
+  // preserved from the start and padded with silence to exactly four seconds.
+  const available=Math.min(frames,Math.max(0,source.length-from),
+   Math.max(0,Math.floor((decoded.duration-start)*rate)));
+  if(available<Math.floor(rate*.5))throw Error('Audio selection has no playable sound.');
+  dest.set(source.subarray(from,from+available));
  }
  return result;
 }
@@ -79,14 +85,21 @@ export function encodePersonalClipWav(buffer){
  return result;
 }
 export async function preparePersonalMoneyClip(ctx,file){
- if(!file||!Number.isFinite(file.size)||file.size<10000||file.size>MAX_FILE_BYTES)
+ if(!file||!Number.isFinite(file.size)||file.size<512||file.size>MAX_FILE_BYTES)
   throw Error('Choose a local MP3, M4A, WAV or AAC audio file under 60 MB.');
  if(!/\.(mp3|m4a|mp4|wav|aac)$/i.test(String(file.name||''))&&
     !/^audio\//i.test(String(file.type||'')))
   throw Error('Choose an audio file (MP3, M4A, WAV or AAC).');
  if(!ctx||typeof ctx.decodeAudioData!=='function')throw Error('This browser cannot decode audio.');
  const decoded=await ctx.decodeAudioData(await file.arrayBuffer());
- return encodePersonalClipWav(trimPersonalAudio(ctx,decoded));
+ if(!Number.isFinite(decoded?.duration)||decoded.duration<.5)
+  throw Error('Audio file is too short to use as an alert.');
+ // A full song gets the requested 1:48–1:52 cut. If the owner already
+ // separated the sound, use the file from its beginning, not minute 1:48.
+ // Also tolerate slightly short source songs (e.g. 1:51.9s) by padding.
+ const fullSong=decoded.duration>=PERSONAL_ALERT_START_SECONDS+.5;
+ const start=fullSong?PERSONAL_ALERT_START_SECONDS:0;
+ return encodePersonalClipWav(trimPersonalAudio(ctx,decoded,start,start+4));
 }
 export async function decodePersonalMoneyClip(ctx,bytes){
  if(!ctx||!bytes||!(bytes instanceof ArrayBuffer))return null;
