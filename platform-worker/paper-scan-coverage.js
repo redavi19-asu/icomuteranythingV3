@@ -16,7 +16,7 @@ export function rotatingTickerBatch(symbols,index=0,size=5){
 
 export function saveSymbolScanCoverage(state,{symbol,checkedAt,day,source,scanState,reason}){
  if(!validTicker(symbol)||!Number.isFinite(checkedAt)||checkedAt<=0||
-    typeof day!=='string'||!/^\\d{4}-\\d{2}-\\d{2}$/.test(day))return;
+    typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day))return;
  state.scanCoverage??={};
  const prior=state.scanCoverage[symbol];
  const sameDay=prior?.day===day;
