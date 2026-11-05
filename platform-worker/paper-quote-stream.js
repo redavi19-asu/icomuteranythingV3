@@ -60,9 +60,19 @@ export class PaperQuoteStream extends DurableObject {
   this.ownerId=config.ownerId;this.active=true;this.mode=config.mode;
   this.symbols=config.symbols;
   if(!this.socket&&!this.connecting&&Date.now()>=this.retryAt)await this.connect();
-  // Outgoing WebSockets do not hibernate: alarm maintenance allows restart
-  // after disconnect/eviction; cron also re-establishes owner scope every minute.
-  await this.ctx.storage.setAlarm(Date.now()+30000);
+  // Independent 30-second alarm backup: the Cloudflare scheduled handler
+  // may not complete its rotation under ongoing event traffic. One owner DO
+  // owns both triggers, and runRotation's persistent time guard permits at
+  // most one full-universe sweep per minute across restarts or cron overlap.
+  try{
+   if(session.minute>=575&&session.minute<945)
+    await this.runRotation(config.ownerId,null,true);
+  }catch(e){
+   this.error='Scheduled paper rotation held: '+String(e?.message||'unknown error').slice(0,115);
+  }finally{
+   // Always rearm even when the market feed or a scan request fails.
+   await this.ctx.storage.setAlarm(Date.now()+30000);
+  }
  }
  command(service,fields,keys){
   return {service,requestid:String(++this.seq),command:'SUBS',
@@ -182,9 +192,16 @@ export class PaperQuoteStream extends DurableObject {
   if(this.rotationPromise)return this.rotationPromise;
   this.rotationActive=true;
   const work=(async()=>{
+   // Durable alarm/cron rate limit. A DO restart must not erase the
+   // most recent completed full-universe rotation timestamp.
+   if(scheduled){
+    const last=Number(await this.ctx.storage.get('lastRotationAt'))||0;
+    if(Date.now()-last<55000)return {skipped:true,reason:'ROTATION_RECENT'};
+   }
    if(this.streamScanPromise)await this.streamScanPromise.catch(()=>{});
    const result=await runPaperTick(this.env,{id:ownerId,role:'owner'},
     {scan:true,scheduled,streamHealth});
+   if(scheduled)await this.ctx.storage.put('lastRotationAt',Date.now());
    return result;
   })();
   this.rotationPromise=work.finally(()=>{
