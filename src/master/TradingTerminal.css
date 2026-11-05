@@ -270,6 +270,21 @@
 .itt-radar-visual:after{height:1px;width:100%;left:0;top:50%}
 .itt-radar-sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,rgba(255,137,48,.025) 265deg,rgba(255,137,48,.45) 354deg,rgba(255,181,120,.8) 359deg,transparent 360deg);opacity:.25}
 .itt-radar-visual.running .itt-radar-sweep{opacity:1;animation:itt-radar-rotate 3.2s linear infinite}
+/* Decorative radar activity blips; the existing orange sweep and rings are untouched. */
+.itt-radar-blips{position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:1}
+.itt-radar-blip{position:absolute;width:5px;height:5px;border-radius:50%;opacity:.55;transform:translate(-50%,-50%);pointer-events:none}
+.itt-radar-blip.green{background:#55cfa2;box-shadow:0 0 6px rgba(85,207,162,.45)}
+.itt-radar-blip.red{background:#e5696b;box-shadow:0 0 6px rgba(229,105,107,.45)}
+.itt-radar-blip:nth-child(1){left:31%;top:29%;animation-delay:-.4s}
+.itt-radar-blip:nth-child(2){left:69%;top:24%;animation-delay:-2.3s}
+.itt-radar-blip:nth-child(3){left:78%;top:55%;animation-delay:-1.6s}
+.itt-radar-blip:nth-child(4){left:64%;top:77%;animation-delay:-3.1s}
+.itt-radar-blip:nth-child(5){left:35%;top:74%;animation-delay:-.9s}
+.itt-radar-blip:nth-child(6){left:22%;top:54%;animation-delay:-3.7s}
+.itt-radar-visual.running .itt-radar-blip{animation-name:itt-radar-blip-pulse;animation-duration:4.6s;animation-timing-function:ease-in-out;animation-iteration-count:infinite}
+@keyframes itt-radar-blip-pulse{0%,100%{opacity:.35;transform:translate(-50%,-50%) scale(.85)}50%{opacity:.9;transform:translate(-50%,-50%) scale(1.1)}}
+@media(prefers-reduced-motion:reduce){.itt-radar-visual.running .itt-radar-blip{animation:none}}
+
 .itt-radar-core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border:1px solid #ff8930;background:#1b1b1d;border-radius:50%;width:29px;height:29px;display:grid;place-items:center;color:#ffb578;font-size:17px}
 @keyframes itt-radar-rotate{to{transform:rotate(360deg)}}
 .itt-radar-primary{min-width:0;flex:1}
