@@ -30,6 +30,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  const [showWindow,setShowWindow]=useState(Boolean(initialTab)),[windowTab,setWindowTab]=useState(initialTab||'opportunities'),[selected,setSelected]=useState(null);
  const [feedback,setFeedback]=useState({}),[queued,setQueued]=useState({}),[exitFeedback,setExitFeedback]=useState('');
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
+ const [stopLossDraft,setStopLossDraft]=useState('20'),[stopLossDirty,setStopLossDirty]=useState(false);
  const [singleTickerDraft,setSingleTickerDraft]=useState('SPY'),[singleTickerDirty,setSingleTickerDirty]=useState(false);
  const [soundOn,setSoundOn]=useState(false),[soundWarning,setSoundWarning]=useState(''),[soundLoading,setSoundLoading]=useState(false);
  const [scanStatus,setScanStatus]=useState({phase:'idle'}),[operationNotice,setOperationNotice]=useState('');
@@ -152,11 +153,13 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     if(action==='pause')setOperationNotice('Scanner paused. Open paper trades remain under protective management.');
      if(action==='auto_start')setOperationNotice(data.autoStart?'Automatic PAPER scans scheduled at/after 9:30 AM ET on market weekdays.':'Automatic paper scanner start disabled.');
     if(action==='settings')setOperationNotice('Scan settings saved.');
+    if(action==='stop_settings')setOperationNotice('New paper trades will use a '+data.stopLossPct+'% stop. Open trades keep their entry-time stop.');
     if(action==='scan_scope')setOperationNotice(data.scanMode==='SINGLE'?
      'Single Ticker active: '+data.singleTicker+'. Only this ticker is eligible for NEW paper setups. Existing positions stay protected.':
      'Multiple Tickers active: broader watchlist scanning restored.');
     if(action==='accept')setFeedback(v=>({...v,[id]:{kind:'success',message:'Accepted into Open Trades. Select Open Trade to see profit/loss and close controls.'}}));
     if(action==='settings')setSettingsDirty(false);
+    if(action==='stop_settings')setStopLossDirty(false);
     if(action==='scan_scope')setSingleTickerDirty(false);
     if(action==='close'||action==='close_all'){
      const left=positionsOf(data).filter(p=>action==='close_all'||p.id===id);
@@ -179,6 +182,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
   if(seenAlerts.current&&s.alerts.some(a=>a.status==='PENDING'&&a.expires>Date.now()&&!seenAlerts.current.has(a.id))){openWindow('opportunities');if(soundOn&&document.visibilityState==='visible')playAlertBell()}seenAlerts.current=ids;
  },[s?.alerts,soundOn]);
  useEffect(()=>{if(s&&!settingsDirty){setBudgetDraft(String(s.maxPremium??350));setSymbolsDraft((s.extraSymbols||[]).join(', '))}},[s,settingsDirty]);
+ useEffect(()=>{if(s&&!stopLossDirty)setStopLossDraft(String([15,20,35,50].includes(s.stopLossPct)?s.stopLossPct:20))},[s,stopLossDirty]);
  useEffect(()=>{if(s&&!singleTickerDirty)setSingleTickerDraft(s.singleTicker||'SPY')},[s,singleTickerDirty]);
  const clock=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
  const minute=Number(clock.hour)*60+Number(clock.minute),marketWindow=!['Sat','Sun'].includes(clock.weekday)&&minute>=575&&minute<945;
@@ -202,7 +206,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
   {p.style&&<p className="itt-play-style"><strong>{p.style.label}</strong> · {p.style.window}. {p.style.reason}</p>}
   <button type="button" className="itt-wide-button itt-position-exit" onClick={()=>act('close',p.id)}>{p.closeRequested?'RETRY CLOSE CONTRACT':'CLOSE CONTRACT · PAPER'}</button>
   <div className="itt-opportunity-numbers"><span>Entry cost · 1 contract<strong>{money(p.cost)}</strong></span><span>Entry fill / share<strong>{money(p.fill)}</strong></span><span>Current bid / ask<strong>{money(p.mark?.bid)} / {money(p.mark?.ask)}</strong></span><span>Quote timestamp<strong>{time(p.mark?.quoteTime)} ET · {quoteStale?'STALE / UNAVAILABLE':'FRESH'}</strong></span></div>
-  {selected===p.id&&<div className="itt-position-details"><p>Strike {money(p.strike)} · Expiration {p.expiration||'—'} · Opened {time(p.time)} ET</p><p>Stop {money(p.fill*.8)} · Profit target {money(p.fill*1.3)} · Trailing {p.bestBid>=p.fill*1.15?money(p.bestBid*.9):'activates at '+money(p.fill*1.15)} · Maximum duration {p.maxHoldMinutes||30} min · protective session exit by 3:55 PM ET; whichever comes first</p></div>}
+  {selected===p.id&&<div className="itt-position-details"><p>Strike {money(p.strike)} · Expiration {p.expiration||'—'} · Opened {time(p.time)} ET</p><p>Stop {money(p.fill*(1-(p.stopLossPct??20)/100))} ({p.stopLossPct??20}%) · Profit target {money(p.fill*1.3)} · Trailing {p.bestBid>=p.fill*1.15?money(p.bestBid*.9):'activates at '+money(p.fill*1.15)} · Maximum duration {p.maxHoldMinutes||30} min · protective session exit by 3:55 PM ET; whichever comes first</p></div>}
   {(p.lastError||p.closeRequested)&&<p role="status" className="itt-paper-approval-error">{p.lastError||'Manual close requested. Waiting for a fresh positive bid.'}</p>}
 
  </article>}
