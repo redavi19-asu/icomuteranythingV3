@@ -16,7 +16,7 @@ export function enterPaperPosition(runner,alert,quote,options={}){
  const previous=runner.paper.positions;
  if(previous.some(p=>p.id===alert.id))throw Error('This opportunity is already accepted. Select Open Trades to manage it.');
  const next=stepPaper({...runner.paper,position:null},{...options,quote,enter:true});
- const position={...next.position,id:alert.id,alertId:alert.id,closeRequested:false,mark:{bid:quote.bid,ask:quote.ask,quoteTime:quote.quoteTime,pnl:Math.round(((quote.bid-0.01)*100-0.65-next.position.cost)*100)/100}};
+ const position={...next.position,id:alert.id,alertId:alert.id,style:alert.style||null,maxHoldMinutes:alert.style?.type==='INTRADAY_HOLD'?390:30,closeRequested:false,mark:{bid:quote.bid,ask:quote.ask,quoteTime:quote.quoteTime,pnl:Math.round(((quote.bid-0.01)*100-0.65-next.position.cost)*100)/100}};
  next.positions=[...previous,position];runner.paper=next;normalizePaperPortfolio(runner);
  return position;
 }
