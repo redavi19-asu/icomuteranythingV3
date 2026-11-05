@@ -34,3 +34,9 @@ test('explicitly non-delayed stream can provide live bid/ask, delayed stream is 
  assert.equal(delayed,rest);
  assert.equal(selectSchwabDisplayQuote(null,{...live,delayed:null},true).realtime,null);
 });
+
+test('missing Schwab quote does not crash the trading dashboard on initial render',()=>{
+ assert.equal(schwabQuoteFreshness(null,now).code,'UNCONFIRMED');
+ assert.equal(schwabQuoteFreshness(undefined,now).code,'UNCONFIRMED');
+ assert.equal(schwabQuoteFreshness(selectSchwabDisplayQuote(null,null,false),now).code,'UNCONFIRMED');
+});
