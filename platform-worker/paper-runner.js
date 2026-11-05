@@ -36,10 +36,32 @@ async function notifyPaperOpportunity(env,owner,alert){
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
 export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],scanMode:'MULTI',singleTicker:'SPY',dailySignals:{},dailyCheckedDay:{},
- flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],swingLevels:{},scanCoverage:{}});
+ flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,lastAutoStartAt:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],swingLevels:{},scanCoverage:{}});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
+/** Commit tomorrow's opt-in scanner start immediately, before any slow Schwab
+ * stream connection or quote fetch. Retry D1 revision conflicts, while respecting
+ * an owner Pause for that day (lastAutoStartDay is already the current day). */
+export async function ensureDailyPaperAutoStart(env,owner,now=Date.now()){
+ const session=marketTime(now);
+ if(!owner?.id||owner.role!=='owner'||['Sat','Sun'].includes(session.weekday)||
+  session.minute<570||session.minute>=PAPER_MARKET_CLOSE_MINUTE)return false;
+ for(let attempt=0;attempt<3;attempt++){
+  const row=await load(env,owner.id),s=row.state;
+  if(s.autoStart!==true||s.lastAutoStartDay===session.day)return false;
+  s.enabled=true;
+  s.lastAutoStartDay=session.day;
+  s.lastAutoStartAt=now;
+  event(s,'Scheduled paper scanner enabled at/after 9:30 AM ET for '+session.day+'.');
+  try{await save(env,owner.id,row);return true}
+  catch(error){
+   if(error?.message!=='State changed; refresh and retry.'||attempt===2)throw error;
+  }
+ }
+ return false;
+}
+
 async function data(env,owner,kind,symbol){const r=await schwabMarket(new Request('https://internal/platform/schwab/'+kind+'?symbol='+symbol+'&frequency=1'),env,owner,kind);if(!r.ok)throw Error('Market feed unavailable.');return r.json()}
 async function validateUnderlyingQuote(env,owner,symbol,now=Date.now()){
  const empty={symbol,checkedAt:now,code:'UNAVAILABLE',label:'SCHWAB QUOTE UNAVAILABLE',quoteTime:null};
@@ -79,7 +101,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
  if(scheduled&&s.autoStart===true){
   const session=marketTime(Date.now());
   if(!['Sat','Sun'].includes(session.weekday)&&session.minute>=570&&session.minute<PAPER_MARKET_CLOSE_MINUTE&&s.lastAutoStartDay!==session.day){
-   s.enabled=true;s.lastAutoStartDay=session.day;event(s,'Scheduled paper scanner enabled for '+session.day+' at/after 9:30 AM ET.');
+   s.enabled=true;s.lastAutoStartDay=session.day;s.lastAutoStartAt=Date.now();event(s,'Scheduled paper scanner enabled for '+session.day+' at/after 9:30 AM ET.');
   }
  }
  const check={id:crypto.randomUUID(),startedAt:Date.now(),completedAt:null,positionsChecked:0,positionsUpdated:0,positionsClosed:0,scannedSymbols:[],newAlerts:0,holds:[]};
@@ -232,7 +254,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      });
     }
    }
-   }else s.lastScan={time:now,note:'Outside regular paper scanning session (9:35 AM–4:00 PM ET weekdays).'};
+   }else s.lastScan={time:now,note:'Outside regular paper scanning session (9:30 AM–4:00 PM ET weekdays).'};
   }
  }catch(e){s.lastError=e.message;check.holds.push({reason:e.message});event(s,'Data/risk hold: '+e.message)}
  check.completedAt=Date.now();s.lastCheck=check;
@@ -340,7 +362,11 @@ export async function scheduledPaper(env){
  const rows=await env.DB.prepare("SELECT p.owner_id FROM paper_runners p JOIN users u ON u.id=p.owner_id WHERE u.role='owner' AND u.status='active'").all();
  for(const row of rows.results||[])try{
   const owner={id:row.owner_id,role:'owner'},session=marketTime(Date.now());
-  let streamConnected=false,streamHealth={connected:false,transport:'NOT_CONNECTED',error:'',quoteAgeMs:null};
+  // Save the 9:30 transition BEFORE attempting a streaming connection, so
+  // network latency cannot leave the scanner visibly paused at the opening bell.
+  try{await ensureDailyPaperAutoStart(env,owner)}
+  catch(error){console.error('PAPER_AUTO_START_RETRY',String(error?.message||error))}
+  let streamHealth={connected:false,transport:'NOT_CONNECTED',error:'',quoteAgeMs:null};
   if(env.PAPER_QUOTE_STREAM){
    const previous=(await load(env,owner.id)).state;
    const sessionActive=!['Sat','Sun'].includes(session.weekday)&&session.minute>=570&&session.minute<PAPER_MARKET_CLOSE_MINUTE;
@@ -349,7 +375,6 @@ export async function scheduledPaper(env){
    if(sessionActive&&scannerWanted){
     try{const health=await stub.enable(owner.id,scannerUniverse(previous),previous.scanMode);
      streamHealth=health;
-     streamConnected=health.connected===true&&Number.isFinite(health.quoteAgeMs)&&health.quoteAgeMs<20000;
     }catch{streamHealth={connected:false,transport:'ERROR',error:'Schwab stream coordinator unavailable.',quoteAgeMs:null}}
    }else try{await stub.disable();streamHealth={connected:false,transport:'STOPPED',error:'',quoteAgeMs:null}}catch{}
   }
@@ -359,7 +384,13 @@ export async function scheduledPaper(env){
   // revision race and silently discard every scheduled rotation result.
   if(env.PAPER_QUOTE_STREAM){
    const stub=env.PAPER_QUOTE_STREAM.getByName(owner.id);
-   await stub.runRotation(owner.id,streamHealth,true);
+   try{await stub.runRotation(owner.id,streamHealth,true)}
+   catch(error){
+    console.error('PAPER_SCHEDULED_ROTATION_RETRY',String(error?.message||error));
+    // A failed Durable Object rotation must not prevent the cron's paper
+    // scanner attempt; retry using the existing quote/risk checks.
+    await runPaperTick(env,owner,{scheduled:true,scan:true,streamHealth});
+   }
   }else await runPaperTick(env,owner,{scheduled:true,scan:true});
- }catch{}
+ }catch(error){console.error('PAPER_SCHEDULED_TICK_FAILED',String(error?.message||error))}
 }

@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {readFileSync} from 'node:fs';
-import {paperApi,runPaperTick,freshRunner} from './paper-runner.js';
+import {paperApi,runPaperTick,freshRunner,ensureDailyPaperAutoStart} from './paper-runner.js';
 import {stepPaper,newPaper} from '../src/master/paper-session.js';import {sealTokens} from './schwab-connection.js';import worker from './index.js';
 const owner={id:'owner-test',role:'owner'},now=Date.parse('2026-11-04T15:00:00Z');
 const req=(action,id)=>new Request('https://test/platform/paper',{method:action?'POST':'GET',headers:{Origin:'https://icomputeranything.com'},...(action?{body:JSON.stringify({action,id})}:{})});
@@ -346,4 +346,37 @@ test('manual Run Scan uses the same owner Durable Object scan coordinator as str
  assert.equal(result.status,200);
  assert.equal((await result.json()).source,'COORDINATED');
  assert.deepEqual(calls,[{key:owner.id,args:[owner.id,null,false]}]);
+});
+
+test('Friday Nov 6 9:30 cron persists auto-start independently of Schwab feed and protects manual pause',async()=>{
+ const {env,db}=await fixture();
+ await paperApi(req(),env,owner);
+ const s=freshRunner();
+ s.autoStart=true;
+ s.enabled=false;
+ s.lastAutoStartDay='2026-11-05';
+ db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+ const fridayPre=Date.parse('2026-11-06T14:29:59Z');
+ const fridayOpen=Date.parse('2026-11-06T14:30:00Z');
+ assert.equal(await ensureDailyPaperAutoStart(env,owner,fridayPre),false);
+ assert.equal((await(await paperApi(req(),env,owner)).json()).enabled,false);
+ assert.equal(await ensureDailyPaperAutoStart(env,owner,fridayOpen),true);
+ const started=await(await paperApi(req(),env,owner)).json();
+ assert.equal(started.enabled,true,'scanner persisted ENABLED before any remote Schwab connection');
+ assert.equal(started.autoStart,true);
+ assert.equal(started.lastAutoStartDay,'2026-11-06');
+ assert.equal(started.lastAutoStartAt,fridayOpen);
+ assert.equal(started.realOrdersEnabled,false,'never enable live Schwab brokerage orders');
+ assert.equal(await ensureDailyPaperAutoStart(env,owner,fridayOpen+20000),false,'same day starts only once');
+ // A paused scanner should remain paused through the rest of Friday.
+ const paused={...started,enabled:false,lastAutoStartDay:'2026-11-06'};
+ db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(paused));
+ assert.equal(await ensureDailyPaperAutoStart(env,owner,Date.parse('2026-11-06T14:35:00Z')),false);
+ assert.equal((await(await paperApi(req(),env,owner)).json()).enabled,false);
+ // No weekend auto-start. Next market day resumes without browser interaction.
+ assert.equal(await ensureDailyPaperAutoStart(env,owner,Date.parse('2026-11-07T14:30:00Z')),false);
+ assert.equal(await ensureDailyPaperAutoStart(env,owner,Date.parse('2026-11-09T14:30:00Z')),true);
+ const monday=await(await paperApi(req(),env,owner)).json();
+ assert.equal(monday.lastAutoStartDay,'2026-11-09');
+ assert.equal(monday.enabled,true);
 });
