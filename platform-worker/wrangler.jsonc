@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "ica-master-platform",
-  "main": "index.js",
+  "main": "worker-entry.js",
   "compatibility_date": "2026-09-07",
   "compatibility_flags": [
     "global_fetch_strictly_public"
