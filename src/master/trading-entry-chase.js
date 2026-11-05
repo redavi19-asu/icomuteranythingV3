@@ -10,6 +10,13 @@
 const newYorkDay=new Intl.DateTimeFormat('en-CA',{
  timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'
 });
+const marketClock=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',
+ hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+const marketMinute=ms=>{const parts=marketClock.formatToParts(ms);
+ const h=Number(parts.find(x=>x.type==='hour')?.value),
+  m=Number(parts.find(x=>x.type==='minute')?.value);
+ return h*60+m;
+};
 const round=n=>Number.isFinite(n)?Math.round(n*100)/100:null;
 const valid=b=>b&&[b.time,b.open,b.high,b.low,b.close,b.volume].every(Number.isFinite)&&
  b.open>0&&b.close>0&&b.high>=Math.max(b.open,b.close)&&
@@ -30,7 +37,10 @@ export function assessEntryChase(bars,signal){
  if(!Array.isArray(bars)||bars.length<40||!bars.slice(-45).every(valid))
   return result('UNASSESSED',false,'Too few trustworthy completed candles to assess a stretched entry.');
  const last=bars.at(-1),day=newYorkDay.format(last.time);
- const session=bars.filter(b=>newYorkDay.format(b.time)===day);
+ // Only count regular-session moves from the 9:30 opening print.
+ // Premarket movement must not be mistaken for a late morning chase.
+ const session=bars.slice(-500).filter(b=>newYorkDay.format(b.time)===day&&
+  marketMinute(b.time)>=570&&marketMinute(b.time)<960);
  if(session.length<35||!session.slice(-35).every(valid))
   return result('UNASSESSED',false,'Need sufficient completed candles from today to evaluate session extension.');
  const prior=session.slice(-22,-1);
@@ -47,7 +57,7 @@ export function assessEntryChase(bars,signal){
  const extremeRsi=Number.isFinite(rsi)&&(bearish?rsi<=35:rsi>=68);
  // Calibratable, intentionally conservative *entry context*, not a profit forecast.
  const stretched=(sessionMoveAtr>=7.5&&vwapGapAtr>=2.0)||
-  (sessionMoveAtr>=11&&extremeRsi)||(sessionMoveAtr>=7.5&&vwapGapAtr>=4);
+  (sessionMoveAtr>=11&&extremeRsi)||(sessionMoveAtr>=4&&vwapGapAtr>=4.5);
  const metrics={sessionMoveAtr:round(sessionMoveAtr),vwapGapAtr:round(vwapGapAtr),
   atr1m:round(atr),rsi14:Number.isFinite(rsi)?round(rsi):null,
   signalDirection:signal.direction,consolidation:false,retest:false};
