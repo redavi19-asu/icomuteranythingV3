@@ -112,20 +112,22 @@ export async function decodePersonalMoneyClip(ctx,bytes){
   throw Error('The saved personal clip is invalid. Choose the file again.');
  return decoded;
 }
-export function playPersonalMoneyClip(ctx,buffer){
+export function playPersonalMoneyClip(ctx,buffer,onPlaybackEnd){
  if(!ctx||ctx.state!=='running'||!buffer||buffer.duration<3.7)return false;
  const duration=Math.min(8,buffer.duration);
  const compressor=ctx.createDynamicsCompressor(),master=ctx.createGain(),
   gain=ctx.createGain(),source=ctx.createBufferSource(),at=ctx.currentTime+.02;
- compressor.threshold.value=-16;compressor.ratio.value=5;
- compressor.knee.value=6;compressor.attack.value=.002;compressor.release.value=.15;
+ compressor.threshold.value=-4;compressor.ratio.value=3;
+ compressor.knee.value=2;compressor.attack.value=.003;compressor.release.value=.12;
  master.gain.value=.98;
  let peak=0;
  for(let ch=0;ch<buffer.numberOfChannels;ch++){
   const data=buffer.getChannelData(ch);
   for(let i=0;i<data.length;i++)peak=Math.max(peak,Math.abs(data[i]));
  }
- const boost=Math.min(3,Math.max(.8,.92/Math.max(peak,.15)));
+ // Keep both the quiet original recording and the already normalized copy loud.
+ // A gentle limiter tames peaks instead of crushing the entire alert to -13 dB.
+ const boost=Math.min(20,Math.max(.9,.95/Math.max(peak,.035)));
  source.buffer=buffer;source.connect(gain);gain.connect(compressor);
  compressor.connect(master);master.connect(ctx.destination);
  gain.gain.setValueAtTime(0,at);
@@ -133,6 +135,6 @@ export function playPersonalMoneyClip(ctx,buffer){
  gain.gain.setValueAtTime(boost,at+duration-.055);
  gain.gain.linearRampToValueAtTime(0,at+duration);
  source.start(at,0,duration);
- source.onended=()=>{source.disconnect();gain.disconnect();compressor.disconnect();master.disconnect()};
+ source.onended=()=>{source.disconnect();gain.disconnect();compressor.disconnect();master.disconnect();onPlaybackEnd?.()};
  return true;
 }
