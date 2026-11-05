@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newPaper,stepPaper} from './paper-session.js';
+import {newPaper,stepPaper,summarizePaperExits} from './paper-session.js';
 const now=Date.parse('2026-11-04T15:00:00Z');
 const q={symbol:'TEST',underlying:'SPY',bid:1.95,ask:2,quoteTime:now,delta:0.5,volume:200,openInterest:500};
 test('paper entry uses ask, slippage and commission without mutating input',()=>{const s=newPaper();const n=stepPaper(s,{quote:q,enter:true,now});assert.equal(n.cash,1298.35);assert.equal(s.cash,1500);assert.equal(n.position.cost,201.65)});
@@ -33,4 +33,28 @@ test('normal scalp still obeys the original 30-minute protective maximum',()=>{
  const then=now+31*60000;
  const exited=stepPaper(entered,{quote:{...q,quoteTime:then},now:then});
  assert.equal(exited.position,null);assert.equal(exited.trades[0].reason,'MAX_HOLD');
+});
+
+test('cumulative profit stays positive while NY trading-day paper stop losses show negative today P/L',()=>{
+ const time=Date.parse('2026-11-05T15:58:00.000Z');
+ const records=[
+  {symbol:'QQQ',reason:'MANUAL_CLOSE',pnl:140.60,exitTime:Date.parse('2026-11-04T19:50:00.000Z')},
+  {id:'xle',symbol:'XLE 261106P00064000',reason:'STOP_LOSS',pnl:-21.30,exitFill:0.55,exitTime:Date.parse('2026-11-05T15:55:44.000Z')},
+  {id:'aapl',symbol:'AAPL 261106P00342500',reason:'STOP_LOSS',pnl:-54.30,exitFill:1.93,exitTime:Date.parse('2026-11-05T15:55:44.000Z')}
+ ];
+ const summary=summarizePaperExits(records,time);
+ assert.equal(summary.todayRealized,-75.6);
+ assert.equal(summary.todayTrades,2);
+ assert.deepEqual(summary.automaticExits.map(t=>t.label),['STOP LOSS TRIGGERED','STOP LOSS TRIGGERED']);
+ assert.deepEqual(summary.automaticExits.map(t=>t.pnl),[-21.3,-54.3]);
+ assert.equal(records.reduce((sum,t)=>sum+t.pnl,0),65,'all-time cumulative P/L remains +$65');
+});
+
+test('protective-exit explanation persists after page refresh and past the NY day boundary',()=>{
+ const trade={symbol:'XLE',reason:'STOP_LOSS',pnl:-21.30,exitFill:0.55,exitTime:Date.parse('2026-11-05T15:55:44Z')};
+ const first=summarizePaperExits([trade],Date.parse('2026-11-05T16:00:00Z'));
+ const tomorrow=summarizePaperExits([trade],Date.parse('2026-11-06T16:00:00Z'));
+ assert.equal(first.todayRealized,-21.3);
+ assert.equal(tomorrow.todayRealized,0,'new trading day starts at zero');
+ assert.deepEqual(tomorrow.automaticExits,first.automaticExits,'stored closure notice is never timer-dismissed');
 });
