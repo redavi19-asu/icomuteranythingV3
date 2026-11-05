@@ -115,15 +115,15 @@ export function classifyTradeHorizon({bars,signal,contract,dailySignal,now=Date.
  const dte=Number.isFinite(expiry)?(expiry-now)/86400000:null;
  const context=dailySignal?.confirmed&&dailySignal.direction===signal.direction;
  const common={invalidation:'Monitor loss of VWAP/EMA alignment, momentum reversal, poor liquidity, and the planned stop; re-evaluate before the close.',dte: dte===null?null:Number(dte.toFixed(1))};
- if(context&&dte!==null&&dte>=14)return {...common,type:'MULTIDAY_SWING_WATCH',label:'Multi-day swing candidate',
-  window:'Several sessions (illustrative, not a holding instruction)',
-  reason:'Confirmed daily trend/breakout agrees with intraday momentum; contract has at least 14 calendar days to expiry. Overnight gaps and option decay still require separate review.'};
+ if(context&&dte!==null&&dte>=14)return {...common,type:'INTRADAY_HOLD',label:'Intraday hold · daily trend support',
+  window:'Tens of minutes through today’s session (conditional; no overnight holding)',
+  reason:'Completed daily candles reinforce intraday momentum. Multi-day swing is a separate information-only watch; paper position still closes at session end.'};
  const barsFor15=groupedBars(bars.slice(-150),900_000);
  const up=signal.direction==='CALL',trend15=barsFor15.length>=9?(()=>{
   const p=barsFor15.map(x=>x.close),e=ema(p,9),last=p.at(-1);
   return up?last>e:last<e;
  })():false;
- if(trend15&&signal.metrics?.volumeMultiple>=1.5)return {...common,type:'INTRADAY_HOLD',label:'Intraday trend / hold candidate',
+ if(trend15&&signal.metrics?.volumeMultiple>=1.5&&(dte===null||dte>=1))return {...common,type:'INTRADAY_HOLD',label:'Intraday trend / hold candidate',
   window:'Tens of minutes to the closing bell (conditional, not a promise)',
   reason:'Aligned 15-minute direction plus stronger relative volume favor monitoring a sustained session move. Must be managed or closed according to existing paper rules.'};
  return {...common,type:'SCALP',label:'Momentum scalp candidate',
