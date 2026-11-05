@@ -305,7 +305,8 @@ test('owner saves adjustable risk for future paper entries without rewriting ope
 
 test('stream-origin GOOGL scan is deduplicated across DO restarts using persisted per-symbol coverage',async()=>{
  const originalDate=Date.now,originalFetch=globalThis.fetch;
- let clock=Date.parse('2026-11-05T15:00:00Z'),historyRequests=0;
+ // Match the valid, fixture-sealed Schwab token date, not the next day.
+ let clock=now,historyRequests=0;
  Date.now=()=>clock;
  globalThis.fetch=async input=>{
   const pathname=new URL(input).pathname;
