@@ -25,3 +25,28 @@ export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperR
  }
  return s;
 }
+
+
+/** Reconstruct today's realized P/L and persistent automatic-exit notices from
+ *  settled trade history. No browser timer, transient alert or market-data
+ *  call can erase an exit explanation; overnight rollover changes only the
+ *  "today" subtotal, not the historical exit records. */
+export function summarizePaperExits(trades,now=Date.now()){
+ const history=Array.isArray(trades)?trades:[];
+ const day=marketTime(now).day;
+ const today=history.filter(t=>Number.isFinite(t?.exitTime)&&Number.isFinite(t?.pnl)&&marketTime(t.exitTime).day===day);
+ const todayRealized=round(today.reduce((total,t)=>total+t.pnl,0));
+ const reasonLabel={
+  STOP_LOSS:'STOP LOSS TRIGGERED',
+  PROFIT_TARGET:'PROFIT TARGET HIT',
+  TRAILING_STOP:'TRAILING STOP TRIGGERED',
+  MAX_HOLD:'MAXIMUM HOLD REACHED',
+  SESSION_END:'SESSION CLOSE EXIT',
+  OVERNIGHT_GAP_EXIT:'OVERNIGHT PROTECTION EXIT'
+ };
+ const automaticExits=history.filter(t=>t&&reasonLabel[t.reason]&&Number.isFinite(t.exitTime))
+  .sort((a,b)=>b.exitTime-a.exitTime).slice(0,3)
+  .map(t=>({id:t.id||t.symbol+'|'+t.exitTime,symbol:t.symbol,reason:t.reason,
+   label:reasonLabel[t.reason],exitTime:t.exitTime,exitFill:t.exitFill,pnl:t.pnl}));
+ return {todayRealized,todayTrades:today.length,automaticExits};
+}
