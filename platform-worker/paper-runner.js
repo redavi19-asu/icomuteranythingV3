@@ -14,7 +14,7 @@ function alertList(s){
 }
 const liveAlert=(a,now=Date.now())=>a.status==='PENDING'&&a.expires>now;
 function expireAlerts(s,now=Date.now()){for(const a of alertList(s))if(a.status==='PENDING'&&a.expires<=now){a.status='EXPIRED';event(s,'Approval expired: '+a.contract.symbol);}}
-const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),scanUniverse:scannerUniverse(s),mode:'PAPER_ONLY',realOrdersEnabled:false});
+const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),scanUniverse:scannerUniverse(s),autoStart:s.autoStart===true,mode:'PAPER_ONLY',realOrdersEnabled:false});
 // Optional outbound notification. Requires sender domain and API key in server secrets.
 async function notifyPaperOpportunity(env,owner,alert){
  const api=String(env.RESEND_API_KEY||'').trim(),from=String(env.ICA_TRADING_ALERT_FROM||'').trim();
@@ -26,13 +26,21 @@ async function notifyPaperOpportunity(env,owner,alert){
  const sent=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+api,'Content-Type':'application/json'},body:JSON.stringify({from,to:[to],subject:'ICA Master Paper Setup: '+c.underlying+' '+c.side,text:body}),signal:AbortSignal.timeout(8000)});
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
-export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],maxPremium:paperRules.premiumBudget,extraSymbols:[]});
+export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[]});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
 async function data(env,owner,kind,symbol){const r=await schwabMarket(new Request('https://internal/platform/schwab/'+kind+'?symbol='+symbol+'&frequency=1'),env,owner,kind);if(!r.ok)throw Error('Market feed unavailable.');return r.json()}
-export async function runPaperTick(env,owner,{scan=true}={}){
+export async function runPaperTick(env,owner,{scan=true,scheduled=false}={}){
  const row=await load(env,owner.id),s=row.state;s.heartbeat=Date.now();s.lastError=null;
+ // Server-side opt-in schedule: a real setting, not a browser-local checkbox.
+ // Only start the PAPER scanner during the market session, once per NY trading day.
+ if(scheduled&&s.autoStart===true){
+  const session=marketTime(Date.now());
+  if(!['Sat','Sun'].includes(session.weekday)&&session.minute>=570&&session.minute<945&&s.lastAutoStartDay!==session.day){
+   s.enabled=true;s.lastAutoStartDay=session.day;event(s,'Scheduled paper scanner enabled for '+session.day+' at/after 9:30 AM ET.');
+  }
+ }
  const check={id:crypto.randomUUID(),startedAt:Date.now(),completedAt:null,positionsChecked:0,positionsUpdated:0,positionsClosed:0,scannedSymbols:[],newAlerts:0,holds:[]};
  expireAlerts(s);
  try{
@@ -94,7 +102,13 @@ export async function paperApi(request,env,owner){
   const body=await request.text();if(body.length>2048)return response({error:'Request too large.'},413);const {action,id}=JSON.parse(body);
   if(action==='tick')return response(await runPaperTick(env,owner));
   const row=await load(env,owner.id),s=row.state;expireAlerts(s);
-  if(action==='start'){s.enabled=true;event(s,'Owner enabled paper setup scanning.')}
+  if(action==='auto_start'){
+    const input=JSON.parse(body);
+    if(typeof input.enabled!=='boolean')throw Error('Auto-start must be enabled or disabled.');
+    s.autoStart=input.enabled;
+    event(s,input.enabled?'Owner scheduled daily paper-only scanner start at 9:30 AM ET.':'Owner disabled scheduled paper scanner start.');
+   }
+   else if(action==='start'){s.enabled=true;event(s,'Owner enabled paper setup scanning.')}
   else if(action==='settings'){
    if(s.paper.positions.length)throw Error('Change paper scan settings only when no positions are active.');
    const input=JSON.parse(body),amount=Number(input.maxPremium);
@@ -103,7 +117,12 @@ export async function paperApi(request,env,owner){
    s.maxPremium=Math.round(amount*100)/100;s.extraSymbols=[...new Set(input.extraSymbols)];
    event(s,'Paper scan settings updated.');
   }
-    else if(action==='pause'){s.enabled=false;event(s,'Owner paused new setups. Existing position protection continues.')}
+    else if(action==='pause'){
+    s.enabled=false;
+    // An explicit pause must not be undone by the next minute's cron run.
+    s.lastAutoStartDay=marketTime(Date.now()).day;
+    event(s,'Owner paused new setups. Existing position protection continues.');
+   }
   else if(action==='close'||action==='close_all'){
    const selected=action==='close'&&id?s.paper.positions.filter(p=>p.id===id):s.paper.positions;
    if(action==='close'&&id&&!selected.length)throw Error('This contract is already closed. See Closed Trades.');
@@ -140,5 +159,5 @@ export async function paperApi(request,env,owner){
 }
 export async function scheduledPaper(env){
  const rows=await env.DB.prepare("SELECT p.owner_id FROM paper_runners p JOIN users u ON u.id=p.owner_id WHERE u.role='owner' AND u.status='active'").all();
- for(const row of rows.results||[])try{await runPaperTick(env,{id:row.owner_id,role:'owner'})}catch{}
+ for(const row of rows.results||[])try{await runPaperTick(env,{id:row.owner_id,role:'owner'},{scheduled:true})}catch{}
 }
