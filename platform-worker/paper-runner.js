@@ -94,7 +94,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
     const universe=scanSymbol===null?allowed:allowed.filter(t=>t===scanSymbol);
     const attempts=scanSymbol===null?Math.min(3,universe.length):universe.length;
    for(let i=0;i<attempts;i++){
-    const symbol=universe[(s.scanIndex++%universe.length)],checkedAt=Date.now();check.scannedSymbols.push(symbol);
+    const symbol=scanSymbol===null?universe[(s.scanIndex++%universe.length)]:scanSymbol,checkedAt=Date.now();check.scannedSymbols.push(symbol);
     try{
      const history=await data(env,owner,'history',symbol);
      const bars=(history.candles||[]).filter(c=>c.time+60000<=checkedAt&&Number.isFinite(c.volume));
@@ -126,10 +126,10 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
       s.scanHistory=s.scanHistory.slice(0,30);continue;
      }
      const confluence=evaluateAristotleConfluence(bars,signal.direction);
-     if(!confluence.confirmed){
-      s.scanHistory.unshift({symbol,time:checkedAt,state:'CONFLUENCE_WATCH',reason:confluence.reason});
-      s.scanHistory=s.scanHistory.slice(0,30);continue;
-     }
+     // Nov 4 paper-scanner behavior: a verified technical breakout may
+     // generate a reviewable setup without a mandatory 150-bar MACD/OBV +
+     // 5/15-minute confirmation. Preserve this stronger evidence as a tier,
+     // never imply a measured win probability when it is absent.
      const chain=await data(env,owner,'options',symbol);
      if(chain.delayed!==false)throw Error('Options delay status unconfirmed; skipping setup.');
      const candidates=(chain.contracts||[]).filter(c=>c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!eligiblePaperQuote(c,{...paperRules,premiumBudget:budget(s)})).sort((a,b)=>(a.ask-a.bid)/a.ask-(b.ask-b.bid)/b.ask);
@@ -159,13 +159,16 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      if(!s.seen.includes(id)){
       const alert={id,created:Date.now(),expires:Date.now()+120000,
        contract:{...actionable,underlying:symbol},signal,style,
-       qualification:{confluence,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
+       qualification:{technical:{confirmed:true,asOf:signal.asOf,direction:signal.direction},confluence,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
       check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);
       s.seen=[...s.seen,id].slice(-200);
-      s.scanHistory.unshift({symbol,time:checkedAt,state:'HIGH_CONFLUENCE_REVIEW',
-       reason:style.label+': Schwab quote freshness, technical confluence and option-contract liquidity/risk checks aligned. No paid options-flow feed required; not a measured win probability.'});
+      s.scanHistory.unshift({symbol,time:checkedAt,state:confluence.confirmed?'HIGH_CONFLUENCE_REVIEW':'TECHNICAL_SETUP_REVIEW',
+       reason:style.label+(confluence.confirmed?
+        ': momentum breakout, multi-timeframe evidence and fresh Schwab option-contract checks align.':
+        ': Nov 4-style momentum breakout and fresh Schwab contract checks passed; additional 5/15-minute confirmation is not established.')+
+        ' Review before paper entry; neither tier is a measured win probability.'});
       s.scanHistory=s.scanHistory.slice(0,30);
-      event(s,'SCHWAB-VERIFIED TECHNICAL PAPER SETUP awaiting owner approval: '+contract.symbol+' · '+style.label);
+      event(s,(confluence.confirmed?'HIGH-CONFLUENCE':'TECHNICAL')+' SCHWAB PAPER SETUP awaiting owner approval: '+contract.symbol+' · '+style.label);
       try{await notifyPaperOpportunity(env,owner,alert)}catch(e){event(s,'Email notification unavailable: '+e.message)}
      }
     }catch(error){
@@ -245,8 +248,8 @@ export async function paperApi(request,env,owner){
    const input=JSON.parse(body);
    if(input.epoch!==undefined&&input.epoch!==s.entryEpoch)throw Error('Approval cancelled by Close All. Review the opportunity again before accepting.');
    if(!a||!liveAlert(a))throw Error('This opportunity is expired or already accepted. Check Open Trades and Closed Trades.');
-   if(a.qualification?.confluence?.confirmed!==true||a.qualification?.marketData?.provider!=='SCHWAB'||a.qualification?.marketData?.realtime!==true)
-    throw Error('Verified Schwab market data and multi-timeframe evidence required. Historical alerts must be re-screened.');
+   if(a.signal?.state!=='TECHNICAL_WATCH'||a.qualification?.technical?.confirmed!==true||a.qualification.technical.asOf!==a.signal.asOf||a.qualification?.marketData?.provider!=='SCHWAB'||a.qualification?.marketData?.realtime!==true)
+    throw Error('Verified Schwab quotes and current technical-breakout evidence required. Historical alerts must be re-screened.');
    const c=a.contract,quote={...c,...await schwabContractQuote(env,owner,c.symbol)};
    if(a.expires<Date.now())throw Error('Setup expired during quote refresh.');
    if(!Number.isFinite(quote.ask)||quote.ask<=0||Math.abs(quote.ask/c.ask-1)>0.02){
@@ -280,7 +283,9 @@ export async function scheduledPaper(env){
     }catch{streamHealth={connected:false,transport:'ERROR',error:'Schwab stream coordinator unavailable.',quoteAgeMs:null}}
    }else try{await stub.disable();streamHealth={connected:false,transport:'STOPPED',error:'',quoteAgeMs:null}}catch{}
   }
-  // A denied, broken or stale stream never stops the legacy scheduled scanner.
-  await runPaperTick(env,owner,{scheduled:true,scan:!streamConnected,streamHealth:env.PAPER_QUOTE_STREAM?streamHealth:null});
+  // Keep the November 4 full-universe rotation every minute EVEN when Schwab
+  // streaming works. Streaming adds faster symbol-specific checks; it must not
+  // replace broad coverage with whichever symbols report the most quotes.
+  await runPaperTick(env,owner,{scheduled:true,scan:true,streamHealth:env.PAPER_QUOTE_STREAM?streamHealth:null});
  }catch{}
 }
