@@ -189,6 +189,13 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  const minute=Number(clock.hour)*60+Number(clock.minute),marketWindow=!['Sat','Sun'].includes(clock.weekday)&&minute>=575&&minute<945;
  const radarActive=!stale&&(positions.length>0||s?.enabled&&marketWindow);
  const recent=s?.scanHistory||[],latest=recent[0],elapsed=latest?.time?Math.max(0,Math.floor((now-latest.time)/1000)):null;
+ // GOOGL and other frequently checked tickers must not appear multiple
+ // times inside the tiny radar summary. Full per-symbol coverage is below.
+ const shownTickers=new Set([latest?.symbol]);
+ const recentDistinct=recent.filter(entry=>{
+  if(!entry?.symbol||shownTickers.has(entry.symbol))return false;
+  shownTickers.add(entry.symbol);return true;
+ }).slice(0,4);
  const swingChecks=Object.entries(s?.swingLevels||{}).filter(([,x])=>Number.isFinite(x?.checkedAt)&&now-x.checkedAt<30*60000).sort((a,b)=>b[1].checkedAt-a[1].checkedAt);
  const phase=!s?'CONNECTING':stale?'SERVER STALE':s.enabled&&marketWindow?'SCANNING'+(positions.length?' · '+positions.length+' OPEN':''):positions.length?'MANAGING '+positions.length+' OPEN':!s.enabled?'PAUSED':'OUTSIDE SESSION';
  function saveSettings(){const maxPremium=Number(budgetDraft),extraSymbols=[...new Set(symbolsDraft.split(/[\s,]+/).map(x=>x.trim().toUpperCase()).filter(Boolean))];if(!Number.isFinite(maxPremium)||maxPremium<1||maxPremium>5000||extraSymbols.length>20||extraSymbols.some(x=>!/^[A-Z][A-Z0-9.-]{0,9}$/.test(x))){setError('Use a $1–$5,000 premium budget and up to 20 valid tickers.');return}act('settings',{maxPremium,extraSymbols})}
@@ -251,7 +258,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    <div className="itt-radar-dashboard"><div className={'itt-radar-visual '+(radarActive?'running':'')} aria-hidden="true"><div className="itt-radar-rings"/><div className="itt-radar-sweep"/><div className="itt-radar-core">⌖</div></div><div className="itt-radar-primary"><small>LAST RECORDED SCAN</small><strong>{latest?.symbol||'—'}</strong><span>{latest?.state?.replaceAll('_',' ')||'NO SCANS YET'}</span><p>{latest?.reason||'Waiting for the next scheduled scan.'}</p></div></div>
    <div className="itt-radar-metrics"><div><small>UNIVERSE</small><strong>{s?.scanUniverse?.length??'—'} tickers</strong></div><div><small>OPEN TRADES</small><strong>{positions.length} managed separately</strong></div><div><small>SERVER</small><strong>{stale?'STALE':'RESPONDING'}</strong></div></div>
    <div className="itt-radar-cycle"><div className="itt-radar-cycle-title"><span>{radarActive?'Next scheduled check (approx.)':'Checks paused / outside session'}</span><span>{radarActive&&elapsed!==null?Math.max(0,60-elapsed)+'s':'—'}</span></div><div className="itt-radar-track"><span style={{width:radarActive&&elapsed!==null?Math.min(100,elapsed/60*100)+'%':'0%'}}/></div></div>
-   <div className="itt-radar-recent"><strong>RECENT TICKER CHECKS</strong>{recent.slice(0,4).map((r,i)=><div className="itt-radar-recent-item" key={r.symbol+String(r.time)+i}><span>{r.symbol}</span><span>{r.state?.replaceAll('_',' ')}</span><time>{time(r.time)}</time></div>)}</div><p className="itt-radar-foot"><strong>DON'T CHASE · ACTIVE</strong> — New CALLS and PUTS are held if today's move is already stretched without a fresh pullback or consolidation breakout. No 11 AM or lunch trading ban. The radar keeps showing WAIT FOR BOUNCE / WAIT FOR PULLBACK while it waits. Existing trades keep their stop-loss protection.</p>
+   <div className="itt-radar-recent"><strong>RECENT DISTINCT TICKER CHECKS</strong>{recentDistinct.map((r,i)=><div className="itt-radar-recent-item" key={r.symbol+String(r.time)+i}><span>{r.symbol}</span><span>{r.state?.replaceAll('_',' ')}</span><time>{time(r.time)}</time></div>)}</div><p className="itt-radar-foot"><strong>DON'T CHASE · ACTIVE</strong> — New CALLS and PUTS are held if today's move is already stretched without a fresh pullback or consolidation breakout. No 11 AM or lunch trading ban. The radar keeps showing WAIT FOR BOUNCE / WAIT FOR PULLBACK while it waits. Existing trades keep their stop-loss protection.</p>
   </aside></div>
   <section className="itt-scanner-settings itt-stop-settings" aria-label="Paper stop loss control">
    <h4>STOP LOSS CONTROL · NEXT PAPER TRADE</h4>
