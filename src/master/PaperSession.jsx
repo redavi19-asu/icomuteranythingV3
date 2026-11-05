@@ -38,12 +38,13 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  const [singleTickerDraft,setSingleTickerDraft]=useState('SPY'),[singleTickerDirty,setSingleTickerDirty]=useState(false);
  const [soundOn,setSoundOn]=useState(false),[soundWarning,setSoundWarning]=useState(''),[soundLoading,setSoundLoading]=useState(false);
  const [privateClipReady,setPrivateClipReady]=useState(false),[privateClipBusy,setPrivateClipBusy]=useState(false);
+ const [personalPreviewUrl,setPersonalPreviewUrl]=useState(''),[personalPreviewPlaying,setPersonalPreviewPlaying]=useState(false);
  const [scanStatus,setScanStatus]=useState({phase:'idle'}),[operationNotice,setOperationNotice]=useState('');
- const audioRef=useRef(null),bellBuffer=useRef(null),moneyRecordingsRef=useRef(null),moneyLoadRef=useRef(null),personalClipRef=useRef(null),ownerMoneyBytesRef=useRef(null),personalFileInputRef=useRef(null),soundEnabledRef=useRef(false),scanRequested=useRef(false),seenAlerts=useRef(null),requests=useRef(0),queue=useRef(Promise.resolve()),queueEpoch=useRef(0),latestRevision=useRef(-1),pendingAccepts=useRef(new Set());
+ const audioRef=useRef(null),bellBuffer=useRef(null),moneyRecordingsRef=useRef(null),moneyLoadRef=useRef(null),personalClipRef=useRef(null),ownerMoneyBytesRef=useRef(null),personalFileInputRef=useRef(null),personalPreviewUrlRef=useRef(null),personalPreviewAudioRef=useRef(null),soundEnabledRef=useRef(false),scanRequested=useRef(false),seenAlerts=useRef(null),requests=useRef(0),queue=useRef(Promise.resolve()),queueEpoch=useRef(0),latestRevision=useRef(-1),pendingAccepts=useRef(new Set());
  function applyState(data){const revision=data.revision??0;if(revision>=latestRevision.current){latestRevision.current=revision;setS(data);onSnapshot?.(data)}}
  function warnIfAudioPaused(){
    if(soundEnabledRef.current&&document.visibilityState==='visible'&&audioRef.current?.state!=='running'){
-    setSoundWarning('The browser paused audio. Tap Test Money Alert or Test Bell to restore sound; background alerts need notifications.');
+    setSoundWarning('Browser audio paused. Tap Money Alert to play your saved clip and re-enable options sounds. Background alerts need phone notifications.');
    }
   }
   async function loadBellRecording(ctx){
@@ -68,6 +69,13 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    moneyLoadRef.current=loading;
    try{return await loading}
    finally{if(moneyLoadRef.current===loading)moneyLoadRef.current=null}
+  }
+  function updatePersonalPreviewSource(bytes,mime='audio/wav'){
+   if(personalPreviewAudioRef.current)personalPreviewAudioRef.current.pause();
+   if(personalPreviewUrlRef.current)URL.revokeObjectURL(personalPreviewUrlRef.current);
+   const url=bytes?URL.createObjectURL(new Blob([bytes],{type:mime})):'';
+   personalPreviewUrlRef.current=url;
+   setPersonalPreviewUrl(url);
   }
   async function ensurePersonalClip(ctx){
    if(personalClipRef.current)return personalClipRef.current;
@@ -103,8 +111,16 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     await savePersonalMoneyClip(trimmed);
     personalClipRef.current=decoded;
     ownerMoneyBytesRef.current=null;
+    updatePersonalPreviewSource(trimmed,'audio/wav');
     setPrivateClipReady(true);
-    setSoundWarning('Money Alert saved on this device. Your chosen audio will play for new options opportunities.');
+    if(ctx.state==='running'){
+     soundEnabledRef.current=true;
+     setSoundOn(true);
+     if(playPersonalMoneyClip(ctx,decoded,()=>setPersonalPreviewPlaying(false))){
+      setPersonalPreviewPlaying(true);
+      setSoundWarning('Money Alert saved, enabled and preview playing. New options opportunities will use this sound.');
+     }else setSoundWarning('Money Alert saved. Tap Money Alert to play it and enable sound.');
+    }else setSoundWarning('Money Alert saved. Tap Money Alert to play it and enable options sounds.');
    }catch(e){setSoundWarning(e.message||'Could not prepare your personal sound.')}
    finally{setPrivateClipBusy(false)}
   }
@@ -120,9 +136,39 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     }
     await clearPersonalMoneyClip();
     personalClipRef.current=null;ownerMoneyBytesRef.current=null;
+    updatePersonalPreviewSource(null);
+    setPersonalPreviewPlaying(false);
     setPrivateClipReady(false);
     setSoundWarning('Personal clip removed. The licensed cash-counter sound is restored.');
    }catch(e){setSoundWarning(e.message||'Could not remove the personal clip.')}
+  }
+  async function handleMoneyAlertClick(){
+   if(!privateClipReady){
+    personalFileInputRef.current?.click();
+    return;
+   }
+   try{
+    const Constructor=window.AudioContext||window.webkitAudioContext;
+    if(!Constructor)throw Error('Audio playback is unavailable. Use the player below.');
+    if(!audioRef.current){
+     audioRef.current=new Constructor();
+     audioRef.current.onstatechange=warnIfAudioPaused;
+    }
+    const ctx=audioRef.current;
+    await ctx.resume();
+    if(ctx.state!=='running')throw Error('The browser blocked Web Audio. Try the audio player below, and check device volume.');
+    const decoded=await ensurePersonalClip(ctx);
+    if(!decoded)throw Error('Your personal clip could not be read. Use Change Clip to replace it.');
+    soundEnabledRef.current=true;
+    setSoundOn(true);
+    if(!playPersonalMoneyClip(ctx,decoded,()=>setPersonalPreviewPlaying(false)))
+     throw Error('Playback failed. Try the audio player below or Change Clip.');
+    setPersonalPreviewPlaying(true);
+    setSoundWarning('Playing your saved Money Alert. Options alerts are ON and will use this same sound.');
+   }catch(e){
+    setPersonalPreviewPlaying(false);
+    setSoundWarning(e.message||'Money Alert preview unavailable. Try the audio player below.');
+   }
   }
   async function toggleAlertSound(){
    if(soundOn){soundEnabledRef.current=false;setSoundOn(false);setSoundWarning('');return}
@@ -142,7 +188,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     if(!bellBuffer.current)void loadBellRecording(ctx);
     if(privateClipReady){
      void ensurePersonalClip(ctx).catch(()=>setSoundWarning('Personal alert could not be loaded. Choose your clip again.'));
-    }else void ensureMoneyRecordings(ctx).catch(()=>setSoundWarning('The recorded money alert could not be loaded. Use Test Money Alert to retry; the market bell is unchanged.'));
+    }else void ensureMoneyRecordings(ctx).catch(()=>setSoundWarning('The default cash-counter audio could not load. The market bell is unchanged.'));
    }catch(e){
     soundEnabledRef.current=false;setSoundOn(false);setSoundWarning(e.message);
    }finally{setSoundLoading(false)}
@@ -150,7 +196,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
   function playAlertBell(){
    const ctx=audioRef.current;
    if(!ctx||ctx.state!=='running'){
-    setSoundWarning('The phone paused browser audio. Tap Test Bell to restore sound.');
+    setSoundWarning('The phone paused browser audio. Tap Opening and Closing Bell to restore it.');
     return;
    }
    try{
@@ -177,11 +223,11 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     if(privateClipReady){
      const personal=await ensurePersonalClip(ctx);
      if(!soundEnabledRef.current||document.visibilityState!=='visible')return;
-     if(!playPersonalMoneyClip(ctx,personal))throw Error('Personal 1:48–1:52 alert could not play. Choose your file again.');
+     if(!playPersonalMoneyClip(ctx,personal))throw Error('Saved Money Alert could not play. Tap Money Alert or Change Clip.');
     }else{
      const recordings=await ensureMoneyRecordings(ctx);
      if(!soundEnabledRef.current||document.visibilityState!=='visible')return;
-     if(!playMoneyCountingAlert(ctx,recordings))throw Error('Recorded money alert could not play. Tap Test Money Alert.');
+     if(!playMoneyCountingAlert(ctx,recordings))throw Error('Default cash-counter alert could not play.');
     }
     setSoundWarning('');
    }catch(e){setSoundWarning(e.message||'Recorded money alert unavailable.')}
@@ -227,15 +273,22 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
         ownerMoneyBytesRef.current=bytes;
         personalClipRef.current=null;
         setPrivateClipReady(true);
+        updatePersonalPreviewSource(bytes,'audio/mp4');
         return;
        }
       }
      }
      const saved=await readPersonalMoneyClip();
-     if(alive)setPrivateClipReady(!!saved);
+     if(alive){
+      setPrivateClipReady(!!saved);
+      if(saved)updatePersonalPreviewSource(saved,'audio/wav');
+     }
     }catch{
      const saved=await readPersonalMoneyClip().catch(()=>null);
-     if(alive)setPrivateClipReady(!!saved);
+     if(alive){
+      setPrivateClipReady(!!saved);
+      if(saved)updatePersonalPreviewSource(saved,'audio/wav');
+     }
     }
    }
    void loadOwnerAlert();
@@ -248,6 +301,10 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     document.removeEventListener('visibilitychange',warnIfAudioPaused);
     window.removeEventListener('pageshow',warnIfAudioPaused);
     soundEnabledRef.current=false;
+    if(personalPreviewUrlRef.current){
+     URL.revokeObjectURL(personalPreviewUrlRef.current);
+     personalPreviewUrlRef.current=null;
+    }
     if(audioRef.current){
      audioRef.current.onstatechange=null;
      audioRef.current.close().catch(()=>{});
@@ -379,7 +436,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
      <span>Simulated exit {money(t.exitFill)} · Final realized P/L <b>{signed(t.pnl)}</b></span>
     </div>)}
    </section>}
-   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Preparing sound…':soundOn?'🔔 SOUNDS ON':'ENABLE ALERT SOUNDS'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Opening and Closing Bell</button><button type="button" className="itt-wide-button" disabled={privateClipBusy} onClick={()=>personalFileInputRef.current?.click()}>Money Alert</button><input ref={personalFileInputRef} type="file" accept="audio/*,.mp3,.m4a,.wav,.aac" onChange={choosePersonalClip} style={{display:'none'}} aria-label="Choose your already-edited four-second money alert, or a full song"/>{privateClipReady&&<button type="button" className="itt-wide-button" disabled={privateClipBusy} onClick={removePersonalClip}>Remove My Clip</button>}<small>{soundWarning||(privateClipReady?'Your personal Money Alert is ready. It will play for new options opportunities.':'Select your already-separated clip or the full song. Short clips use their first four seconds; full songs use 1:48–1:52. Audio stays on this device.')}</small><small>Market bell remains at 9:30 AM and 4:00 PM ET. Alerts need the page active, sound enabled and device volume turned up.</small><small><a href="https://orangefreesounds.com/money-counting-machine/" target="_blank" rel="noopener noreferrer">Cash counter sound credit</a> · <a href="https://orangefreesounds.com/security-beep-sound/" target="_blank" rel="noopener noreferrer">Beep sound credit</a> (CC BY 4.0)</small></div>
+   <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Preparing sound…':soundOn?'🔔 SOUNDS ON':'ENABLE ALERT SOUNDS'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Opening and Closing Bell</button><button type="button" className="itt-wide-button" disabled={privateClipBusy} onClick={handleMoneyAlertClick} aria-label={privateClipReady?'Play saved Money Alert and enable options sounds':'Choose a money alert clip'}>Money Alert</button>{privateClipReady&&<button type="button" className="itt-wide-button" disabled={privateClipBusy} onClick={()=>personalFileInputRef.current?.click()}>Change Clip</button>}<input ref={personalFileInputRef} type="file" accept="audio/*,.mp3,.m4a,.wav,.aac" onChange={choosePersonalClip} style={{display:'none'}} aria-label="Choose your already-edited four-second money alert, or a full song"/>{privateClipReady&&<button type="button" className="itt-wide-button" disabled={privateClipBusy} onClick={removePersonalClip}>Remove My Clip</button>}<div role="status" aria-live="polite" style={{flexBasis:'100%',fontWeight:700,fontSize:13,color:privateClipReady&&soundOn?'#79efaa':'#ffcb83'}}>{privateClipReady?(soundOn?'● MONEY ALERT LOADED · OPTIONS SOUND ON':'● MONEY ALERT LOADED · SOUND OFF — tap Money Alert to listen and enable'): '● NO PERSONAL CLIP — tap Money Alert to choose one'}{personalPreviewPlaying?' · PLAYING NOW':''}</div><small>{soundWarning||(privateClipReady?'Tap Money Alert to hear your saved clip; Change Clip replaces it. New options setups will trigger the same sound when alerts are on.':'Choose your already-edited clip or the full song. The clip stays on this device.')}</small>{privateClipReady&&personalPreviewUrl&&<div style={{flexBasis:'100%',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}><span style={{fontSize:12,color:'#d7d7d9'}}>iPhone audio player (backup):</span><audio ref={personalPreviewAudioRef} controls preload="metadata" src={personalPreviewUrl} aria-label="Play your saved Money Alert with the iPhone native audio player" style={{maxWidth:'100%',width:290,height:38}} /></div>}<small>Market bell remains at 9:30 AM and 4:00 PM ET. Alerts need the page active, sound enabled and device volume turned up.</small><small><a href="https://orangefreesounds.com/money-counting-machine/" target="_blank" rel="noopener noreferrer">Cash counter sound credit</a> · <a href="https://orangefreesounds.com/security-beep-sound/" target="_blank" rel="noopener noreferrer">Beep sound credit</a> (CC BY 4.0)</small></div>
    <button type="button" className="itt-wide-button itt-trade-center-button" onClick={()=>openWindow()}>TRADING OPPORTUNITIES &amp; TRADES · {liveAlerts.length} awaiting · {positions.length} open · {history.length} closed</button>
   </div><aside className="itt-paper-radar" aria-label="Scanner live status and recent ticker checks"><div className="itt-paper-radar-heading"><div><span className="itt-eyebrow">ICA MARKET RADAR</span><h3>Scanner Activity</h3></div><span className={'itt-radar-state '+(radarActive?'active':'')}>{phase}</span></div>
    <div className="itt-scan-scope" role="group" aria-label="Scan only one ticker or multiple tickers">
