@@ -8,3 +8,22 @@ export function streamScanAllowed({now=Date.now(),receivedAt=0,lastScanAt=0,last
  const symbolMs=mode==='SINGLE'?3000:12000;
  return now-lastScanAt>=globalMs&&now-lastSymbolAt>=symbolMs;
 }
+
+/**
+ * Select the least-recently scanned ticker with a fresh Schwab streaming event.
+ * Avoids a fast but incomplete loop where the same first three symbols monopolize
+ * event-driven scans while the remaining watchlist is never evaluated.
+ * lastTickAt and lastSymbolAt are Maps; provider data is used ONLY to wake a
+ * fresh server-side REST/technical scan, never to establish quote entitlement.
+ */
+export function chooseFreshStreamSymbol(symbols,lastTickAt,lastSymbolAt,{now=Date.now(),lastScanAt=0,mode='MULTI'}={}){
+ if(!Array.isArray(symbols)||!lastTickAt||!lastSymbolAt)return null;
+ let selected=null,oldest=Infinity;
+ for(const symbol of symbols){
+  if(!isStreamTicker(symbol))continue;
+  const receivedAt=lastTickAt.get(symbol)||0,lastAt=lastSymbolAt.get(symbol)||0;
+  if(!streamScanAllowed({now,receivedAt,lastScanAt,lastSymbolAt:lastAt,mode}))continue;
+  if(lastAt<oldest){oldest=lastAt;selected=symbol;}
+ }
+ return selected;
+}
