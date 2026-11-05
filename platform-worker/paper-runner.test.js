@@ -53,7 +53,7 @@ test('Nov 4 momentum alert path still produces a Schwab-verified paper opportuni
   const state=freshRunner();state.enabled=true;state.scanMode='SINGLE';state.singleTicker='SPY';
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
   const result=await runPaperTick(env,owner,{scan:true,scanSymbol:'SPY'});
-  assert.equal(result.lastCheck.newAlerts,1,'verified Nov 4 technical signal should produce a paper opportunity');
+  assert.equal(result.lastCheck.newAlerts,1,'verified Nov 4 technical signal should produce a paper opportunity: '+JSON.stringify({lastScan:result.lastScan,check:result.lastCheck,history:result.scanHistory.slice(0,4)}));
   assert.equal(result.alerts.length,1);
   assert.equal(result.alerts[0].qualification.technical.confirmed,true);
   assert.equal(result.alerts[0].qualification.confluence.confirmed,false,'extra MACD/OBV confluence is advisory');
