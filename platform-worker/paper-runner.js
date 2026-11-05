@@ -143,11 +143,22 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
       s.scanHistory.unshift({symbol,time:checkedAt,state:'FLOW_HOLD',reason:flow.reason});
       s.scanHistory=s.scanHistory.slice(0,30);continue;
      }
-     const style=classifyTradeHorizon({bars,signal,contract,
+     // A chain snapshot can be seconds old. Reprice the exact option contract
+     // immediately before publishing any scalp setup, with provider-proven
+     // real-time entitlement and a sub-10s quote timestamp.
+     const exact=await schwabContractQuote(env,owner,contract.symbol);
+     const exactFreshness=schwabQuoteFreshness({...exact,realtime:true},Date.now(),10000);
+     const actionable={...contract,bid:exact.bid,ask:exact.ask,quoteTime:exact.quoteTime};
+     if(exactFreshness.code!=='VERIFIED_FRESH'||!eligiblePaperQuote(actionable,{...paperRules,premiumBudget:budget(s)})){
+      s.scanHistory.unshift({symbol,time:checkedAt,state:'CONTRACT_HOLD',
+       reason:'Exact Schwab option quote was stale, unavailable or failed live spread/risk checks.'});
+      s.scanHistory=s.scanHistory.slice(0,30);continue;
+     }
+     const style=classifyTradeHorizon({bars,signal,contract:actionable,
       dailySignal:s.dailySignals?.[symbol],now:checkedAt});
      if(!s.seen.includes(id)){
-      const alert={id,created:checkedAt,expires:checkedAt+120000,
-       contract:{...contract,underlying:symbol},signal,style,
+      const alert={id,created:Date.now(),expires:Date.now()+120000,
+       contract:{...actionable,underlying:symbol},signal,style,
        qualification:{confluence,flow},status:'PENDING'};
       check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);
       s.seen=[...s.seen,id].slice(-200);
