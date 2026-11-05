@@ -27,6 +27,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  const [showWindow,setShowWindow]=useState(Boolean(initialTab)),[windowTab,setWindowTab]=useState(initialTab||'opportunities'),[selected,setSelected]=useState(null);
  const [feedback,setFeedback]=useState({}),[queued,setQueued]=useState({}),[exitFeedback,setExitFeedback]=useState('');
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
+ const [singleTickerDraft,setSingleTickerDraft]=useState('SPY'),[singleTickerDirty,setSingleTickerDirty]=useState(false);
  const [soundOn,setSoundOn]=useState(false),[soundWarning,setSoundWarning]=useState(''),[soundLoading,setSoundLoading]=useState(false);
  const [scanStatus,setScanStatus]=useState({phase:'idle'}),[operationNotice,setOperationNotice]=useState('');
  const audioRef=useRef(null),bellBuffer=useRef(null),soundEnabledRef=useRef(false),scanRequested=useRef(false),seenAlerts=useRef(null),requests=useRef(0),queue=useRef(Promise.resolve()),queueEpoch=useRef(0),latestRevision=useRef(-1),pendingAccepts=useRef(new Set());
@@ -117,7 +118,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
   },[]);
   async function call(action,id,epoch){
   const token=localStorage.getItem('ica_master_token');
-  const body=action==='settings'?{action,...id}:action==='auto_start'?{action,enabled:id}:{action,id,...(epoch!==undefined?{epoch}:{})};
+  const body=['settings','scan_scope'].includes(action)?{action,...id}:action==='auto_start'?{action,enabled:id}:{action,id,...(epoch!==undefined?{epoch}:{})};
   const r=await fetch(API+'/platform/paper',{method:action?'POST':'GET',headers:{Authorization:'Bearer '+token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify(body)}:{})});
   const data=await r.json();if(!r.ok){const e=Error(data.error||'Paper server unavailable.');e.code=data.code;e.serverState=data.status;throw e}return data;
  }
@@ -148,8 +149,12 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     if(action==='pause')setOperationNotice('Scanner paused. Open paper trades remain under protective management.');
      if(action==='auto_start')setOperationNotice(data.autoStart?'Automatic PAPER scans scheduled at/after 9:30 AM ET on market weekdays.':'Automatic paper scanner start disabled.');
     if(action==='settings')setOperationNotice('Scan settings saved.');
+    if(action==='scan_scope')setOperationNotice(data.scanMode==='SINGLE'?
+     'Single Ticker active: '+data.singleTicker+'. Only this ticker is eligible for NEW paper setups. Existing positions stay protected.':
+     'Multiple Tickers active: broader watchlist scanning restored.');
     if(action==='accept')setFeedback(v=>({...v,[id]:{kind:'success',message:'Accepted into Open Trades. Select Open Trade to see profit/loss and close controls.'}}));
     if(action==='settings')setSettingsDirty(false);
+    if(action==='scan_scope')setSingleTickerDirty(false);
     if(action==='close'||action==='close_all'){
      const left=positionsOf(data).filter(p=>action==='close_all'||p.id===id);
      setExitFeedback(left.length?'Close pending for '+left.length+' contract(s). '+(left.map(p=>p.lastError).filter(Boolean).join(' · ')||'Waiting for fresh positive bids.'):'Paper close completed. See Closed Trades for final profit/loss.');
@@ -170,12 +175,20 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
   if(seenAlerts.current&&s.alerts.some(a=>a.status==='PENDING'&&a.expires>Date.now()&&!seenAlerts.current.has(a.id))){openWindow('opportunities');if(soundOn&&document.visibilityState==='visible')playAlertBell()}seenAlerts.current=ids;
  },[s?.alerts,soundOn]);
  useEffect(()=>{if(s&&!settingsDirty){setBudgetDraft(String(s.maxPremium??350));setSymbolsDraft((s.extraSymbols||[]).join(', '))}},[s,settingsDirty]);
+ useEffect(()=>{if(s&&!singleTickerDirty)setSingleTickerDraft(s.singleTicker||'SPY')},[s,singleTickerDirty]);
  const clock=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
  const minute=Number(clock.hour)*60+Number(clock.minute),marketWindow=!['Sat','Sun'].includes(clock.weekday)&&minute>=575&&minute<945;
  const radarActive=!stale&&(positions.length>0||s?.enabled&&marketWindow);
  const recent=s?.scanHistory||[],latest=recent[0],elapsed=latest?.time?Math.max(0,Math.floor((now-latest.time)/1000)):null;
  const phase=!s?'CONNECTING':stale?'SERVER STALE':s.enabled&&marketWindow?'SCANNING'+(positions.length?' · '+positions.length+' OPEN':''):positions.length?'MANAGING '+positions.length+' OPEN':!s.enabled?'PAUSED':'OUTSIDE SESSION';
  function saveSettings(){const maxPremium=Number(budgetDraft),extraSymbols=[...new Set(symbolsDraft.split(/[\s,]+/).map(x=>x.trim().toUpperCase()).filter(Boolean))];if(!Number.isFinite(maxPremium)||maxPremium<1||maxPremium>5000||extraSymbols.length>20||extraSymbols.some(x=>!/^[A-Z][A-Z0-9.-]{0,9}$/.test(x))){setError('Use a $1–$5,000 premium budget and up to 20 valid tickers.');return}act('settings',{maxPremium,extraSymbols})}
+ function setScope(mode){
+  const symbol=singleTickerDraft.trim().toUpperCase();
+  if(mode==='SINGLE'&&!/^[A-Z][A-Z0-9.-]{0,9}$/.test(symbol)){
+   setError('Enter a valid stock or ETF ticker (for example SPY) before activating Single Ticker.');return;
+  }
+  act('scan_scope',{mode,...(mode==='SINGLE'?{symbol}:{})});
+ }
  function pnlBlock(p,closed=false){const pnl=closed?p.pnl:p.mark?.pnl;return <div className={'itt-trade-pnl '+(pnl>0?'gain':pnl<0?'loss':'')}><small>{closed?'FINAL NET PAPER PROFIT / LOSS':!p.mark?.quoteTime||now-p.mark.quoteTime>60000?'LAST ESTIMATE · QUOTE STALE':'ESTIMATED NET PAPER PROFIT / LOSS'}</small><strong>{signed(pnl)}</strong><span>{percent(pnl,p.cost)}</span><small>{closed?'After simulated fees and fills':'Estimated liquidation at bid less slippage and exit commission'}</small></div>}
  function positionCard(p){const quoteStale=!p.mark?.quoteTime||now-p.mark.quoteTime>60000;return <article key={p.id} className={'itt-opportunity-card itt-managed-trade '+(selected===p.id?'selected':'')}>
   <div className="itt-opportunity-top"><div><span className="itt-eyebrow">OPEN PAPER CONTRACT</span><h3>{p.underlying||p.symbol} · {p.side||'OPTION'}</h3></div><span className="itt-opportunity-status ready">{p.closeRequested?'CLOSE PENDING':'OPEN'}</span></div>
@@ -190,6 +203,20 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  </article>}
  return <section id="ica-paper-control-center" className="itt-card itt-paper-compact" aria-label="Paper trading control center">
   <div className="itt-paper-top-grid"><div className="itt-paper-command"><div className="itt-eyebrow">ICA MASTER · PAPER TRADING</div><h3>Scanner &amp; paper trades</h3>
+   <div className="itt-scan-scope" role="group" aria-label="Scan only one ticker or multiple tickers">
+    <div className="itt-scope-heading"><strong>SCAN SCOPE · {s?.scanMode==='SINGLE'?(s.singleTicker||'SPY')+' ONLY':'MULTIPLE TICKERS'}</strong><small>Choose which tickers the server scans for NEW setups. Open paper positions remain monitored.</small></div>
+    <div className="itt-scope-switch">
+     <button type="button" className={'itt-wide-button '+(s?.scanMode==='SINGLE'?'selected':'')} aria-pressed={s?.scanMode==='SINGLE'} disabled={!s||busy} onClick={()=>setScope('SINGLE')}>◎ Single Ticker</button>
+     <button type="button" className={'itt-wide-button '+(s?.scanMode!=='SINGLE'?'selected':'')} aria-pressed={s?.scanMode!=='SINGLE'} disabled={!s||busy} onClick={()=>setScope('MULTI')}>▦ Multiple Tickers</button>
+    </div>
+    <form className="itt-scope-ticker" onSubmit={e=>{e.preventDefault();setScope('SINGLE')}}>
+     <label htmlFor="itt-single-ticker-input">Single ticker symbol</label>
+     <input id="itt-single-ticker-input" name="singleTicker" value={singleTickerDraft} maxLength={10} autoCapitalize="characters" spellCheck={false}
+      onChange={e=>{setSingleTickerDraft(e.target.value.toUpperCase());setSingleTickerDirty(true)}} placeholder="SPY" aria-label="Single ticker symbol, for example SPY"/>
+     <button className="itt-wide-button" type="submit" disabled={!s||busy}>Apply Ticker</button>
+    </form>
+    <small className="itt-scope-footnote">Single Ticker means the next scheduled check and Run Now scan that ticker alone. This switch does not place trades or enable a paused scanner.</small>
+   </div>
    <div className="itt-scan-buttons"><button type="button" className="itt-wide-button" disabled={busy||!connected||s?.enabled} onClick={()=>act('start')}>START SCAN</button><button type="button" className="itt-wide-button" disabled={!s?.enabled} onClick={()=>act('pause')}>PAUSE SCAN</button><button type="button" className={'itt-wide-button itt-run-now '+(['queued','checking'].includes(scanStatus.phase)?'checking':'')} disabled={busy||['queued','checking'].includes(scanStatus.phase)} aria-busy={['queued','checking'].includes(scanStatus.phase)} onClick={()=>act('tick')}>{['queued','checking'].includes(scanStatus.phase)?<><span className="itt-action-spinner" aria-hidden="true"/> CHECKING…</>:'RUN SCAN & UPDATE TRADES NOW'}</button></div>
    {scanStatus.phase!=='idle'&&<div className={'itt-check-feedback '+scanStatus.phase} role={scanStatus.phase==='error'?'alert':'status'} aria-live="polite"><strong>{scanStatus.message}</strong>{scanStatus.check&&<><span>Updated {scanStatus.check.positionsUpdated} of {scanStatus.check.positionsChecked} open contracts · Checked {scanStatus.check.scannedSymbols?.length||0} tickers{scanStatus.check.scannedSymbols?.length?' ('+scanStatus.check.scannedSymbols.join(', ')+')':''} · {scanStatus.check.newAlerts} new opportunities</span>{scanStatus.check.positionsClosed>0&&<span>{scanStatus.check.positionsClosed} paper contract(s) closed by exit rules.</span>}{!scanStatus.check.scannedSymbols?.length&&<span>{s?.enabled?'No ticker scans were due during this check.':'Scanner paused; only open trades were checked.'}</span>}{scanStatus.check.holds?.length>0&&<details><summary>Quote holds ({scanStatus.check.holds.length})</summary>{scanStatus.check.holds.map((h,i)=><p key={i}>{h.symbol||'Check'}: {h.reason}</p>)}</details>}</>}{scanStatus.completedAt&&<small>Completed {time(scanStatus.completedAt)} ET</small>}</div>}
    {operationNotice&&<p role="status" className="itt-operation-notice">{operationNotice}</p>}
