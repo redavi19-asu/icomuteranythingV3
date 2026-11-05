@@ -1,5 +1,5 @@
 import {normalizePaperPortfolio,enterPaperPosition,managePaperPosition} from '../src/master/paper-portfolio.js';
-import {newPaper,paperRules} from '../src/master/paper-session.js';
+import {newPaper,paperRules,PAPER_STOP_LOSS_CHOICES,selectedStopLossPct} from '../src/master/paper-session.js';
 import {evaluateSymbol,eligiblePaperQuote,marketTime} from '../src/master/trading-paper-engine.js';
 import {schwabMarket,schwabQuotes,schwabContractQuote} from './schwab-connection.js';
 import {schwabQuoteFreshness} from '../src/master/schwab-quote-freshness.js';
