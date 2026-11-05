@@ -13,6 +13,8 @@
 .itt-status-bar{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .itt-status,.itt-clock{font-weight:800;letter-spacing:.35px;font-size:10px;padding:10px 12px;border-radius:999px;border:1px solid #39485c;display:inline-flex;gap:8px;align-items:center}
 .itt-status.itt-off{color:#ffc08b;background:rgba(136,91,43,.13);border-color:rgba(201,139,76,.34)}
+.itt-status.itt-on{color:#9af0cc;background:rgba(22,120,94,.16);border-color:rgba(70,192,153,.35)}
+.itt-status.itt-on .itt-status-dot{background:#63edaf;box-shadow:0 0 10px #47dba980}
 .itt-status-dot{width:7px;height:7px;border-radius:50%;background:#f7ac71;box-shadow:0 0 12px #ee944180}
 .itt-clock{color:#d5e9f2;background:#14283a}.itt-clock svg{color:#75dfc2}
 .itt-tabs{display:flex;gap:7px;margin:0 0 13px;border-bottom:1px solid #2b3f54;padding-bottom:12px;flex-wrap:wrap}
