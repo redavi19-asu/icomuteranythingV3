@@ -275,3 +275,30 @@ test('Single Ticker scope invalidates unrelated pending setups but preserves ope
  assert.equal((await paperApi(req('accept','other'),env,owner)).status,409,'out-of-scope approvals must fail closed');
  }finally{Date.now=originalNow}
 });
+
+test('owner saves adjustable risk for future paper entries without rewriting open positions',async()=>{
+ const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
+ const request=id=>new Request('https://test/platform/paper',{method:'POST',
+  headers:{Origin:'https://icomputeranything.com'},body:JSON.stringify({action:'stop_settings',id})});
+ try{
+  const {db,env}=await fixture();
+  assert.equal((await paperApi(req(),env,owner)).status,200);
+  let result=await paperApi(request(35),env,owner);
+  assert.equal(result.status,200);
+  assert.equal((await result.json()).stopLossPct,35);
+  assert.equal((await paperApi(request(80),env,owner)).status,409,'invalid large loss is rejected');
+  const s=JSON.parse(db.prepare('SELECT payload FROM paper_runners').get().payload);
+  s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,
+   quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});
+  const accepted=await paperApi(req('accept','setup'),env,owner);
+  assert.equal(accepted.status,200);
+  const entered=await accepted.json();
+  assert.equal(entered.paper.positions[0].stopLossPct,35);
+  result=await paperApi(request(50),env,owner);
+  assert.equal(result.status,200,'default may be changed even with a paper trade open');
+  const changed=await result.json();
+  assert.equal(changed.stopLossPct,50);
+  assert.equal(changed.paper.positions[0].stopLossPct,35,'open trade retains saved entry risk');
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
