@@ -14,6 +14,7 @@ const validTicker=t=>typeof t==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(t);
 export const scannerUniverse=s=>s.scanMode==='SINGLE'?(validTicker(s.singleTicker)?[s.singleTicker]:[]):
  [...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s.extraSymbols)?s.extraSymbols:[])])].slice(0,40);
 const budget=s=>Number.isFinite(s.maxPremium)?s.maxPremium:paperRules.premiumBudget;
+const stopLossPct=s=>selectedStopLossPct(s.stopLossPct);
 function alertList(s){
  if(!Array.isArray(s.alerts))s.alerts=[];
  if(s.pending){if(!s.alerts.some(a=>a.id===s.pending.id))s.alerts.unshift({...s.pending,status:'PENDING'});s.seen=[...new Set([...(s.seen||[]),s.pending.id])].slice(-200);s.pending=null;}
