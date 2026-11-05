@@ -82,7 +82,9 @@ export async function schwabAuthorize(request,env,owner){
   env.DB.prepare('DELETE FROM schwab_connection_diagnostics WHERE owner_id=?').bind(owner.id),
   env.DB.prepare('DELETE FROM schwab_oauth_states WHERE owner_id=? OR expires_at<?').bind(owner.id,now),
   env.DB.prepare('INSERT INTO schwab_oauth_states(state_hash,owner_id,session_hash,expires_at) VALUES(?,?,?,?)').bind(stateHash,owner.id,sessionHash,now+600000),
-  env.DB.prepare('INSERT INTO schwab_connections(owner_id,generation,payload,updated_at) VALUES(?,?,NULL,?) ON CONFLICT(owner_id) DO UPDATE SET generation=excluded.generation,payload=NULL,updated_at=excluded.updated_at,refresh_lock_until=0,refresh_lock_id=NULL').bind(owner.id,stateHash,now)
+  // Starting authorization must never delete a still-usable encrypted market-data token.
+   // The callback swaps in new credentials only after successful token exchange.
+   env.DB.prepare('INSERT INTO schwab_connections(owner_id,generation,payload,updated_at) VALUES(?,?,NULL,?) ON CONFLICT(owner_id) DO UPDATE SET generation=excluded.generation,updated_at=excluded.updated_at,refresh_lock_until=0,refresh_lock_id=NULL').bind(owner.id,stateHash,now)
  ]);
  const url=new URL(AUTH_URL);url.searchParams.set('response_type','code');url.searchParams.set('client_id',clean(env.SCHWAB_APP_KEY));url.searchParams.set('redirect_uri',SCHWAB_CALLBACK_URL);url.searchParams.set('scope','readonly');url.searchParams.set('state',state);
  return json({authorizationUrl:url.toString(),realOrdersEnabled:false});

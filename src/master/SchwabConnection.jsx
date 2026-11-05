@@ -7,8 +7,25 @@ export async function request(path,post=false){
 }
 export default function SchwabConnection({symbol='SPY',onStatus}){
  const [status,setStatus]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[snapshot,setSnapshot]=useState(null),[setup,setSetup]=useState('');
- const refresh=async()=>{setBusy(true);setError('');try{const d=await request('status');setStatus(d);onStatus?.(d);if(!d.connected)setSnapshot(null)}catch(e){setError(e.message)}finally{setBusy(false)}};
- useEffect(()=>{refresh()},[]);
+ const refresh=async(silent=false)=>{
+  if(!silent){setBusy(true);setError('')}
+  try{
+   const d=await request('status');setStatus(d);onStatus?.(d);
+   if(!d.connected)setSnapshot(null);
+   if(silent)setError('');
+  }catch(e){
+   setError(e.message);
+   onStatus?.({connected:false,authorizationReady:false,stage:'STATUS_UNAVAILABLE',error:e.message});
+  }finally{if(!silent)setBusy(false)}
+ };
+ useEffect(()=>{
+  refresh();
+  // A hidden diagnostics panel must not leave the entire chart stuck offline.
+  const timer=setInterval(()=>{if(document.visibilityState==='visible')refresh(true)},30000);
+  const visible=()=>{if(document.visibilityState==='visible')refresh(true)};
+  document.addEventListener('visibilitychange',visible);
+  return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',visible)};
+ },[]);
  useEffect(()=>{setSnapshot(null)},[symbol]);
  const connect=async()=>{setBusy(true);setError('');try{const d=await request('authorize',true);const u=new URL(d.authorizationUrl);if(u.origin!=='https://api.schwabapi.com'||u.pathname!=='/v1/oauth/authorize')throw Error('Invalid authorization destination');window.location.assign(u.toString())}catch(e){setError(e.message);setBusy(false)}};
  const testSetup=async()=>{setBusy(true);setError('');setSetup('');try{const d=await request('preflight',true);setSetup(d.note)}catch(e){setError(e.message)}finally{setBusy(false)}};
@@ -21,7 +38,7 @@ export default function SchwabConnection({symbol='SPY',onStatus}){
   <p style={{fontSize:12,margin:'8px 0'}}>Owner-only market data. Paper setup scanning is controlled below. Brokerage order execution is disabled.</p>
   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
    <button className="itt-wide-button" disabled={busy} onClick={testSetup}>Test Schwab setup</button>
-   <button className="itt-wide-button" disabled={busy} onClick={refresh}>Check Schwab connection</button>
+   <button className="itt-wide-button" disabled={busy} onClick={()=>refresh()}>Check Schwab connection</button>
    <button className="itt-wide-button" disabled={busy||!status?.authorizationReady} onClick={connect}>{status?.connected?'Reconnect Schwab market data':'Connect Schwab market data'}</button>
    {status?.connected&&<><button className="itt-wide-button" disabled={busy} onClick={quote}>Read {symbol} quote</button><button className="itt-wide-button" disabled={busy} onClick={disconnect}>Disconnect Schwab</button></>}
   </div>
