@@ -164,3 +164,17 @@ test('owner uploaded five-second audio plays in full without four-second truncat
  assert.equal(playPersonalMoneyClip(ctx,buffer),true);
  assert.equal(played.duration,5);
 });
+
+test('user-edited 4.928-second money alert retains final beep instead of truncating at 4 seconds',async()=>{
+ const duration=4.928,frames=Math.floor(duration*rate),samples=new Float32Array(frames);
+ samples[frames-1]=.95;
+ const audio={duration,sampleRate:rate,numberOfChannels:1,getChannelData:()=>samples};
+ const methods={...ctx(),decodeAudioData:async()=>audio};
+ const bytes=await preparePersonalMoneyClip(methods,{
+  name:'Money gucci.m4a',type:'audio/mp4',size:180000,
+  arrayBuffer:async()=>new ArrayBuffer(180000)
+ });
+ const view=new DataView(bytes);
+ assert.equal(view.getUint32(40,true),frames*2);
+ assert.equal(view.getInt16(bytes.byteLength-2,true),Math.round(.95*32767));
+});
