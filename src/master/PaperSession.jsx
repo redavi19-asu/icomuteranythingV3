@@ -196,6 +196,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     <label className="itt-autostart" style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
      <span><strong>Auto-start paper scanner at 9:30 AM ET</strong><small style={{display:'block'}}>Saved on the server for this owner. Trading weekdays only; no real orders. A manual Pause stays paused for the day.</small></span>
      <input type="checkbox" checked={!!s?.autoStart} disabled={!s||busy} onChange={e=>act('auto_start',e.target.checked)} aria-label="Automatically start paper scanner at 9:30 AM Eastern"/>
+     <span className="itt-switch" aria-hidden="true"/>
     </label>
    <div className="itt-paper-summary"><div><small>PAPER BUYING POWER</small><strong>{money(s?.paper?.cash)}</strong></div><div><small>REALIZED PROFIT / LOSS</small><strong>{signed(s?.paper?.realized)}</strong></div><div><small>OPEN PROFIT / LOSS</small><strong>{signed(totalPnl)}</strong><small>{marked.length!==positions.length?'Some quotes unavailable; see each trade':''}</small></div></div>
    <p className="itt-scanner-disclaimer">Scheduled checks manage every open contract and scan the next three tickers, approximately once per minute. Run Now performs that same check early; it does not analyze every stock at once. Pausing the scanner leaves open-trade protection running.</p>
