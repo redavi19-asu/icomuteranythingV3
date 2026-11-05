@@ -42,6 +42,37 @@ test('valid callback exchanges once, encrypts tokens, and redirects only to ICA 
  globalThis.fetch=async(url,options)=>{calls++;assert.equal(url,'https://api.schwabapi.com/v1/oauth/token');assert.equal(new URLSearchParams(options.body).get('code'),'artificial-code');return tokenResponse()};
  try{const r=await schwabCallback(callback(state),env);assert.equal(r.status,303);assert.equal(new URL(r.headers.get('Location')).origin,'https://icomputeranything.com');const payload=sqlite.prepare('SELECT payload FROM schwab_connections').get().payload;assert.ok(!payload.includes('test-access'));assert.equal((await openTokens(env,owner.id,payload)).refresh_token,'test-refresh');assert.equal((await schwabCallback(callback(state),env)).status,400);assert.equal(calls,1)}finally{globalThis.fetch=original}
 });
+test('starting or abandoning Schwab reauthorization preserves a working saved connection',async()=>{
+ const {env,sqlite}=await fixture(),original=globalThis.fetch;
+ globalThis.fetch=async()=>tokenResponse();
+ try{
+  const first=await begin(env);
+  assert.equal((await schwabCallback(callback(first),env)).status,303);
+  const stored=sqlite.prepare('SELECT payload FROM schwab_connections').get().payload;
+  assert.ok(stored);
+  const second=await begin(env);
+  assert.equal(sqlite.prepare('SELECT payload FROM schwab_connections').get().payload,stored,
+   'beginning a reauthorization must not erase the old encrypted token');
+  assert.equal((await(await schwabConnectionStatus(env,owner)).json()).connected,true);
+  // User leaves the Schwab portal without completing the new callback.
+  assert.equal(sqlite.prepare('SELECT payload FROM schwab_connections').get().payload,stored);
+  assert.equal((await schwabCallback(callback(second),env)).status,303);
+  const replaced=sqlite.prepare('SELECT payload FROM schwab_connections').get().payload;
+  assert.ok(replaced);assert.notEqual(replaced,stored);
+ }finally{globalThis.fetch=original}
+});
+test('failed Schwab OAuth callback does not erase an existing connection',async()=>{
+ const {env,sqlite}=await fixture(),original=globalThis.fetch;
+ try{
+  globalThis.fetch=async()=>tokenResponse();
+  const first=await begin(env);assert.equal((await schwabCallback(callback(first),env)).status,303);
+  const stored=sqlite.prepare('SELECT payload FROM schwab_connections').get().payload;
+  const replacement=await begin(env);
+  globalThis.fetch=async()=>Response.json({error:'invalid_grant'}, {status:400});
+  assert.equal((await schwabCallback(callback(replacement),env)).status,502);
+  assert.equal(sqlite.prepare('SELECT payload FROM schwab_connections').get().payload,stored);
+ }finally{globalThis.fetch=original}
+});
 test('expired state and revoked owner session cannot exchange a code',async()=>{
  for(const reason of ['expired','revoked']){const {env,sqlite}=await fixture();const state=await begin(env);if(reason==='expired')sqlite.exec('UPDATE schwab_oauth_states SET expires_at=0');else sqlite.exec('DELETE FROM sessions');const original=globalThis.fetch;globalThis.fetch=async()=>{throw Error('Provider must not be called')};try{assert.equal((await schwabCallback(callback(state),env)).status,400)}finally{globalThis.fetch=original}}
 });
