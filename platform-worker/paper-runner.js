@@ -7,7 +7,9 @@ import {evaluateVerifiedFlow,evaluateAristotleConfluence,evaluateDailySwing,clas
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 // Bounded liquid options universe. This is NOT a claim to scan every exchange-listed stock.
 export const PAPER_SCAN_UNIVERSE=Object.freeze(['SPY','QQQ','IWM','DIA','XLK','XLF','XLE','USO','BNO','AAPL','NVDA','TSLA','AMZN','META','MSFT','AMD','GOOGL','TLT','GLD','SLV']);
-const scannerUniverse=s=>[...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s.extraSymbols)?s.extraSymbols:[])])].slice(0,40);
+const validTicker=t=>typeof t==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(t);
+const scannerUniverse=s=>s.scanMode==='SINGLE'?(validTicker(s.singleTicker)?[s.singleTicker]:[]):
+ [...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s.extraSymbols)?s.extraSymbols:[])])].slice(0,40);
 const budget=s=>Number.isFinite(s.maxPremium)?s.maxPremium:paperRules.premiumBudget;
 function alertList(s){
  if(!Array.isArray(s.alerts))s.alerts=[];
@@ -16,7 +18,7 @@ function alertList(s){
 }
 const liveAlert=(a,now=Date.now())=>a.status==='PENDING'&&a.expires>now;
 function expireAlerts(s,now=Date.now()){for(const a of alertList(s))if(a.status==='PENDING'&&a.expires<=now){a.status='EXPIRED';event(s,'Approval expired: '+a.contract.symbol);}}
-const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),scanUniverse:scannerUniverse(s),autoStart:s.autoStart===true,mode:'PAPER_ONLY',realOrdersEnabled:false});
+const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),scanUniverse:scannerUniverse(s),scanMode:s.scanMode==='SINGLE'?'SINGLE':'MULTI',singleTicker:validTicker(s.singleTicker)?s.singleTicker:'SPY',autoStart:s.autoStart===true,mode:'PAPER_ONLY',realOrdersEnabled:false});
 // Optional outbound notification. Requires sender domain and API key in server secrets.
 async function notifyPaperOpportunity(env,owner,alert){
  const api=String(env.RESEND_API_KEY||'').trim(),from=String(env.ICA_TRADING_ALERT_FROM||'').trim();
@@ -28,7 +30,7 @@ async function notifyPaperOpportunity(env,owner,alert){
  const sent=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+api,'Content-Type':'application/json'},body:JSON.stringify({from,to:[to],subject:'ICA Master Paper Setup: '+c.underlying+' '+c.side,text:body}),signal:AbortSignal.timeout(8000)});
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
-export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],dailySignals:{},dailyCheckedDay:{},
+export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],scanMode:'MULTI',singleTicker:'SPY',dailySignals:{},dailyCheckedDay:{},
  flowGate:{status:'NOT_CHECKED',provider:'UNUSUAL_WHALES',level2:'NOT_CONNECTED',reason:'No verified contract tape checked yet.'},autoStart:false,lastAutoStartDay:null,maxPremium:paperRules.premiumBudget,extraSymbols:[]});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
@@ -153,6 +155,23 @@ export async function paperApi(request,env,owner){
     s.autoStart=input.enabled;
     event(s,input.enabled?'Owner scheduled daily paper-only scanner start at 9:30 AM ET.':'Owner disabled scheduled paper scanner start.');
    }
+   else if(action==='scan_scope'){
+    const input=JSON.parse(body),mode=input.mode;
+    if(mode!=='SINGLE'&&mode!=='MULTI')throw Error('Select Single Ticker or Multiple Tickers.');
+    const symbol=String(input.symbol??s.singleTicker??'SPY').trim().toUpperCase();
+    if(mode==='SINGLE'&&!validTicker(symbol))throw Error('Single ticker must be a valid stock or ETF symbol.');
+    if(mode==='SINGLE')s.singleTicker=symbol;
+    s.scanMode=mode;s.scanIndex=0;
+    // Existing open positions remain independently protected regardless of scanning scope.
+    if(mode==='SINGLE')for(const alert of alertList(s)){
+     if(alert.status==='PENDING'&&alert.contract?.underlying!==symbol){
+      alert.status='OUT_OF_SCOPE';event(s,'Pending setup invalidated by Single Ticker mode: '+alert.contract.symbol);
+     }
+    }
+    s.scanHistory=[];
+    s.lastScan={time:Date.now(),note:mode==='SINGLE'?'Scanner restricted to '+symbol:'Multiple Tickers scanner restored.'};
+    event(s,mode==='SINGLE'?'Owner selected Single Ticker PAPER scanner: '+symbol:'Owner selected Multiple Tickers PAPER scanner.');
+   }
    else if(action==='start'){s.enabled=true;event(s,'Owner enabled paper setup scanning.')}
   else if(action==='settings'){
    if(s.paper.positions.length)throw Error('Change paper scan settings only when no positions are active.');
@@ -183,6 +202,7 @@ export async function paperApi(request,env,owner){
   else if(action==='accept'){
    const a=alertList(s).find(x=>x.id===id);
    if(!s.enabled)throw Error('Scanner is paused. Start Scan before accepting a new paper setup.');
+   if(s.scanMode==='SINGLE'&&a?.contract?.underlying!==s.singleTicker)throw Error('This setup is outside the selected Single Ticker scope.');
    const input=JSON.parse(body);
    if(input.epoch!==undefined&&input.epoch!==s.entryEpoch)throw Error('Approval cancelled by Close All. Review the opportunity again before accepting.');
    if(!a||!liveAlert(a))throw Error('This opportunity is expired or already accepted. Check Open Trades and Closed Trades.');
