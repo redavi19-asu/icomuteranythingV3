@@ -402,3 +402,12 @@
 .itt-scope-ticker input{width:110px;min-width:0;background:#081b2b;color:#eafff7;border:1px solid #4a647c;border-radius:8px;padding:10px 12px;font-size:14px;font-weight:750}
 .itt-scope-ticker input:focus-visible{outline:2px solid #6ce9bb;outline-offset:2px}
 @media(max-width:580px){.itt-scope-switch>*{flex:1}.itt-scope-ticker label{width:100%}.itt-scope-ticker input{flex:1}.itt-scope-ticker button{flex:1}}
+
+/* Verified flow status and visible, reasoned horizon guidance. */
+.itt-flow-status{margin:12px 0;border:1px solid #3c5763;background:rgba(10,31,43,.64);border-radius:12px;padding:12px;color:#d7e8f3}
+.itt-flow-status strong{font-size:12px;letter-spacing:.25px;color:#8ce5df}
+.itt-flow-status p{font-size:12px;line-height:1.5;margin:8px 0}
+.itt-flow-status small{font-size:11px;color:#a8bccc;display:block;line-height:1.5}
+.itt-play-style{padding:10px 12px;border-radius:10px;background:rgba(35,73,85,.18);border:1px solid #34516a;font-size:12px;line-height:1.55}
+.itt-play-style strong{color:#a1e5d9}
+.itt-play-style p{margin:5px 0}
