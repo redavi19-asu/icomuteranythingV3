@@ -18,3 +18,19 @@ test('paper practice continues beyond old daily count and profit cutoffs',()=>{
  }
 });
 test('incomplete quality still prevents paper entries',()=>{assert.throws(()=>stepPaper(newPaper(),{quote:{...q,delta:null},enter:true,now}),/incomplete/)});
+
+test('classified intraday paper position can remain past 30 minutes while stop and market-close safeguards apply',()=>{
+ const entered=stepPaper(newPaper(),{quote:q,enter:true,now});
+ entered.position.maxHoldMinutes=390;
+ const mid=now+31*60000,hold=stepPaper(entered,{quote:{...q,quoteTime:mid},now:mid});
+ assert.ok(hold.position,'classified intraday hold should not close merely because 30 minutes elapsed');
+ const closeTime=now+360*60000;
+ const exited=stepPaper(hold,{quote:{...q,quoteTime:closeTime},now:closeTime});
+ assert.equal(exited.position,null);assert.equal(exited.trades[0].reason,'SESSION_END');
+});
+test('normal scalp still obeys the original 30-minute protective maximum',()=>{
+ const entered=stepPaper(newPaper(),{quote:q,enter:true,now});
+ const then=now+31*60000;
+ const exited=stepPaper(entered,{quote:{...q,quoteTime:then},now:then});
+ assert.equal(exited.position,null);assert.equal(exited.trades[0].reason,'MAX_HOLD');
+});
