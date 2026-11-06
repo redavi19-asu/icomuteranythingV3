@@ -70,6 +70,9 @@ test('Nov 4 momentum alert path still produces a Schwab-verified paper opportuni
   assert.equal(result.scanHistory[0].state,'PRICE_ACTION_SETUP_REVIEW');
   assert.equal(result.alerts[0].qualification.priceAction.confirmed,true);
   assert.equal(result.alerts[0].qualification.priceAction.breakoutBarTime,breakout.datetime);
+  const repeat=await runPaperTick(env,owner,{scan:true,scanSymbol:'SPY'});
+  assert.equal(repeat.lastCheck.newAlerts,0,'rechecking the same confirmed breakout cannot issue duplicate alerts');
+  assert.equal(repeat.alerts.length,1);
   assert.equal(result.realOrdersEnabled,false);
  }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
 });
