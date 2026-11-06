@@ -39,6 +39,7 @@ test('Nov 4 momentum alert path still produces a Schwab-verified paper opportuni
  const confirm={time:breakout.datetime+60000,datetime:breakout.datetime+60000,
   open:confirmationClose-.04,high:confirmationClose+.06,
   low:confirmationClose-.10,close:confirmationClose,volume:1700};
+ let liveLast=confirmationClose;
  const contract='SPY   261106C00100000';
  const chain={isDelayed:false,callExpDateMap:{'2026-11-06:2':{'100':[{symbol:contract,strikePrice:100,
   bid:1.95,ask:2,delta:0.52,totalVolume:220,openInterest:600,quoteTimeInLong:now,nonStandard:false}]}},putExpDateMap:{}};
@@ -48,7 +49,7 @@ test('Nov 4 momentum alert path still produces a Schwab-verified paper opportuni
   if(url.pathname.endsWith('/chains'))return Response.json(chain);
   if(url.pathname.endsWith('/quotes')){
    const sym=url.searchParams.get('symbols');
-   return Response.json({[sym]:{realtime:true,quote:{lastPrice:100,bidPrice:1.95,askPrice:2,quoteTime:now}}});
+   return Response.json({[sym]:{realtime:true,quote:{lastPrice:liveLast,bidPrice:1.95,askPrice:2,quoteTime:now}}});
   }
   throw Error('Unexpected fixture endpoint: '+url.pathname);
  };
@@ -73,6 +74,17 @@ test('Nov 4 momentum alert path still produces a Schwab-verified paper opportuni
   const repeat=await runPaperTick(env,owner,{scan:true,scanSymbol:'SPY'});
   assert.equal(repeat.lastCheck.newAlerts,0,'rechecking the same confirmed breakout cannot issue duplicate alerts');
   assert.equal(repeat.alerts.length,1);
+  liveLast=confirmationClose-1;
+  const invalid=await paperApi(req('accept',result.alerts[0].id),env,owner);
+  assert.equal(invalid.status,409,'owner cannot approve when fresh stock price invalidates breakout');
+  assert.match((await invalid.json()).error,/invalidated the confirmed breakout/);
+  assert.equal((await(await paperApi(req(),env,owner)).json()).paper.positions.length,0);
+  liveLast=confirmationClose;
+  const accepted=await paperApi(req('accept',result.alerts[0].id),env,owner);
+  assert.equal(accepted.status,200,'new fresh underlying and option quotes permit manual PAPER approval');
+  const afterApproval=await accepted.json();
+  assert.equal(afterApproval.paper.positions.length,1);
+  assert.equal(afterApproval.realOrdersEnabled,false);
   assert.equal(result.realOrdersEnabled,false);
  }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
 });
