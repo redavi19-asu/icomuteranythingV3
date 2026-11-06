@@ -383,7 +383,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      if(!s.seen.includes(id)){
       const alert={id,created:Date.now(),expires:Date.now()+120000,
        contract:{...actionable,underlying:symbol},entryEstimate:paperOptionEntryEstimate(actionable),signal,style,
-       qualification:{technical:{confirmed:true,asOf:signal.asOf,direction:signal.direction},priceAction,confluence,swing55,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
+       qualification:{technical:{confirmed:true,asOf:signal.asOf,direction:signal.direction},priceAction,confluence,swing55,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:actionable.quoteTime}},status:'PENDING'};
       check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);
       s.seen=[...s.seen,id].slice(-200);
       s.scanHistory.unshift({symbol,time:checkedAt,state:confluence.confirmed?'HIGH_CONFLUENCE_REVIEW':'PRICE_ACTION_SETUP_REVIEW',
