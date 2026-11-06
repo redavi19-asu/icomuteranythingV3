@@ -628,8 +628,8 @@ export async function paperApi(request,env,owner){
    paperLimitOrders(s).unshift(order);
    a.status='LIMIT_WAITING';
    event(s,'Owner placed PAPER-ONLY resting limit: '+order.contractSymbol+
-    ' · '+quantity+' contract(s) · observed ASK must be at most 
-    ' · expires '+new Date(expires).toISOString()+'.');
+    ' · '+quantity+' contract(s) · maximum option ask '+maxAsk.toFixed(2)+
+    ' USD · expires '+new Date(expires).toISOString()+'.');
    // If the ask already satisfies the owner's limit, check and simulate now;
    // otherwise the scheduled/streaming scanner will keep checking.
    await processRestingPaperLimits({env,owner,s,verifySetup:verifyPaperPriceWindow,
