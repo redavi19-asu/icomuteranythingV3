@@ -649,7 +649,8 @@ export async function scheduledPaper(env){
    const scannerWanted=previous.enabled===true||(previous.autoStart===true&&previous.lastAutoStartDay!==session.day);
    const stub=env.PAPER_QUOTE_STREAM.getByName(owner.id);
    if(sessionActive&&scannerWanted){
-    try{const health=await stub.enable(owner.id,scannerStreamUniverse(previous).slice(0,40),previous.scanMode);
+    try{const health=await stub.enable(owner.id,scannerStreamUniverse(previous).slice(0,40),previous.scanMode,
+     scannerEngineConfig(previous,'FOCUS').enabled&&scannerEngineUniverse(previous,'FOCUS').length>0);
      streamHealth=health;
     }catch{streamHealth={connected:false,transport:'ERROR',error:'Schwab stream coordinator unavailable.',quoteAgeMs:null}}
    }else try{await stub.disable();streamHealth={connected:false,transport:'STOPPED',error:'',quoteAgeMs:null}}catch{}
