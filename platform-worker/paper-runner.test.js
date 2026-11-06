@@ -598,3 +598,26 @@ test('two scanner lanes rotate actual different ticker batches, dedupe overlaps 
   assert.equal(focusOnly.realOrdersEnabled,false);
  }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
 });
+
+test('disabled focus lane cannot erase last real ticker scan and original verified coverage migrates to main',async()=>{
+ const {env,db}=await fixture(),originalDate=Date.now,originalFetch=globalThis.fetch;
+ Date.now=()=>now;
+ try{
+  await paperApi(req(),env,owner);
+  const s=freshRunner();s.enabled=true;s.scanMode='MULTI';
+  s.lastCheck={id:'genuine',scannedSymbols:['SPY','QQQ'],completedAt:now-1000};
+  s.scanCoverage={SPY:{day:'2026-11-04',checkedAt:now-30000,state:'WAIT',source:'ROTATION',scansToday:3},
+   QQQ:{day:'2026-11-04',checkedAt:now-30000,state:'WATCH',source:'ROTATION',scansToday:2}};
+  s.engineCoverage={MAIN:{},FOCUS:{}};
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  globalThis.fetch=async()=>Response.json({candles:[]});
+  const state=await runPaperTick(env,owner,{scan:true,scanLane:'FOCUS'});
+  assert.deepEqual(state.lastCheck.scannedSymbols,['SPY','QQQ']);
+  assert.equal(state.lastCheck.id,'genuine');
+  assert.deepEqual(state.lastProtectionCheck.scannedSymbols,[]);
+  assert.equal(state.scanEngines.MAIN.coverage.SPY.scansToday,3);
+  assert.equal(state.scanEngines.MAIN.coverage.QQQ.scansToday,2);
+  assert.equal(state.scanEngines.FOCUS.coverage.SPY,undefined);
+  assert.equal(state.realOrdersEnabled,false);
+ }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
+});
