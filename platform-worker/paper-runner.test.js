@@ -568,3 +568,33 @@ test('manual stop/time override requires explicit confirmation and cannot evade 
   assert.equal((await(await paperApi(req(),env,owner)).json()).paper.positions[0].stopLossPct,35);
  }finally{Date.now=date;globalThis.fetch=fetcher}
 });
+
+test('two scanner lanes rotate actual different ticker batches, dedupe overlaps and retain independent per-engine coverage',async()=>{
+ const originalDate=Date.now,originalFetch=globalThis.fetch;
+ Date.now=()=>now;
+ try{
+  const {db,env}=await fixture();await paperApi(req(),env,owner);
+  const s=freshRunner();s.enabled=true;s.scanMode='MULTI';
+  s.scannerEngines={MAIN:{enabled:true,scope:'CUSTOM',symbols:['SPY','QQQ','AAPL']},
+   FOCUS:{enabled:true,scope:'CUSTOM',symbols:['SPY','TSLA']}};
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  // A provider hold must be reported, never fabricated as a positive setup.
+  globalThis.fetch=async()=>Response.json({candles:[]});
+  const first=await runPaperTick(env,owner,{scan:true,scanLane:'BOTH'});
+  assert.deepEqual(first.lastCheck.scannedSymbols,['SPY','QQQ','AAPL','TSLA']);
+  assert.deepEqual(first.lastCheck.enginePasses.MAIN,['SPY','QQQ','AAPL']);
+  assert.deepEqual(first.lastCheck.enginePasses.FOCUS,['SPY','TSLA']);
+  assert.equal(first.scanIndex,3);
+  assert.equal(first.focusScanIndex,2);
+  assert.ok(first.scanEngines.MAIN.coverage.SPY);
+  assert.ok(first.scanEngines.FOCUS.coverage.SPY);
+  assert.ok(first.scanEngines.FOCUS.coverage.TSLA);
+  assert.equal(first.scanEngines.MAIN.coverage.TSLA,undefined,
+   'focus-only stock must not appear as visited by MAIN');
+  const focusOnly=await runPaperTick(env,owner,{scan:true,scanLane:'FOCUS'});
+  assert.deepEqual(focusOnly.lastCheck.scannedSymbols,['SPY','TSLA']);
+  assert.equal(focusOnly.scanIndex,3,'focused pass cannot advance main rotation cursor');
+  assert.equal(focusOnly.focusScanIndex,4);
+  assert.equal(focusOnly.realOrdersEnabled,false);
+ }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
+});
