@@ -82,7 +82,8 @@ function alertList(s){
 }
 const liveAlert=(a,now=Date.now())=>a.status==='PENDING'&&a.expires>now;
 function expireAlerts(s,now=Date.now()){for(const a of alertList(s))if(a.status==='PENDING'&&a.expires<=now){a.status='EXPIRED';event(s,'Approval expired: '+a.contract.symbol);}}
-const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),scanUniverse:scannerUniverse(s),
+const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),
+ scanUniverse:s.scanMode==='SINGLE'?scannerUniverse(s):scannerStreamUniverse(s),
  scanEngines:Object.fromEntries(PAPER_SCAN_ENGINES.map(engine=>[engine,{
   ...scannerEngineConfig(s,engine),universe:scannerEngineUniverse(s,engine),
   coverage:s.engineCoverage?.[engine]||{},last:s.engineLast?.[engine]||null
@@ -450,6 +451,10 @@ export async function paperApi(request,env,owner){
     if(mode==='SINGLE'&&!validTicker(symbol))throw Error('Single ticker must be a valid stock or ETF symbol.');
     if(mode==='SINGLE')s.singleTicker=symbol;
     s.scanMode=mode;s.scanIndex=0;
+    s.scannerEngines??={};
+    s.scannerEngines.MAIN={enabled:true,scope:mode==='SINGLE'?'CUSTOM':'ALL',
+     symbols:mode==='SINGLE'?[symbol]:[]};
+    s.scannerEngines.FOCUS={...scannerEngineConfig(s,'FOCUS'),enabled:false};
     // Existing open positions remain independently protected regardless of scanning scope.
     if(mode==='SINGLE')for(const alert of alertList(s)){
      if(alert.status==='PENDING'&&alert.contract?.underlying!==symbol){
