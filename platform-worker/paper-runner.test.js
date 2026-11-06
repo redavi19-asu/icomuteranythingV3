@@ -42,14 +42,14 @@ test('Nov 4 momentum alert path still produces a Schwab-verified paper opportuni
  let liveLast=confirmationClose;
  const contract='SPY   261106C00100000';
  const chain={isDelayed:false,callExpDateMap:{'2026-11-06:2':{'100':[{symbol:contract,strikePrice:100,
-  bid:1.95,ask:2,delta:0.52,totalVolume:220,openInterest:600,quoteTimeInLong:now,nonStandard:false}]}},putExpDateMap:{}};
+  bid:1.98,ask:2,delta:0.52,totalVolume:220,openInterest:600,quoteTimeInLong:now,nonStandard:false}]}},putExpDateMap:{}};
  globalThis.fetch=async input=>{
   const url=new URL(input);
   if(url.pathname.endsWith('/pricehistory'))return Response.json({candles:bars});
   if(url.pathname.endsWith('/chains'))return Response.json(chain);
   if(url.pathname.endsWith('/quotes')){
    const sym=url.searchParams.get('symbols');
-   return Response.json({[sym]:{realtime:true,quote:{lastPrice:liveLast,bidPrice:1.95,askPrice:2,quoteTime:now}}});
+   return Response.json({[sym]:{realtime:true,quote:{lastPrice:liveLast,bidPrice:1.98,askPrice:2,quoteTime:now}}});
   }
   throw Error('Unexpected fixture endpoint: '+url.pathname);
  };
@@ -508,8 +508,10 @@ test('fast scalp uses honest bid/ask P&L and refuses wide bid/ask spread',()=>{
  assert.equal(estimate.cost,201.65);
  assert.equal(estimate.immediatePnl,-8.30);
  assert.equal(estimate.breakevenBid,2.033);
- assert.equal(paperQuoteQualityFailure(q,350),null);
- assert.equal(paperQuoteQualityFailure({...q,bid:1.84},350),'SPREAD_TOO_WIDE');
+ assert.equal(paperQuoteQualityFailure(q,350),'SPREAD_TOO_WIDE_IN_CENTS');
+ assert.equal(paperQuoteQualityFailure(q,350,5),null,'owner can explicitly accept five-cent spread');
+ assert.equal(paperQuoteQualityFailure({...q,bid:1.98},350),null);
+ assert.equal(paperQuoteQualityFailure({...q,bid:1.84},350),'SPREAD_TOO_WIDE_IN_CENTS');
  assert.equal(paperNeedsPriceConfirmation(2,2.08,null),true);
  assert.equal(paperNeedsPriceConfirmation(2,1.90,null),false);
  assert.equal(paperNeedsPriceConfirmation(2,2.08,2.08),false);
@@ -786,4 +788,23 @@ test('owner can accept an extended but still confirmed paper entry without a 2-A
   assert.equal(result.realOrdersEnabled,false);
   assert.equal(result.alerts[0].status,'TAKEN');
  }finally{Date.now=oldDate;globalThis.fetch=oldFetch}
+});
+
+test('owner can adjust actual cents spread without disrupting an open paper trade or 9:30 auto-start',async()=>{
+ const {db,env}=await fixture();await paperApi(req(),env,owner);
+ const runner=freshRunner();runner.enabled=true;runner.autoStart=true;
+ runner.paper.positions=[{id:'held',symbol:'TEST OPTION',time:now,closeRequested:false}];
+ db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(runner));
+ const update=value=>new Request('https://test/platform/paper',{method:'POST',
+  headers:{Origin:'https://icomputeranything.com'},
+  body:JSON.stringify({action:'spread_settings',id:value})});
+ let state=await(await paperApi(update(5),env,owner)).json();
+ assert.equal(state.maxOptionSpreadCents,5);
+ assert.equal(state.paper.positions.length,1);
+ assert.equal(state.autoStart,true);
+ state=await(await paperApi(req(),env,owner)).json();
+ assert.equal(state.maxOptionSpreadCents,5,'spread cap must persist on the owner server');
+ assert.equal((await paperApi(update(9),env,owner)).status,409);
+ assert.equal((await(await paperApi(req(),env,owner)).json()).maxOptionSpreadCents,5);
+ assert.equal(state.realOrdersEnabled,false);
 });
