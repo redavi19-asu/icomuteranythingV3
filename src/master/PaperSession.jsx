@@ -1,10 +1,10 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {summarizePaperExits} from './paper-session.js';
+import {summarizePaperExits,paperPositionExitWarnings} from './paper-session.js';
 import {marketTime} from './trading-paper-engine.js';
 import {marketBellEvent,playMoneyCountingAlert,loadMoneyRecordings} from './trading-session-audio.js';
 import {readPersonalMoneyClip,savePersonalMoneyClip,clearPersonalMoneyClip,preparePersonalMoneyClip,decodePersonalMoneyClip,playPersonalMoneyClip} from './private-money-alert.js';
 import './PaperExitNotice.css';
-import PaperScanCoverage from './PaperScanCoverage.jsx';
+import PaperScannerLane from './PaperScannerLane.jsx';
 import './PaperStopSettings.css';
 const API=import.meta.env.VITE_ICA_MASTER_API_URL||'https://ica-master-platform.ryanedavis.workers.dev';
 const money=n=>Number.isFinite(n)?(n<0?'-$':'$')+Math.abs(n).toFixed(2):'—';
@@ -33,6 +33,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  const [s,setS]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[now,setNow]=useState(Date.now());
  const [showWindow,setShowWindow]=useState(Boolean(initialTab)),[windowTab,setWindowTab]=useState(initialTab||'opportunities'),[selected,setSelected]=useState(null);
  const [feedback,setFeedback]=useState({}),[queued,setQueued]=useState({}),[exitFeedback,setExitFeedback]=useState('');
+ const [requotes,setRequotes]=useState({}),[dismissedExitWarnings,setDismissedExitWarnings]=useState({}),[activeStopDrafts,setActiveStopDrafts]=useState({});
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
  const [stopLossDraft,setStopLossDraft]=useState('20'),[stopLossDirty,setStopLossDirty]=useState(false);
  const [singleTickerDraft,setSingleTickerDraft]=useState('SPY'),[singleTickerDirty,setSingleTickerDirty]=useState(false);
@@ -324,13 +325,17 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    },1000);
    return ()=>clearInterval(timer);
   },[soundOn]);
-  async function call(action,id,epoch){
+  async function call(action,id,epoch,extra={}){
   const token=localStorage.getItem('ica_master_token');
-  const body=['settings','scan_scope'].includes(action)?{action,...id}:action==='auto_start'?{action,enabled:id}:{action,id,...(epoch!==undefined?{epoch}:{})};
+  const body=['settings','scan_scope','scanner_engine','position_override'].includes(action)?
+   {action,...id}:action==='auto_start'?{action,enabled:id}:
+   {action,id,...extra,...(epoch!==undefined?{epoch}:{})};
   const r=await fetch(API+'/platform/paper',{method:action?'POST':'GET',headers:{Authorization:'Bearer '+token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify(body)}:{})});
-  const data=await r.json();if(!r.ok){const e=Error(data.error||'Paper server unavailable.');e.code=data.code;e.serverState=data.status;throw e}return data;
+  const data=await r.json();if(!r.ok){const e=Error(data.error||'Paper server unavailable.');
+   e.code=data.code;e.serverState=data.status;e.requote=data.requote;throw e}
+  return data;
  }
- function act(action,id){
+ function act(action,id,extra={}){
   if(action==='tick'&&scanRequested.current)return;
   if(action==='tick'){scanRequested.current=true;setScanStatus({phase:'queued',message:'Scan request received — starting…'})}
   if(action==='accept'&&pendingAccepts.current.has(id))return;
@@ -346,7 +351,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    try{
     let data;
     for(let attempt=0;attempt<3;attempt++){
-     try{data=await call(action,id,action==='accept'?serverEpoch:undefined);break}catch(e){if(e.code!=='STATE_CHANGED'||attempt===2)throw e;applyState(await call())}
+     try{data=await call(action,id,action==='accept'?serverEpoch:undefined,extra);break}catch(e){if(e.code!=='STATE_CHANGED'||attempt===2)throw e;applyState(await call())}
     }
     applyState(data);
     if(action==='tick'){
@@ -361,7 +366,10 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     if(action==='scan_scope')setOperationNotice(data.scanMode==='SINGLE'?
      'Single Ticker active: '+data.singleTicker+'. Only this ticker is eligible for NEW paper setups. Existing positions stay protected.':
      'Multiple Tickers active: broader watchlist scanning restored.');
-    if(action==='accept')setFeedback(v=>({...v,[id]:{kind:'success',message:'Accepted into Open Trades. Select Open Trade to see profit/loss and close controls.'}}));
+    if(action==='accept'){
+     setRequotes(v=>{const next={...v};delete next[id];return next});
+     setFeedback(v=>({...v,[id]:{kind:'success',message:'Accepted into Open Trades. Select Open Trade to see profit/loss and close controls.'}}));
+    }
     if(action==='settings')setSettingsDirty(false);
     if(action==='stop_settings')setStopLossDirty(false);
     if(action==='scan_scope')setSingleTickerDirty(false);
@@ -369,7 +377,12 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
      const left=positionsOf(data).filter(p=>action==='close_all'||p.id===id);
      setExitFeedback(left.length?'Close pending for '+left.length+' contract(s). '+(left.map(p=>p.lastError).filter(Boolean).join(' · ')||'Waiting for fresh positive bids.'):'Paper close completed. See Closed Trades for final profit/loss.');
     }
-   }catch(e){setError(e.message);if(action==='tick')setScanStatus({phase:'error',message:'Check failed: '+e.message});if(action==='accept')setFeedback(v=>({...v,[id]:{kind:'error',message:e.message}}));if(action==='close'||action==='close_all')setExitFeedback(e.message);if(e.serverState)applyState(e.serverState);else try{applyState(await call())}catch{}}
+   }catch(e){setError(e.message);if(action==='tick')setScanStatus({phase:'error',message:'Check failed: '+e.message});if(action==='accept'){
+      if(e.code==='REQUOTE_REVIEW'&&e.requote){
+       setRequotes(v=>({...v,[id]:e.requote}));
+       setFeedback(v=>({...v,[id]:{kind:'warning',message:e.message}}));
+      }else setFeedback(v=>({...v,[id]:{kind:'error',message:e.message}}));
+     }if(action==='close'||action==='close_all')setExitFeedback(e.message);if(e.serverState)applyState(e.serverState);else try{applyState(await call())}catch{}}
    finally{if(action==='tick')scanRequested.current=false;requests.current--;setBusy(requests.current>0);if(action==='accept'){pendingAccepts.current.delete(id);setQueued(v=>({...v,[id]:false}))}}
   }
   if(['close','close_all','pause'].includes(action))return run();
@@ -443,31 +456,11 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    <div className="itt-bell-controls"><button type="button" className="itt-wide-button" onClick={toggleAlertSound} disabled={soundLoading} aria-busy={soundLoading} aria-pressed={soundOn}>{soundLoading?'Preparing sound…':soundOn?'🔔 SOUNDS ON':'ENABLE ALERT SOUNDS'}</button><button type="button" className="itt-wide-button" disabled={!soundOn} onClick={testAlertBell}>Opening and Closing Bell</button><button type="button" className="itt-wide-button" disabled={privateClipBusy} onClick={handleMoneyAlertClick} aria-label={privateClipReady?'Play saved Money Alert and enable options sounds':'Choose a money alert clip'}>Money Alert</button>{privateClipReady&&<button type="button" className="itt-wide-button" disabled={privateClipBusy} onClick={()=>personalFileInputRef.current?.click()}>Change Clip</button>}<input ref={personalFileInputRef} type="file" accept="audio/*,.mp3,.m4a,.wav,.aac" onChange={choosePersonalClip} style={{display:'none'}} aria-label="Choose your already-edited four-second money alert, or a full song"/>{privateClipReady&&<button type="button" className="itt-wide-button" disabled={privateClipBusy} onClick={removePersonalClip}>Remove My Clip</button>}<div role="status" aria-live="polite" style={{flexBasis:'100%',fontWeight:700,fontSize:13,color:privateClipReady&&soundOn?'#79efaa':'#ffcb83'}}>{privateClipReady?(soundOn?'● MONEY ALERT LOADED · OPTIONS SOUND ON':'● MONEY ALERT LOADED · SOUND OFF — tap Money Alert to listen and enable'): '● NO PERSONAL CLIP — tap Money Alert to choose one'}{personalPreviewPlaying?' · PLAYING NOW':''}</div><small>{soundWarning||(privateClipReady?'Tap Money Alert to hear your saved clip; Change Clip replaces it. New options setups will trigger the same sound when alerts are on.':'Choose your already-edited clip or the full song. The clip stays on this device.')}</small>{privateClipReady&&personalPreviewUrl&&<div style={{flexBasis:'100%',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}><span style={{fontSize:12,color:'#d7d7d9'}}>iPhone audio player (backup):</span><audio ref={personalPreviewAudioRef} controls preload="metadata" src={personalPreviewUrl} aria-label="Play your saved Money Alert with the iPhone native audio player" style={{maxWidth:'100%',width:290,height:38}} /></div>}<small>Market bell remains at 9:30 AM and 4:00 PM ET. Alerts need the page active, sound enabled and device volume turned up.</small><small><a href="https://orangefreesounds.com/money-counting-machine/" target="_blank" rel="noopener noreferrer">Cash counter sound credit</a> · <a href="https://orangefreesounds.com/security-beep-sound/" target="_blank" rel="noopener noreferrer">Beep sound credit</a> (CC BY 4.0)</small></div>
    </details>
    <button type="button" className="itt-wide-button itt-trade-center-button" onClick={()=>openWindow()}>TRADING OPPORTUNITIES &amp; TRADES · {liveAlerts.length} awaiting · {positions.length} open · {history.length} closed</button>
-  </div><aside className="itt-paper-radar" aria-label="Scanner live status and recent ticker checks"><div className="itt-paper-radar-heading"><div><span className="itt-eyebrow">ICA MARKET RADAR</span><h3>Scanner Activity</h3></div><span className={'itt-radar-state '+(radarActive?'active':'')}>{phase}</span></div>
-   <div className="itt-scan-scope" role="group" aria-label="Scan only one ticker or multiple tickers">
-    <div className="itt-scope-heading"><strong>SCAN SCOPE · {s?.scanMode==='SINGLE'?(s.singleTicker||'SPY')+' ONLY':'MULTIPLE TICKERS'}</strong></div>
-    <div className="itt-scope-switch">
-     <button type="button" className={'itt-wide-button '+(s?.scanMode==='SINGLE'?'selected':'')} aria-pressed={s?.scanMode==='SINGLE'} disabled={!s||busy} onClick={()=>setScope('SINGLE')}>◎ Single Ticker</button>
-     <button type="button" className={'itt-wide-button '+(s?.scanMode!=='SINGLE'?'selected':'')} aria-pressed={s?.scanMode!=='SINGLE'} disabled={!s||busy} onClick={()=>setScope('MULTI')}>▦ Multiple Tickers</button>
-    </div>
-    {s?.scanMode==='SINGLE'&&<form className="itt-scope-ticker" onSubmit={e=>{e.preventDefault();setScope('SINGLE')}}>
-     <label htmlFor="itt-single-ticker-input">Single ticker symbol</label>
-     <input id="itt-single-ticker-input" name="singleTicker" value={singleTickerDraft} maxLength={10} autoCapitalize="characters" spellCheck={false}
-      onChange={e=>{setSingleTickerDraft(e.target.value.toUpperCase());setSingleTickerDirty(true)}} placeholder="SPY" aria-label="Single ticker symbol, for example SPY"/>
-     <button className="itt-wide-button" type="submit" disabled={!s||busy}>Apply Ticker</button>
-    </form>}
-    <small className="itt-scope-footnote">Server setting. Existing paper positions stay monitored.</small>
-   </div>
-    <label className="itt-autostart" style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-     <span><strong>Auto-start paper scanner at 9:30 AM ET</strong><small style={{display:'block'}}>Saved on the server for this owner. Trading weekdays only; no real orders. A manual Pause stays paused for the day.</small></span>
-     <input type="checkbox" checked={!!s?.autoStart} disabled={!s||busy} onChange={e=>act('auto_start',e.target.checked)} aria-label="Automatically start paper scanner at 9:30 AM Eastern"/>
-     <span className="itt-switch" aria-hidden="true"/>
-    </label>
-   <div className="itt-radar-dashboard"><div className={'itt-radar-visual '+(radarActive?'running':'')} aria-hidden="true"><div className="itt-radar-rings"/><div className="itt-radar-sweep"/><div className="itt-radar-blips"><span className="itt-radar-blip green"/><span className="itt-radar-blip red"/><span className="itt-radar-blip green"/><span className="itt-radar-blip red"/><span className="itt-radar-blip green"/><span className="itt-radar-blip red"/></div><div className="itt-radar-core">⌖</div></div><div className="itt-radar-primary"><small>LAST RECORDED SCAN</small><strong>{latest?.symbol||'—'}</strong><span>{latest?.state?.replaceAll('_',' ')||'NO SCANS YET'}</span><p>{latest?.reason||'Waiting for the next scheduled scan.'}</p></div></div>
-   <div className="itt-radar-metrics"><div><small>UNIVERSE</small><strong>{s?.scanUniverse?.length??'—'} tickers</strong></div><div><small>OPEN TRADES</small><strong>{positions.length} managed separately</strong></div><div><small>SERVER</small><strong>{stale?'STALE':'RESPONDING'}</strong></div></div>
-   <div className="itt-radar-cycle"><div className="itt-radar-cycle-title"><span>{radarActive?'Next scheduled check (approx.)':'Checks paused / outside session'}</span><span>{radarActive&&elapsed!==null?Math.max(0,60-elapsed)+'s':'—'}</span></div><div className="itt-radar-track"><span style={{width:radarActive&&elapsed!==null?Math.min(100,elapsed/60*100)+'%':'0%'}}/></div></div>
-   <div className="itt-radar-recent"><PaperScanCoverage snapshot={s} now={now} embedded/></div><p className="itt-radar-foot"><strong>PRICE ACTION GATES · ACTIVE</strong> — First breakout candle is a watch, not an entry. A second closed candle must confirm within six minutes; extended entries and nearby opposing 5/5 barriers are held. No automatic trades. {priceActionLatest&&<>Latest: <strong>{priceActionLatest.status.replaceAll('_',' ')}</strong> · {priceActionLatest.reason}</>}</p>
-  </aside></div>
+  </div><div className="itt-scanner-duo" aria-label="Two independently configurable ICA PRIME paper scanners">
+   {['MAIN','FOCUS'].map(engine=><PaperScannerLane key={engine} engineId={engine}
+    snapshot={s} now={now} busy={busy} serverStale={stale}
+    onSave={config=>act('scanner_engine',config)}/>)}
+  </div></div>
   <section className="itt-scanner-settings itt-stop-settings" aria-label="Paper stop loss control">
    <h4>STOP LOSS CONTROL · NEXT PAPER TRADE</h4>
    <label htmlFor="itt-stop-pct">Protective stop on option premium</label>
