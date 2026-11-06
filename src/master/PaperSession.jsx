@@ -33,7 +33,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  const [s,setS]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[now,setNow]=useState(Date.now());
  const [showWindow,setShowWindow]=useState(Boolean(initialTab)),[windowTab,setWindowTab]=useState(initialTab||'opportunities'),[selected,setSelected]=useState(null);
  const [feedback,setFeedback]=useState({}),[queued,setQueued]=useState({}),[exitFeedback,setExitFeedback]=useState('');
- const [requotes,setRequotes]=useState({}),[dismissedExitWarnings,setDismissedExitWarnings]=useState({}),[activeStopDrafts,setActiveStopDrafts]=useState({});
+ const [requotes,setRequotes]=useState({}),[limitPrices,setLimitPrices]=useState({}),[limitDurations,setLimitDurations]=useState({}),[dismissedExitWarnings,setDismissedExitWarnings]=useState({}),[activeStopDrafts,setActiveStopDrafts]=useState({});
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
  const [stopLossDraft,setStopLossDraft]=useState('20'),[stopLossDirty,setStopLossDirty]=useState(false);
  const [singleTickerDraft,setSingleTickerDraft]=useState('SPY'),[singleTickerDirty,setSingleTickerDirty]=useState(false);
@@ -327,7 +327,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
   },[soundOn]);
   async function call(action,id,epoch,extra={}){
   const token=localStorage.getItem('ica_master_token');
-  const body=['settings','scan_scope','scanner_engine','position_override'].includes(action)?
+  const body=['settings','scan_scope','scanner_engine','position_override','limit_order'].includes(action)?
    {action,...id}:action==='auto_start'?{action,enabled:id}:
    {action,id,...extra,...(epoch!==undefined?{epoch}:{})};
   const r=await fetch(API+'/platform/paper',{method:action?'POST':'GET',headers:{Authorization:'Bearer '+token,...(action?{'Content-Type':'application/json'}:{})},...(action?{body:JSON.stringify(body)}:{})});
@@ -366,6 +366,8 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     if(action==='scan_scope')setOperationNotice(data.scanMode==='SINGLE'?
      'Single Ticker active: '+data.singleTicker+'. Only this ticker is eligible for NEW paper setups. Existing positions stay protected.':
      'Multiple Tickers active: broader watchlist scanning restored.');
+    if(action==='limit_order')setOperationNotice('Paper limit saved. ICA PRIME checks the fresh option ask until your limit fills, you cancel, or the setup expires.');
+    if(action==='limit_cancel')setOperationNotice('Resting paper limit cancelled. No paper entry will occur from that order.');
     if(action==='accept'){
      setRequotes(v=>{const next={...v};delete next[id];return next});
      setFeedback(v=>({...v,[id]:{kind:'success',message:'Accepted into Open Trades. Select Open Trade to see profit/loss and close controls.'}}));
@@ -377,7 +379,9 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
      const left=positionsOf(data).filter(p=>action==='close_all'||p.id===id);
      setExitFeedback(left.length?'Close pending for '+left.length+' contract(s). '+(left.map(p=>p.lastError).filter(Boolean).join(' · ')||'Waiting for fresh positive bids.'):'Paper close completed. See Closed Trades for final profit/loss.');
     }
-   }catch(e){setError(e.message);if(action==='tick')setScanStatus({phase:'error',message:'Check failed: '+e.message});if(action==='accept'){
+   }catch(e){setError(e.message);if(action==='tick')setScanStatus({phase:'error',message:'Check failed: '+e.message});if(action==='limit_order'&&id?.alertId)
+      setFeedback(v=>({...v,[id.alertId]:{kind:'error',message:e.message}}));
+     if(action==='accept'){
       if(e.code==='REQUOTE_REVIEW'&&e.requote){
        setRequotes(v=>({...v,[id]:e.requote}));
        setFeedback(v=>({...v,[id]:{kind:'warning',message:e.message}}));
@@ -525,7 +529,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    {positions.length>0&&<div className="itt-trade-window-summary"><span>{positions.length} open · Estimated net P/L {signed(totalPnl)}</span><button type="button" className="itt-wide-button itt-position-exit" onClick={()=>act('close_all')}>CLOSE ALL PAPER TRADES</button></div>}
    {exitFeedback&&<p role="status" className="itt-paper-exit-feedback">{exitFeedback}</p>}
    <div className="itt-opportunities-grid">
-    {windowTab==='opportunities'&&<>{!alerts.length&&<p>No saved opportunities. Accepted contracts remain in Open Trades; completed contracts remain in Closed Trades.</p>}{alerts.map(item=>{const c=item.contract,ready=item.status==='PENDING'&&item.expires>now,open=positions.find(p=>p.alertId===item.id||p.id===item.id),state=item.status==='PENDING'&&!ready?'EXPIRED':item.status;return <article className="itt-opportunity-card" key={item.id}><div className="itt-opportunity-top"><div><span className="itt-eyebrow">{c.underlying} · {c.side}</span><h3>{money(c.strike)} <small>{c.expiration}</small></h3></div><button type="button" className="itt-opportunity-x" disabled={queued[item.id]} aria-label={'Dismiss '+c.symbol} onClick={()=>act('dismiss',item.id)}>✕</button></div><p className="itt-opportunity-symbol">{c.symbol}</p><span className={'itt-opportunity-status '+(ready?'ready':'inactive')}>{open?'ACCEPTED · OPEN TRADE':state}</span>{item.style&&<div className="itt-play-style"><strong>{item.style.label}</strong><p>Monitoring horizon: {item.style.window}</p><p>{item.style.reason}</p><p><strong>Invalidation:</strong> {item.style.invalidation}</p></div>}<p>{item.signal?.reason||'Rules-qualified paper setup.'}</p>{item.qualification?.priceAction&&<p><strong>Price action:</strong> {item.qualification.priceAction.status.replaceAll('_',' ')} · Break level {money(item.qualification.priceAction.breakoutLevel)} · Confirmed {time(item.qualification.priceAction.confirmationBarTime)} ET · Underlying invalidation {money(item.qualification.priceAction.invalidation)} · {item.qualification.priceAction.target!==null?'Opposing 5/5 swing target '+money(item.qualification.priceAction.target)+' · Underlying reward/risk '+item.qualification.priceAction.rewardRisk+':1':'No verified opposing swing target; reward/risk not established'}. These stock-price levels are context only; your separate option-premium stop remains unchanged.</p>}{item.qualification?.swing55&&<p><strong>Confirmed swing 5/5 levels (Schwab):</strong> Support {money(item.qualification.swing55.support)} · Resistance {money(item.qualification.swing55.resistance)} · {item.qualification.swing55.status?.replaceAll('_',' ')}.</p>}{item.qualification?.entryTiming&&<p><strong>Entry quality:</strong> {item.qualification.entryTiming.status.replaceAll('_',' ')} · {item.qualification.entryTiming.reason}</p>}<p>Alert ask {money(c.ask)} · Volume {c.volume??'—'} · OI {c.openInterest??'—'} · Delta {c.delta??'—'}</p>
+    {windowTab==='opportunities'&&<>{!alerts.length&&<p>No saved opportunities. Accepted contracts remain in Open Trades; completed contracts remain in Closed Trades.</p>}{alerts.map(item=>{const c=item.contract,ready=item.status==='PENDING'&&item.expires>now,open=positions.find(p=>p.alertId===item.id||p.id===item.id),state=item.status==='PENDING'&&!ready?'EXPIRED':item.status,limitOrder=(s?.paperLimitOrders||[]).find(o=>o.alertId===item.id&&o.status==='WAITING');return <article className="itt-opportunity-card" key={item.id}><div className="itt-opportunity-top"><div><span className="itt-eyebrow">{c.underlying} · {c.side}</span><h3>{money(c.strike)} <small>{c.expiration}</small></h3></div><button type="button" className="itt-opportunity-x" disabled={queued[item.id]} aria-label={'Dismiss '+c.symbol} onClick={()=>act('dismiss',item.id)}>✕</button></div><p className="itt-opportunity-symbol">{c.symbol}</p><span className={'itt-opportunity-status '+(ready?'ready':'inactive')}>{open?'ACCEPTED · OPEN TRADE':state}</span>{item.style&&<div className="itt-play-style"><strong>{item.style.label}</strong><p>Monitoring horizon: {item.style.window}</p><p>{item.style.reason}</p><p><strong>Invalidation:</strong> {item.style.invalidation}</p></div>}<p>{item.signal?.reason||'Rules-qualified paper setup.'}</p>{item.qualification?.priceAction&&<p><strong>Price action:</strong> {item.qualification.priceAction.status.replaceAll('_',' ')} · Break level {money(item.qualification.priceAction.breakoutLevel)} · Confirmed {time(item.qualification.priceAction.confirmationBarTime)} ET · Underlying invalidation {money(item.qualification.priceAction.invalidation)} · {item.qualification.priceAction.target!==null?'Opposing 5/5 swing target '+money(item.qualification.priceAction.target)+' · Underlying reward/risk '+item.qualification.priceAction.rewardRisk+':1':'No verified opposing swing target; reward/risk not established'}. These stock-price levels are context only; your separate option-premium stop remains unchanged.</p>}{item.qualification?.swing55&&<p><strong>Confirmed swing 5/5 levels (Schwab):</strong> Support {money(item.qualification.swing55.support)} · Resistance {money(item.qualification.swing55.resistance)} · {item.qualification.swing55.status?.replaceAll('_',' ')}.</p>}{item.qualification?.entryTiming&&<p><strong>Entry quality:</strong> {item.qualification.entryTiming.status.replaceAll('_',' ')} · {item.qualification.entryTiming.reason}</p>}<p>Alert ask {money(c.ask)} · Volume {c.volume??'—'} · OI {c.openInterest??'—'} · Delta {c.delta??'—'}</p>
     {item.entryEstimate&&<p className="itt-entry-spread-preview"><strong>Up-front paper scalp costs:</strong> Ask {money(c.ask)} · Bid {money(c.bid)} · Spread {item.entryEstimate.spreadPct}% · Expected immediate net P/L if closed at bid <strong>{signed(item.entryEstimate.immediatePnl)}</strong> · Break-even exit bid about {money(item.entryEstimate.breakevenBid)}. Quotes can move; not a prediction of trade profit.</p>}
     <p>Approval expires {time(item.expires)} ET. Price and simulated cash are rechecked.</p>
     {requotes[item.id]&&<div className="itt-requote-review">
@@ -534,7 +538,37 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
      <p>Press Confirm to allow a paper buy at this ask <strong>or cheaper</strong>. If the ask rises again, ICA PRIME will ask you to review it again. Existing safety checks remain active.</p>
      <button type="button" className="itt-wide-button" disabled={queued[item.id]||!ready||!connected||!s?.enabled} onClick={()=>act('accept',item.id,{maxApprovedAsk:requotes[item.id].ask})}>CONFIRM PAPER BUY · MAX ASK {money(requotes[item.id].ask)}</button>
     </div>}
-    {feedback[item.id]&&<p role={feedback[item.id].kind==='error'?'alert':'status'} className={'itt-opportunity-inline-feedback '+feedback[item.id].kind}>{feedback[item.id].message}</p>}{open?<button type="button" className="itt-wide-button" onClick={()=>openWindow('open',open.id)}>OPEN TRADE · P/L &amp; CLOSE</button>:item.status==='TAKEN'?<button type="button" className="itt-wide-button" onClick={()=>openWindow('closed',item.id)}>VIEW CLOSED TRADE</button>:<button type="button" className="itt-wide-button" disabled={queued[item.id]||!ready||!connected||!s?.enabled} aria-busy={!!queued[item.id]} onClick={()=>act('accept',item.id)}>{queued[item.id]?'ACCEPTANCE QUEUED…':ready?'ACCEPT PAPER CONTRACT':'EXPIRED · NOT ACTIONABLE'}</button>}</article>})}</>}
+    {limitOrder&&<section className="itt-paper-limit-wait" aria-label="Active resting paper limit">
+     <strong>WAITING FOR OPTION ASK ≤ {money(limitOrder.maxAsk)}</strong>
+     <p>Last observed ask {money(limitOrder.lastAsk)} · Checks {limitOrder.checks||0} · Expires {time(limitOrder.expires)} ET. {limitOrder.lastStatus?.replaceAll('_',' ')||''}</p>
+     <button type="button" className="itt-wide-button" disabled={busy} onClick={()=>act('limit_cancel',limitOrder.id)}>CANCEL RESTING PAPER LIMIT</button>
+     <small>This is a simulated, server-monitored order—not a real exchange order. Brief price touches between checks may be missed.</small>
+    </section>}
+    {ready&&!open&&!limitOrder&&<section className="itt-paper-limit-entry" aria-label="Set a resting paper option limit price">
+     <strong>YOUR PAPER LIMIT BUY PRICE</strong>
+     <p>Choose your maximum option <strong>ASK</strong> per share. ICA PRIME will wait for that ask or lower rather than buying higher. One contract controls 100 shares.</p>
+     <div className="itt-paper-limit-controls">
+      <label>Maximum ask ($)
+       <input type="number" min="0.01" max="50" step="0.01" inputMode="decimal"
+        value={limitPrices[item.id]??c.ask.toFixed(2)}
+        onChange={e=>setLimitPrices(v=>({...v,[item.id]:e.target.value}))}
+        aria-label={'Maximum paper option ask for '+c.symbol}/>
+      </label>
+      <label>Wait up to
+       <select value={limitDurations[item.id]??'3'}
+        onChange={e=>setLimitDurations(v=>({...v,[item.id]:e.target.value}))}
+        aria-label={'Paper limit expiration for '+c.symbol}>
+        {[1,3,5].map(n=><option key={n} value={n}>{n} minute{n!==1?'s':''}</option>)}
+       </select>
+      </label>
+     </div>
+     <button type="button" className="itt-wide-button" disabled={busy||!connected||!s?.enabled}
+      onClick={()=>act('limit_order',{alertId:item.id,limitAsk:Number(limitPrices[item.id]??c.ask.toFixed(2)),holdMinutes:Number(limitDurations[item.id]??3)})}>
+      PLACE PAPER LIMIT BUY · ASK ≤ {money(Number(limitPrices[item.id]??c.ask.toFixed(2)))}
+     </button>
+     <small>Limit expires at your chosen deadline or the original breakout’s six-minute window, whichever comes first. A fill requires a fresh Schwab quote, valid price action, enough paper cash and the same spread/risk checks. No real order is submitted.</small>
+    </section>}
+    {feedback[item.id]&&<p role={feedback[item.id].kind==='error'?'alert':'status'} className={'itt-opportunity-inline-feedback '+feedback[item.id].kind}>{feedback[item.id].message}</p>}{open?<button type="button" className="itt-wide-button" onClick={()=>openWindow('open',open.id)}>OPEN TRADE · P/L &amp; CLOSE</button>:limitOrder?null:item.status==='TAKEN'?<button type="button" className="itt-wide-button" onClick={()=>openWindow('closed',item.id)}>VIEW CLOSED TRADE</button>:<button type="button" className="itt-wide-button" disabled={queued[item.id]||!ready||!connected||!s?.enabled} aria-busy={!!queued[item.id]} onClick={()=>act('accept',item.id)}>{queued[item.id]?'ACCEPTANCE QUEUED…':ready?'ACCEPT PAPER CONTRACT':'EXPIRED · NOT ACTIONABLE'}</button>}</article>})}</>}
     {windowTab==='open'&&<>{!positions.length&&<p>No open paper contracts. Accepted trades appear here automatically and remain here until closed.</p>}{positions.map(positionCard)}</>}
     {windowTab==='closed'&&<>{!history.length&&<p>No closed paper trades yet.</p>}{history.slice().reverse().map((t,i)=>{const id=t.id||t.symbol+t.exitTime;return <article className="itt-opportunity-card" key={id+i}><span className="itt-eyebrow">CLOSED PAPER TRADE · {t.reason==='STOP_LOSS'?'STOP LOSS TRIGGERED':t.reason?.replaceAll('_',' ')}</span><button type="button" className="itt-trade-symbol" onClick={()=>setSelected(selected===id?null:id)}>{t.symbol} · View trade details</button>{pnlBlock(t,true)}<p>Entry cost {money(t.cost)} · Entry fill {money(t.fill)} · Exit fill {money(t.exitFill)}</p><p>Opened {time(t.time)} ET · Closed {time(t.exitTime)} ET</p>{selected===id&&<p>Strike {money(t.strike)} · Expiration {t.expiration||'—'} · Exit reason {t.reason?.replaceAll('_',' ')}. This contract is closed; there is no open position to exit.</p>}</article>})}</>}
    </div><p className="itt-opportunity-help">Minimize keeps trades open. Close Contract exits one; Close All exits every open paper contract and cancels queued approvals. A fresh positive bid is required. Paper only.</p>
