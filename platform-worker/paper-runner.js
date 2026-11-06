@@ -8,6 +8,7 @@ import {assessSwing55Entry} from '../src/master/trading-swing-levels.js';
 import {assessPriceAction} from '../src/master/trading-price-action.js';
 import {PAPER_LIMIT_MAX_ORDERS,paperLimitDeadline,validatePaperLimitAsk} from '../src/master/paper-limit-orders.js';
 import {paperLimitOrders,finalizePaperLimit,cancelPaperLimits,processRestingPaperLimits} from './paper-limit-runner.js';
+import {DEFAULT_PAPER_SPREAD_CENTS,PAPER_SPREAD_CENT_CHOICES,normalizePaperSpreadCents,absoluteSpreadFailure,rankPaperContracts} from '../src/master/paper-contract-selection.js';
 import {rotatingTickerBatch,saveSymbolScanCoverage} from './paper-scan-coverage.js';
 import {paperEntryEligible,paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE,expiryStatus,paperExpirationCloseDue} from '../src/master/paper-session-clock.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
@@ -49,7 +50,8 @@ export function scannerStreamUniverse(s){
 }
 const budget=s=>Number.isFinite(s.maxPremium)?s.maxPremium:paperRules.premiumBudget;
 const stopLossPct=s=>selectedStopLossPct(s.stopLossPct);
-export const PAPER_SCALP_MAX_SPREAD_PCT=3;
+const spreadLimit=s=>normalizePaperSpreadCents(s.maxOptionSpreadCents);
+export const PAPER_SCALP_MAX_SPREAD_PCT=8;
 /** Explicitly show the bid/ask drag on ONE paper option contract (100 shares). */
 export function paperOptionEntryEstimate(q){
  if(!Number.isFinite(q?.ask)||!Number.isFinite(q?.bid)||q.ask<=0||q.bid<0||q.bid>q.ask)return null;
@@ -60,14 +62,15 @@ export function paperOptionEntryEstimate(q){
   spreadDollars:Math.round((q.ask-q.bid)*10000)/100,
   breakevenBid:Math.round((q.ask+0.033)*1000)/1000};
 }
-export function paperQuoteQualityFailure(quote,premiumBudget){
+export function paperQuoteQualityFailure(quote,premiumBudget,maxSpreadCents=DEFAULT_PAPER_SPREAD_CENTS){
+ const cents=absoluteSpreadFailure(quote,maxSpreadCents);
+ if(cents)return cents;
  const base=eligiblePaperQuote(quote,{...paperRules,premiumBudget,
   maxSpreadPct:Math.min(PAPER_SCALP_MAX_SPREAD_PCT,paperRules.maxSpreadPct)});
  if(base)return base;
- const estimate=paperOptionEntryEstimate(quote);
- if(!estimate||estimate.cost<=0)return 'INVALID_QUOTE';
- if(-estimate.immediatePnl/estimate.cost>0.05)return 'EXCESSIVE_ENTRY_DRAG';
- return null;
+ // Tight owner-chosen cents, instead of a 5% drag cutoff, controls liquidity.
+ // Estimated roundtrip friction remains visible, including on cheap premiums.
+ return paperOptionEntryEstimate(quote)?null:'INVALID_QUOTE';
 }
 export function paperNeedsPriceConfirmation(originalAsk,freshAsk,maxApprovedAsk){
  // An improved ask is never rejected merely because the original quote was
@@ -83,7 +86,7 @@ function alertList(s){
 }
 const liveAlert=(a,now=Date.now())=>a.status==='PENDING'&&a.expires>now;
 function expireAlerts(s,now=Date.now()){for(const a of alertList(s))if(a.status==='PENDING'&&a.expires<=now){a.status='EXPIRED';event(s,'Approval expired: '+a.contract.symbol);}}
-const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),
+const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),maxOptionSpreadCents:spreadLimit(s),
  scanUniverse:s.scanMode==='SINGLE'?scannerUniverse(s):scannerStreamUniverse(s),
  scanEngines:Object.fromEntries(PAPER_SCAN_ENGINES.map(engine=>[engine,{
   ...scannerEngineConfig(s,engine),universe:scannerEngineUniverse(s,engine),
@@ -102,7 +105,7 @@ async function notifyPaperOpportunity(env,owner,alert){
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
 export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],scanMode:'MULTI',singleTicker:'SPY',dailySignals:{},dailyCheckedDay:{},
- flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,lastAutoStartAt:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],paperLimitOrders:[],scannerEngines:{MAIN:{enabled:true,scope:'ALL',symbols:[]},FOCUS:{enabled:false,scope:'CUSTOM',symbols:[]}},focusScanIndex:0,engineCoverage:{MAIN:{},FOCUS:{}},engineLast:{},swingLevels:{},priceActionChecks:{},scanCoverage:{}});
+ flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,lastAutoStartAt:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],paperLimitOrders:[],maxOptionSpreadCents:DEFAULT_PAPER_SPREAD_CENTS,scannerEngines:{MAIN:{enabled:true,scope:'ALL',symbols:[]},FOCUS:{enabled:false,scope:'CUSTOM',symbols:[]}},focusScanIndex:0,engineCoverage:{MAIN:{},FOCUS:{}},engineLast:{},swingLevels:{},priceActionChecks:{},scanCoverage:{}});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
@@ -225,7 +228,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
   // stream scan was throttled. Never place broker/exchange orders.
   check.paperLimits=await processRestingPaperLimits({
    env,owner,s,verifySetup:verifyPaperPriceWindow,
-   quoteQuality:paperQuoteQualityFailure,premiumBudget:budget(s),
+   quoteQuality:(q,premium)=>paperQuoteQualityFailure(q,premium,spreadLimit(s)),premiumBudget:budget(s),
    stopLossPct:stopLossPct(s),event
   });
   if(scan&&s.enabled){
@@ -343,7 +346,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      // never imply a measured win probability when it is absent.
      const chain=await data(env,owner,'options',symbol);
      if(chain.delayed!==false)throw Error('Options delay status unconfirmed; skipping setup.');
-     const candidates=(chain.contracts||[]).filter(c=>paperEntryEligible(c.expiration,session)&&c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!paperQuoteQualityFailure(c,budget(s))).sort((a,b)=>(a.ask-a.bid)/a.ask-(b.ask-b.bid)/b.ask);
+     const candidates=rankPaperContracts((chain.contracts||[]).filter(c=>paperEntryEligible(c.expiration,session)&&c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!paperQuoteQualityFailure(c,budget(s),spreadLimit(s))));
      // The stable breakout timestamp is the setup identity. Repeated checks
      // over its 6-minute confirmation window cannot generate duplicate alerts.
      const contract=candidates[0],id=symbol+'|'+new Date(priceAction.breakoutBarTime).toISOString();
@@ -362,7 +365,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      const exact=await schwabContractQuote(env,owner,contract.symbol);
      const exactFreshness=schwabQuoteFreshness({...exact,realtime:true},Date.now(),10000);
      const actionable={...contract,bid:exact.bid,ask:exact.ask,quoteTime:exact.quoteTime};
-     const contractRiskFailure=paperQuoteQualityFailure(actionable,budget(s));
+     const contractRiskFailure=paperQuoteQualityFailure(actionable,budget(s),spreadLimit(s));
      // eligiblePaperQuote returns NULL for a valid contract and a reason code
      // for a rejected contract. Never negate it: that inverted check was
      // rejecting every otherwise-qualified November 5 scalp opportunity.
@@ -526,6 +529,13 @@ export async function paperApi(request,env,owner){
    s.maxPremium=Math.round(amount*100)/100;s.extraSymbols=[...new Set(input.extraSymbols)];
    event(s,'Paper scan settings updated.');
   }
+   else if(action==='spread_settings'){
+    const value=Number(id);
+    if(!PAPER_SPREAD_CENT_CHOICES.includes(value))
+     throw Error('Choose a maximum option bid/ask spread of 1, 2, 3, 5, or 10 cents.');
+    s.maxOptionSpreadCents=value;
+    event(s,'Owner set maximum option spread for new paper entries to '+value+' cents.');
+   }
    else if(action==='stop_settings'){
    // User may alter the default for NEXT entries even if a trade is open.
    // Each existing position retains its own entry-time risk percentage.
@@ -591,7 +601,7 @@ export async function paperApi(request,env,owner){
    // If the ask already satisfies the owner's limit, check and simulate now;
    // otherwise the scheduled/streaming scanner will keep checking.
    await processRestingPaperLimits({env,owner,s,verifySetup:verifyPaperPriceWindow,
-    quoteQuality:paperQuoteQualityFailure,premiumBudget:budget(s),
+    quoteQuality:(q,premium)=>paperQuoteQualityFailure(q,premium,spreadLimit(s)),premiumBudget:budget(s),
     stopLossPct:stopLossPct(s),event});
   }
   else if(action==='limit_cancel'){
@@ -652,7 +662,7 @@ export async function paperApi(request,env,owner){
    if(a.expires<Date.now())throw Error('Setup expired during quote refresh.');
    if(schwabQuoteFreshness({...quote,realtime:true},Date.now(),10000).code!=='VERIFIED_FRESH')
     throw Error('Fresh real-time option bid/ask was not verified. Wait for a current quote.');
-   const quality=paperQuoteQualityFailure(quote,budget(s));
+   const quality=paperQuoteQualityFailure(quote,budget(s),spreadLimit(s));
    if(quality)throw Error('Updated option quote no longer meets scalp quality: '+quality.replaceAll('_',' '));
    // Quotes that improve can fill immediately. An increased ask over 2%
    // opens an explicit review rather than permanently cancelling the trade.
