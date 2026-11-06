@@ -6,6 +6,7 @@ import {schwabQuoteFreshness} from '../src/master/schwab-quote-freshness.js';
 import {evaluateAristotleConfluence,evaluateDailySwing,classifyTradeHorizon} from '../src/master/trading-smart-money.js';
 import {assessEntryChase} from '../src/master/trading-entry-chase.js';
 import {assessSwing55Entry} from '../src/master/trading-swing-levels.js';
+import {assessPriceAction} from '../src/master/trading-price-action.js';
 import {rotatingTickerBatch,saveSymbolScanCoverage} from './paper-scan-coverage.js';
 import {paperEntryEligible,paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE} from '../src/master/paper-session-clock.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
@@ -36,7 +37,7 @@ async function notifyPaperOpportunity(env,owner,alert){
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
 export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],scanMode:'MULTI',singleTicker:'SPY',dailySignals:{},dailyCheckedDay:{},
- flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,lastAutoStartAt:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],swingLevels:{},scanCoverage:{}});
+ flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,lastAutoStartAt:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],swingLevels:{},priceActionChecks:{},scanCoverage:{}});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
@@ -73,6 +74,41 @@ async function validateUnderlyingQuote(env,owner,symbol,now=Date.now()){
   const status=schwabQuoteFreshness(quote,now);
   return {...status,symbol,quoteTime:quote.quoteTime??null,checkedAt:now};
  }catch{return empty}
+}
+/** New confirmed-price-action alerts must still be in their opportunity
+ * window when the owner presses Approve. The scanner's earlier quote cannot
+ * justify a later paper fill after the underlying loses its setup level. */
+export async function verifyPaperPriceWindow(env,owner,alert,now=Date.now()){
+ const p=alert?.qualification?.priceAction;
+ if(!p)return true; // Legacy alerts retain existing exact-contract checks.
+ if(p.confirmed!==true||!['CALL','PUT'].includes(p.direction)||
+   !Number.isFinite(p.confirmationBarTime)||
+   !Number.isFinite(p.breakoutLevel)||!Number.isFinite(p.invalidation)||
+   !Number.isFinite(p.atr1m)||p.atr1m<=0||
+   now<p.confirmationBarTime+60000||
+   now-p.confirmationBarTime>6*60000)
+  throw Error('Paper entry window expired or price-action evidence is incomplete. Wait for a new setup.');
+ const symbol=alert?.contract?.underlying,side=alert?.contract?.side;
+ if(!validTicker(symbol)||side!==p.direction)
+  throw Error('Paper setup symbol or direction was changed. Wait for a fresh setup.');
+ const r=await schwabQuotes(new Request(
+  'https://internal/platform/schwab/quotes?symbols='+encodeURIComponent(symbol)),env,owner);
+ if(!r.ok)throw Error('Cannot verify a current underlying price. Paper entry held.');
+ const payload=await r.json(),q=payload.quotes?.find(x=>x.symbol===symbol);
+ if(schwabQuoteFreshness(q,Date.now(),10000).code!=='VERIFIED_FRESH'||
+    !Number.isFinite(q?.last)||q.last<=0)
+  throw Error('Underlying Schwab quote is unavailable, delayed or stale. Paper entry held.');
+ const dir=p.direction==='CALL'?1:-1;
+ if(dir*(q.last-p.invalidation)<=0)
+  throw Error('Underlying invalidated the confirmed breakout before approval. Wait for a new setup.');
+ if(dir*(q.last-p.breakoutLevel)/p.atr1m>2.0)
+  throw Error('Underlying already extended beyond the two-ATR opportunity window. Do not chase.');
+ if(Number.isFinite(p.target)){
+  const risk=dir*(q.last-p.invalidation),reward=dir*(p.target-q.last);
+  if(!(risk>0&&reward/risk>=1.5))
+   throw Error('Opposing swing level leaves insufficient price reward/risk for this entry.');
+ }
+ return true;
 }
 export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymbol=null,streamHealth=null}={}){
  const row=await load(env,owner.id),s=row.state;s.heartbeat=Date.now();s.lastError=null;
@@ -137,7 +173,27 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
     try{
      const history=await data(env,owner,'history',symbol);
      const bars=(history.candles||[]).filter(c=>c.time+60000<=checkedAt&&Number.isFinite(c.volume));
-     const signal=evaluateSymbol(symbol,bars,{now:checkedAt,staleAfterMinutes:3});
+     const technical=evaluateSymbol(symbol,bars,{now:checkedAt,staleAfterMinutes:3});
+     // The first breakout candle only creates a WATCH. A separate, already
+     // closed follow-through/retest candle must confirm the same price level.
+     // Historical breakouts are re-evaluated using only candles available at
+     // their original timestamp, not future price information.
+     const priceAction=assessPriceAction(symbol,bars,{now:checkedAt,liveSignal:technical});
+     const signal=priceAction.confirmed?{
+      ...technical,state:'TECHNICAL_WATCH',direction:priceAction.direction,
+      score:priceAction.initialSignalScore,
+      reason:'Price-action breakout and second candle confirmed. '+priceAction.reason,
+      asOf:new Date(priceAction.confirmationBarTime).toISOString(),
+      metrics:{...technical.metrics,breakout:true,volumeConfirmed:true}
+     }:technical;
+     s.priceActionChecks||={};
+     s.priceActionChecks[symbol]={...priceAction,checkedAt};
+     // Bound stored diagnostics to avoid unbounded D1 growth.
+     if(Object.keys(s.priceActionChecks).length>45){
+      const oldest=Object.entries(s.priceActionChecks).sort((a,b)=>
+       (a[1].checkedAt||0)-(b[1].checkedAt||0));
+      for(const [ticker] of oldest.slice(0,-40))delete s.priceActionChecks[ticker];
+     }
      s.marketFeed=await validateUnderlyingQuote(env,owner,symbol,Date.now());
      s.lastScan={symbol,time:checkedAt,signal};
      s.scanHistory=[{symbol,time:checkedAt,state:signal.state,reason:signal.reason},...(s.scanHistory||[])].slice(0,30);
@@ -159,7 +215,15 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
        }
       }catch{s.dailySignals[symbol]={status:'UNAVAILABLE',confirmed:false,reason:'Daily Schwab bars unavailable.'}}
      }
-     if(signal.state!=='TECHNICAL_WATCH')continue;
+     if(!priceAction.confirmed){
+      if(technical.state==='TECHNICAL_WATCH'||
+       !['NO_CONFIRMED_BREAKOUT','UNASSESSED'].includes(priceAction.status)){
+       s.scanHistory.unshift({symbol,time:checkedAt,state:priceAction.status,
+        reason:priceAction.reason});
+       s.scanHistory=s.scanHistory.slice(0,30);
+      }
+      continue; // Never request an option chain on an unconfirmed breakout.
+     }
      if(s.marketFeed?.code!=='VERIFIED_FRESH'){
       s.scanHistory.unshift({symbol,time:checkedAt,state:'FEED_HOLD',reason:'Real-time Schwab underlying quote was not freshly verified: '+(s.marketFeed?.label||'UNAVAILABLE')});
       s.scanHistory=s.scanHistory.slice(0,30);continue;
@@ -195,7 +259,9 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      const chain=await data(env,owner,'options',symbol);
      if(chain.delayed!==false)throw Error('Options delay status unconfirmed; skipping setup.');
      const candidates=(chain.contracts||[]).filter(c=>paperEntryEligible(c.expiration,session)&&c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!eligiblePaperQuote(c,{...paperRules,premiumBudget:budget(s)})).sort((a,b)=>(a.ask-a.bid)/a.ask-(b.ask-b.bid)/b.ask);
-     const contract=candidates[0],id=symbol+'|'+signal.asOf;
+     // The stable breakout timestamp is the setup identity. Repeated checks
+     // over its 6-minute confirmation window cannot generate duplicate alerts.
+     const contract=candidates[0],id=symbol+'|'+new Date(priceAction.breakoutBarTime).toISOString();
      if(!contract){
       s.scanHistory.unshift({symbol,time:checkedAt,state:'CONTRACT_HOLD',reason:'No fresh, liquid contract passed premium, spread, delta and risk checks.'});
       s.scanHistory=s.scanHistory.slice(0,30);continue;
@@ -225,16 +291,20 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      if(!s.seen.includes(id)){
       const alert={id,created:Date.now(),expires:Date.now()+120000,
        contract:{...actionable,underlying:symbol},signal,style,
-       qualification:{technical:{confirmed:true,asOf:signal.asOf,direction:signal.direction},confluence,entryTiming,swing55,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
+       qualification:{technical:{confirmed:true,asOf:signal.asOf,direction:signal.direction},priceAction,confluence,entryTiming,swing55,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
       check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);
       s.seen=[...s.seen,id].slice(-200);
-      s.scanHistory.unshift({symbol,time:checkedAt,state:confluence.confirmed?'HIGH_CONFLUENCE_REVIEW':'TECHNICAL_SETUP_REVIEW',
-       reason:style.label+(confluence.confirmed?
-        ': momentum breakout, multi-timeframe evidence and fresh Schwab option-contract checks align.':
-        ': Nov 4-style momentum breakout and fresh Schwab contract checks passed; additional 5/15-minute confirmation is not established.')+
-        ' Review before paper entry; neither tier is a measured win probability.'});
+      s.scanHistory.unshift({symbol,time:checkedAt,state:confluence.confirmed?'HIGH_CONFLUENCE_REVIEW':'PRICE_ACTION_SETUP_REVIEW',
+       reason:style.label+': '+priceAction.status.replaceAll('_',' ').toLowerCase()+
+        ', '+(priceAction.targetStatus==='CONFIRMED_5_5_SWING'?
+         'confirmed opposite swing target and '+priceAction.rewardRisk+':1 underlying reward/risk.':
+         'no verified opposite swing target; underlying reward/risk is unassessed.')+
+        ' Fresh Schwab option checks passed. Review manually; no win probability is implied.'});
       s.scanHistory=s.scanHistory.slice(0,30);
-      event(s,(confluence.confirmed?'HIGH-CONFLUENCE':'TECHNICAL')+' SCHWAB PAPER SETUP awaiting owner approval: '+contract.symbol+' · '+style.label+' · Entry timing: '+entryTiming.status+' · 5/5 levels: '+swing55.status);
+      event(s,(confluence.confirmed?'HIGH-CONFLUENCE':'CONFIRMED PRICE ACTION')+
+       ' SCHWAB PAPER SETUP awaiting owner approval: '+contract.symbol+' · '+style.label+
+       ' · Candle: '+priceAction.status+' · Entry timing: '+entryTiming.status+
+       ' · 5/5 levels: '+swing55.status);
       try{await notifyPaperOpportunity(env,owner,alert)}catch(e){event(s,'Email notification unavailable: '+e.message)}
      }
     }catch(error){
@@ -342,6 +412,9 @@ export async function paperApi(request,env,owner){
    if(!a||!liveAlert(a))throw Error('This opportunity is expired or already accepted. Check Open Trades and Closed Trades.');
    if(a.signal?.state!=='TECHNICAL_WATCH'||a.qualification?.technical?.confirmed!==true||a.qualification.technical.asOf!==a.signal.asOf||a.qualification?.marketData?.provider!=='SCHWAB'||a.qualification?.marketData?.realtime!==true)
     throw Error('Verified Schwab quotes and current technical-breakout evidence required. Historical alerts must be re-screened.');
+   // Recheck both the underlying thesis and the exact option quote AT
+   // APPROVAL, never rely on a previously displayed but expired setup.
+   await verifyPaperPriceWindow(env,owner,a);
    const c=a.contract,quote={...c,...await schwabContractQuote(env,owner,c.symbol)};
    if(a.expires<Date.now())throw Error('Setup expired during quote refresh.');
    if(!Number.isFinite(quote.ask)||quote.ask<=0||Math.abs(quote.ask/c.ask-1)>0.02){
