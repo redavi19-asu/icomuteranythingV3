@@ -12,3 +12,17 @@
  .itt-coverage-row time,.itt-coverage-row small:not(.itt-coverage-reason){font-size:10px}
  .itt-coverage-list{max-height:390px}
 }
+
+
+/* Always-visible full, scrollable per-ticker activity in ICA Market Radar. */
+.itt-coverage-embedded{min-width:0}
+.itt-coverage-embedded-heading{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 10px;margin-bottom:7px}
+.itt-coverage-embedded-heading strong{color:#ffb578;letter-spacing:.5px;font-size:10px}
+.itt-coverage-embedded-heading span{font-size:10px;color:#a8a8ac;font-weight:700}
+.itt-coverage-intro{font-size:10px;line-height:1.45;color:#a3a3a8;margin:0 0 8px}
+.itt-coverage-embedded .itt-coverage-list{max-height:350px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#ba754a #242427;padding-right:6px}
+.itt-coverage-embedded .itt-coverage-row{grid-template-columns:minmax(48px,.45fr) minmax(105px,1.3fr);gap:4px 8px;padding:8px;word-break:normal}
+.itt-coverage-embedded .itt-coverage-row span{font-size:10px}
+.itt-coverage-embedded .itt-coverage-row time{font-size:10px;text-align:right}
+.itt-coverage-embedded .itt-coverage-row small{font-size:10px}
+.itt-coverage-embedded .itt-coverage-row .itt-coverage-reason{font-size:9px}
