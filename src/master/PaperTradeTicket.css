@@ -1,0 +1,76 @@
+/* ICA PRIME manual option ticket: inspiration is an exchange order ticket,
+ * but every label and interaction belongs to ICA PRIME. */
+.itt-order-backdrop{position:fixed;inset:0;z-index:2147483000;background:rgba(4,7,12,.86);display:flex;align-items:center;justify-content:center;padding:12px;overflow-y:auto;overscroll-behavior:contain}
+.itt-order-ticket{width:min(100%,560px);max-height:calc(100dvh - 24px);overflow-y:auto;background:#121417;border:1px solid #393d44;border-radius:20px;color:#f2f4f5;box-shadow:0 30px 90px rgba(0,0,0,.7);font-family:inherit;scrollbar-width:thin;scrollbar-color:#3d505a #171a20}
+.itt-order-heading{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:15px 18px;background:#1b1e23;border-bottom:1px solid #30343b;position:sticky;top:0;z-index:2}
+.itt-order-heading button{justify-self:start;color:#f6f7f9;background:none;border:0;font-size:16px;font-weight:700;cursor:pointer}
+.itt-order-heading>strong{font-size:22px}
+.itt-order-heading>span{justify-self:end;border:1px solid #457a62;background:#17352a;color:#a9f5ca;padding:4px 8px;border-radius:7px;font-size:10px;font-weight:800;letter-spacing:1px}
+.itt-order-stock-price{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:21px 18px 18px;background:#0d1613}
+.itt-order-stock-price>div:first-child{display:flex;flex-direction:column;gap:4px;min-width:0}
+.itt-order-stock-price>div:first-child strong{color:#36cd7e;font-size:clamp(27px,6vw,40px);line-height:1.15;letter-spacing:-.8px;font-variant-numeric:tabular-nums}
+.itt-order-stock-price>div:first-child small{color:#aec1b4;letter-spacing:.4px;font-size:10px}
+.itt-order-stock-price>div:first-child span{font-size:10px}
+.itt-order-good{color:#7ee1aa}.itt-order-dim{color:#f4c085}
+.itt-order-stock-price>div:nth-child(2){display:flex;gap:15px;text-align:right;flex-wrap:wrap;justify-content:flex-end}
+.itt-order-stock-price>div:nth-child(2)>div{display:flex;flex-direction:column;gap:5px}
+.itt-order-stock-price>div:nth-child(2) small{color:#c5cdc8;font-size:10px}
+.itt-order-stock-price>div:nth-child(2) strong{color:#61e6a3;font-size:clamp(14px,3vw,21px);font-variant-numeric:tabular-nums}
+.itt-order-option{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:17px 18px 12px;border-bottom:1px solid #2b2e34}
+.itt-order-option>div{min-width:0}
+.itt-order-overline{color:#b4bbb7;letter-spacing:1px;font-size:9px;font-weight:800}
+.itt-order-option h2{font-size:19px;margin:5px 0;line-height:1.25}
+.itt-order-option p{font-size:11px;color:#afb9ba;overflow-wrap:anywhere;margin:0}
+.itt-order-live,.itt-order-stale{font-size:9px;font-weight:800;max-width:145px;text-align:right;line-height:1.4}
+.itt-order-live{color:#6ce3a5}.itt-order-stale{color:#eac286}
+.itt-order-quote-head{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:14px 18px;text-align:right}
+.itt-order-quote-head>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.itt-order-quote-head>div:first-child{text-align:left}
+.itt-order-quote-head span{color:#a3a9b0;font-size:11px}
+.itt-order-quote-head strong{font-size:clamp(19px,5vw,27px);font-weight:750;font-variant-numeric:tabular-nums}
+.itt-order-quote-head>div:last-child strong{color:#53e093}
+.itt-order-quote-head small{font-size:10px;color:#a7aab1}
+.itt-order-price-change{transition:color .25s ease}
+.itt-order-chart-wrap{padding:8px 18px 14px;border-bottom:1px solid #30333a}
+.itt-order-spark{display:block;width:100%;height:72px;overflow:visible}
+.itt-order-spark-empty{height:72px;display:flex;align-items:center;justify-content:center;color:#8f999f;font-size:12px;border:1px dashed #374248;border-radius:8px}
+.itt-order-chart-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-size:9px;color:#929da4}
+.itt-order-selectors{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 18px}
+.itt-order-buy-tag{background:#2ca75d;color:#fff;border-radius:25px;padding:9px 14px;font-size:12px;font-weight:900}
+.itt-order-select-tag,.itt-order-selectors label{display:flex;align-items:center;gap:6px;background:#282b31;border-radius:20px;padding:8px 11px;font-size:11px;font-weight:800;color:#e6e7e9}
+.itt-order-selectors select{color:inherit;background:transparent;border:0;font:inherit;max-width:82px}
+.itt-order-selectors select option{color:#121417}
+.itt-order-price-control{padding:12px 18px;border-bottom:1px solid #30333a}
+.itt-order-price-control>label{display:block;font-size:11px;color:#bfc3c6;font-weight:800;margin-bottom:8px}
+.itt-order-price-control>div{display:grid;grid-template-columns:54px 1fr 54px;gap:8px}
+.itt-order-price-control button,.itt-order-qty button{background:#272d32;border:1px solid #454d54;color:#fff;border-radius:8px;font-size:23px;font-weight:600;cursor:pointer;min-height:43px}
+.itt-order-price-control input{color:#f7f8f9;background:#171c21;border:1px solid #50636d;border-radius:8px;text-align:center;font-size:26px;font-variant-numeric:tabular-nums;min-width:0;width:100%;padding:4px}
+.itt-order-price-control p{margin:7px 0 0;color:#9bdab7;font-size:10px;line-height:1.5}
+.itt-order-slider{padding:13px 18px;border-bottom:1px solid #30333a}
+.itt-order-slider>div{display:flex;justify-content:space-between;color:#aeb9bf;font-size:12px;margin-bottom:7px}
+.itt-order-slider input{width:100%;accent-color:#3bbd77}
+.itt-order-slider small{display:block;font-size:10px;color:#a9acb2}
+.itt-order-qty{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-bottom:1px solid #30333a}
+.itt-order-qty>span{color:#b6bbc1;font-size:13px}
+.itt-order-qty>div{display:flex;align-items:center;gap:16px}
+.itt-order-qty button{width:42px}
+.itt-order-qty strong{font-size:23px;min-width:28px;text-align:center}
+.itt-order-cost{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;padding:15px 18px;border-bottom:1px solid #30333a}
+.itt-order-cost>span{font-size:12px;color:#c5c9ca}
+.itt-order-cost>strong{font-size:21px;font-variant-numeric:tabular-nums}
+.itt-order-cost small{width:100%;font-size:10px;color:#a3aab2;line-height:1.5}
+.itt-order-actions{position:sticky;bottom:0;padding:15px 18px;background:#171a1f;border-top:1px solid #31353d;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.itt-order-actions button{min-height:50px;border-radius:11px;font-size:14px;font-weight:900;letter-spacing:.3px;cursor:pointer}
+.itt-order-review{background:#2cbd6e;border:1px solid #48dd88;color:#08180d}
+.itt-order-review:disabled{opacity:.4;cursor:not-allowed}
+.itt-order-cancel{background:#2b2e35;border:1px solid #59616b;color:#f4f5f7}
+.itt-order-error{margin:10px 18px;padding:10px;background:#402025;border:1px solid #c66c72;border-radius:8px;color:#ffdce0;font-size:12px;line-height:1.5}
+.itt-order-foot{padding:10px 18px 18px;text-align:center;color:#8e9ea4;font-size:10px;line-height:1.45}
+.itt-order-review-body{padding:18px}
+.itt-order-review-body h3{font-size:17px;margin:0 0 12px}
+.itt-order-review-body p{font-size:12px;color:#d5d8db;line-height:1.6}
+.itt-order-review-body dl{margin:14px 0;padding:0}
+.itt-order-review-body dl>div{display:flex;justify-content:space-between;gap:18px;border-bottom:1px solid #333941;padding:10px 2px;font-size:12px}
+.itt-order-review-body dt{color:#aeb8bd}.itt-order-review-body dd{margin:0;text-align:right;color:#f2f4f5;font-weight:800}
+.itt-order-abandon{display:block;margin:0 auto 12px;color:#d6c8c8;background:transparent;border:0;text-decoration:underline;cursor:pointer;font-size:11px}
+@media(max-width:620px){.itt-order-backdrop{padding:0;align-items:flex-start}.itt-order-ticket{width:100%;max-height:100dvh;border-radius:0;border:0;min-height:100dvh}.itt-order-stock-price{padding:16px}.itt-order-option{padding:14px 16px}.itt-order-stock-price>div:nth-child(2){gap:8px}.itt-order-quote-head strong{font-size:21px}.itt-order-actions{padding-bottom:max(15px,env(safe-area-inset-bottom))}}
