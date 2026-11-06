@@ -246,6 +246,17 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
     }
     check.enginePasses={MAIN:[],FOCUS:[]};
     s.engineCoverage??={MAIN:{},FOCUS:{}};
+    s.engineCoverage.MAIN??={};s.engineCoverage.FOCUS??={};
+    // Preserve verified checks recorded by the original single scanner.
+    // On migration, only seed symbols that actually belong to Scanner 1;
+    // never pretend a focus-only symbol was scanned by the main engine.
+    if(!s.engineCoverageMigrated){
+     const mainSymbols=new Set(scannerEngineUniverse(s,'MAIN'));
+     for(const [symbol,record] of Object.entries(s.scanCoverage||{}))
+      if(mainSymbols.has(symbol)&&!s.engineCoverage.MAIN[symbol])
+       s.engineCoverage.MAIN[symbol]=record;
+     s.engineCoverageMigrated=true;
+    }
     s.engineLast??={};
     for(const [symbol,engines] of selections){
      const checkedAt=Date.now();check.scannedSymbols.push(symbol);
@@ -419,7 +430,13 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
    }else s.lastScan={time:now,note:'Outside regular paper scanning session (9:30 AM–4:00 PM ET weekdays).'};
   }
  }catch(e){s.lastError=e.message;check.holds.push({reason:e.message});event(s,'Data/risk hold: '+e.message)}
- check.completedAt=Date.now();s.lastCheck=check;
+ check.completedAt=Date.now();
+ // When Scanner 2 is OFF, its 30-second alarm still protects open trades.
+ // That is not a ticker scan: do not erase the last genuine ticker batch
+ // with an empty "scannedSymbols: []" record on the main dashboard.
+ if(scanLane==='FOCUS'&&check.scannedSymbols.length===0)
+  s.lastProtectionCheck=check;
+ else s.lastCheck=check;
  await save(env,owner.id,row);return view(s);
 }
 export async function paperApi(request,env,owner){
