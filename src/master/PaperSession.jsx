@@ -385,7 +385,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
      }if(action==='close'||action==='close_all')setExitFeedback(e.message);if(e.serverState)applyState(e.serverState);else try{applyState(await call())}catch{}}
    finally{if(action==='tick')scanRequested.current=false;requests.current--;setBusy(requests.current>0);if(action==='accept'){pendingAccepts.current.delete(id);setQueued(v=>({...v,[id]:false}))}}
   }
-  if(['close','close_all','pause'].includes(action))return run();
+  if(['close','close_all','pause','position_override'].includes(action))return run();
   queue.current=queue.current.then(run,run);return queue.current;
  }
  useEffect(()=>{let active=true,t;async function refresh(){if(!requests.current)try{const data=await call();if(active){applyState(data);setError('')}}catch(e){if(active)setError(e.message)}if(active){setNow(Date.now());t=setTimeout(refresh,5000)}}refresh();return()=>{active=false;clearTimeout(t)}},[]);
