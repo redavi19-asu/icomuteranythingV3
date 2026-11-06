@@ -453,3 +453,21 @@ test('watchlist add/merge/remove updates exactly the same durable server scanner
  assert.equal(invalid.status,409,'invalid symbols must be rejected');
  assert.deepEqual((await(await paperApi(req(),env,owner)).json()).extraSymbols,['UBER']);
 });
+
+test('adding NVDA to Favorites persists even though base scanner already covers it',async()=>{
+ const {env}=await fixture();await paperApi(req(),env,owner);
+ const post=operation=>new Request('https://test/platform/paper',{method:'POST',
+  headers:{Origin:'https://icomputeranything.com','Content-Type':'application/json'},
+  body:JSON.stringify({action:'watchlist_update',operation,symbol:'NVDA'})});
+ const added=await paperApi(post('add'),env,owner);
+ assert.equal(added.status,200);
+ const state=await added.json();
+ assert.deepEqual(state.extraSymbols,['NVDA']);
+ assert.equal(state.scanUniverse.filter(v=>v==='NVDA').length,1);
+ assert.deepEqual((await(await paperApi(req(),env,owner)).json()).extraSymbols,['NVDA']);
+ const removed=await paperApi(post('remove'),env,owner);
+ assert.equal(removed.status,200);
+ const after=await removed.json();
+ assert.deepEqual(after.extraSymbols,[]);
+ assert.ok(after.scanUniverse.includes('NVDA'),'core scanner remains independent of custom Favorite membership');
+});
