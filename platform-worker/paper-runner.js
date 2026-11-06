@@ -541,11 +541,24 @@ export async function paperApi(request,env,owner){
    await verifyPaperPriceWindow(env,owner,a);
    const c=a.contract,quote={...c,...await schwabContractQuote(env,owner,c.symbol)};
    if(a.expires<Date.now())throw Error('Setup expired during quote refresh.');
-   if(!Number.isFinite(quote.ask)||quote.ask<=0||Math.abs(quote.ask/c.ask-1)>0.02){
-    a.status='REPRICED';event(s,'Contract repriced; alert no longer actionable: '+c.symbol);
-    await save(env,owner.id,row);
-    return response({error:'Contract price moved over 2%. This alert was marked repriced. Wait for a fresh setup.',code:'CONTRACT_REPRICED',status:view(s)},409);
+   if(schwabQuoteFreshness({...quote,realtime:true},Date.now(),10000).code!=='VERIFIED_FRESH')
+    throw Error('Fresh real-time option bid/ask was not verified. Wait for a current quote.');
+   const quality=paperQuoteQualityFailure(quote,budget(s));
+   if(quality)throw Error('Updated option quote no longer meets scalp quality: '+quality.replaceAll('_',' '));
+   // Quotes that improve can fill immediately. An increased ask over 2%
+   // opens an explicit review rather than permanently cancelling the trade.
+   if(paperNeedsPriceConfirmation(c.ask,quote.ask,input.maxApprovedAsk)){
+    return response({code:'REQUOTE_REVIEW',
+      error:'Option ask moved higher. Review the fresh cost and spread, then explicitly confirm your paper scalp.',
+      requote:{symbol:c.symbol,oldAsk:c.ask,ask:quote.ask,bid:quote.bid,
+       quoteTime:quote.quoteTime,originalPriceChangePct:Math.round((quote.ask/c.ask-1)*10000)/100,
+       estimate:paperOptionEntryEstimate(quote),expires:a.expires},
+      status:view(s)},409);
    }
+   // Never treat a prior acknowledgement as permission for a still-higher ask.
+   if(input.maxApprovedAsk!==undefined&&(!Number.isFinite(input.maxApprovedAsk)||
+      input.maxApprovedAsk<=0||quote.ask>input.maxApprovedAsk))
+    throw Error('Option ask increased again. Refresh the setup and review the updated cost.');
    enterPaperPosition(s,a,quote,{maxPremium:budget(s),stopLossPct:stopLossPct(s)});
    a.status='TAKEN';a.enteredAt=Date.now();event(s,'OWNER APPROVED simulated entry: '+c.symbol);
   }else throw Error('Unknown action.');
