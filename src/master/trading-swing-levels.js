@@ -81,7 +81,7 @@ export function assessSwing55Entry(bars,signal){
  return {...basic,status:isPut?'WAIT_SUPPORT_BREAK':'WAIT_RESISTANCE_BREAK',hold:true,
   reason:isPut?
    'PUT entry approaching confirmed 5/5 support near $'+barrier.price.toFixed(2)+
-   '. Wait for a bounce/rejection or two closes below support; do not chase the first test.':
+   '. Nearby support requires confirmation before a new breakdown signal.':
    'CALL entry approaching confirmed 5/5 resistance near $'+barrier.price.toFixed(2)+
-   '. Wait for a pullback or two closes above resistance; do not chase the first test.'};
+   '. Nearby resistance requires confirmation before a new breakout signal.'};
 }

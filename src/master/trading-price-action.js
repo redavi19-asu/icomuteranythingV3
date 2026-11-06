@@ -96,14 +96,13 @@ export function assessPriceAction(symbol,bars,{now=Date.now(),liveSignal=null}={
    previousHold??=state('CANDLE_GAP','A missing interval prevents verifying the breakout follow-through.',common);
    continue;
   }
-  // The initial breakout met the strict 25–75 RSI entry band. One further
-  // candle can nudge RSI just outside it while EMA/VWAP still align; a small
-  // 20–80 extension is acceptable ONLY with the 2-ATR chase gate below.
-  // Do not demand another brand-new 10-bar high or low for confirmation.
+  // The initial breakout already qualified on strict RSI and volume.
+  // A follow-through candle need only retain directional momentum; do not
+  // reject an otherwise valid breakout just because RSI is very strong.
   const m=current.metrics||{};
   const directionalTrend=breakout.direction==='CALL'?
-   m.close>m.ema9&&m.ema9>m.ema21&&m.close>m.vwap&&m.rsi14>52&&m.rsi14<=80:
-   m.close<m.ema9&&m.ema9<m.ema21&&m.close<m.vwap&&m.rsi14<48&&m.rsi14>=20;
+   m.close>m.ema9&&m.ema9>m.ema21&&m.close>m.vwap&&m.rsi14>52:
+   m.close<m.ema9&&m.ema9<m.ema21&&m.close<m.vwap&&m.rsi14<48;
   if(!directionalTrend||current.state==='HISTORICAL'){
    previousHold??=state('TREND_LOST','Trend, VWAP, or RSI no longer confirms the breakout direction.',common);
    continue;
@@ -118,12 +117,9 @@ export function assessPriceAction(symbol,bars,{now=Date.now(),liveSignal=null}={
    previousHold??=state('WAIT_CLOSE_CONFIRMATION','Wait for a subsequent completed candle to close beyond the breakout level.',common);
    continue;
   }
+  // Extension remains observable for diagnostics, not a hard entry veto.
+  // The owner chooses whether an extended price is acceptable.
   const extension=dir*(entry-level)/atr;
-  if(extension>2.0){
-   previousHold??=state('MISSED_ENTRY_WINDOW','Breakout is already more than 2 one-minute ATRs beyond its trigger; do not chase.',{
-    ...common,entryPrice:ROUND(entry),extensionAtr:ROUND(extension)});
-   continue;
-  }
   const retest=subsequent.some(b=>dir===1?
    b.low<=level+0.35*atr:b.high>=level-0.35*atr);
   const invalidation=level-dir*0.35*atr;

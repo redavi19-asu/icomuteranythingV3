@@ -66,10 +66,13 @@ test('a reversal below the original breakout cannot be called successful confirm
  const p=assessPriceAction('SPY',b,{now:atClose(b)});
  assert.equal(p.confirmed,false);
 });
-test('large follow-through moves do not qualify as fresh low-risk entries',()=>{
+test('strong confirmed follow-through remains eligible even above two ATR',()=>{
  const b=next(bullish(),{move:.80});
  const p=assessPriceAction('SPY',b,{now:atClose(b)});
- assert.equal(p.confirmed,false);
+ assert.equal(p.confirmed,true,JSON.stringify(p));
+ assert.ok(p.extensionAtr>2,'a strong directional move should be measured, not rejected');
+ assert.equal(p.hold,false);
+ assert.equal(p.direction,'CALL');
 });
 test('all scanning qualifications are bounded to a six-minute window',()=>{
  assert.equal(PRICE_ACTION_WINDOW_MS,360000);
