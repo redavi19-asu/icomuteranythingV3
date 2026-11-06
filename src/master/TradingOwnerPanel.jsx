@@ -4,6 +4,21 @@ import './TradingTerminal.css';
 import SchwabConnection,{request as schwabRequest} from './SchwabConnection';
 import PaperSession from './PaperSession';
 import {SchwabChart,SchwabOptions,SchwabWatchPrices} from './SchwabMarket';
+const PAPER_API=import.meta.env.VITE_ICA_MASTER_API_URL||'https://ica-master-platform.ryanedavis.workers.dev';
+async function updateServerWatchlist(operation,symbol=null,symbols=null){
+ const token=localStorage.getItem('ica_master_token');
+ if(!token)throw Error('Sign in to ICA PRIME to sync the watchlist.');
+ for(let attempt=0;attempt<4;attempt++){
+  const response=await fetch(PAPER_API+'/platform/paper',{method:'POST',
+   headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+   body:JSON.stringify({action:'watchlist_update',operation,...(symbol?{symbol}:{}),...(symbols?{symbols}:{})})});
+  const result=await response.json().catch(()=>({}));
+  if(response.ok)return result;
+  if(result.code==='STATE_CHANGED'&&attempt<3)continue;
+  throw Error(result.error||'Cannot sync Watchlist to the paper scanner.');
+ }
+ throw Error('Watchlist update conflicted with another scanner check.');
+}
 
 /* Owner-only market workstation. Public TradingView charts are for visual research
  * and are NOT a Schwab data feed, execution signal or options chain.
@@ -121,11 +136,37 @@ export default function TradingOwnerPanel(){
   return s&&Object.hasOwn(tvSymbols,s)?s:'SPY';
  });
  const [group,setGroup]=useState('Favorites');
- const [extraTickers,setExtraTickers]=useState(()=>{try{const v=JSON.parse(localStorage.getItem('ica_trading_extra_tickers')||'[]');return Array.isArray(v)?v.filter(x=>/^[A-Z][A-Z0-9.-]{0,9}$/.test(x)).slice(0,12):[]}catch{return []}});
- const [newTicker,setNewTicker]=useState(''),[tickerError,setTickerError]=useState('');
+ const [extraTickers,setExtraTickers]=useState(()=>{try{const v=JSON.parse(localStorage.getItem('ica_trading_extra_tickers')||'[]');return Array.isArray(v)?[...new Set(v.filter(x=>typeof x==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(x)))].slice(0,20):[]}catch{return []}});
+ const [newTicker,setNewTicker]=useState(''),[tickerError,setTickerError]=useState(''),[watchBusy,setWatchBusy]=useState(false);
+ const localWatchlistImported=useRef(false);
  const groups={...tickerGroups,Favorites:[...new Set([...tickerGroups.Favorites,...extraTickers])]};
- const addTicker=e=>{e.preventDefault();const ticker=newTicker.trim().toUpperCase();if(!/^[A-Z][A-Z0-9.-]{0,9}$/.test(ticker)){setTickerError('Use a valid stock/ETF symbol.');return;}if(groups.Favorites.includes(ticker)){setTickerError('Ticker is already in Favorites.');return;}if(extraTickers.length>=12){setTickerError('12 additional symbols maximum.');return;}const next=[...extraTickers,ticker];setExtraTickers(next);try{localStorage.setItem('ica_trading_extra_tickers',JSON.stringify(next))}catch{}setGroup('Favorites');setSelected(ticker);setNewTicker('');setTickerError('')};
- const removeTicker=ticker=>{const next=extraTickers.filter(x=>x!==ticker);setExtraTickers(next);try{localStorage.setItem('ica_trading_extra_tickers',JSON.stringify(next))}catch{}if(selected===ticker)setSelected('SPY')};
+ async function changeWatchlist(operation,symbol=null,symbols=null){
+  if(watchBusy) return null;
+  setWatchBusy(true);setTickerError('');
+  try{
+   const result=await updateServerWatchlist(operation,symbol,symbols);
+   const next=Array.isArray(result.extraSymbols)?result.extraSymbols:[];
+   setPaperSnapshot(result);setExtraTickers(next);
+   try{localStorage.setItem('ica_trading_extra_tickers',JSON.stringify(next))}catch{}
+   return result;
+  }catch(error){setTickerError(error.message||'Watchlist sync failed; scanner was not changed.');return null}
+  finally{setWatchBusy(false)}
+ }
+ async function addTicker(e){
+  e.preventDefault();
+  const ticker=newTicker.trim().toUpperCase();
+  if(!/^[A-Z][A-Z0-9.-]{0,9}$/.test(ticker)){setTickerError('Use a valid stock/ETF symbol.');return}
+  if(groups.Favorites.includes(ticker)){setTickerError('Ticker is already in Favorites.');return}
+  if(!paperSnapshot){setTickerError('Loading the server watchlist. Try again in a moment.');return}
+  if(extraTickers.length>=20){setTickerError('20 additional symbols maximum. Remove an unused ticker first.');return}
+  if(await changeWatchlist('add',ticker)){
+   setGroup('Favorites');setSelected(ticker);setNewTicker('')
+  }
+ }
+ async function removeTicker(ticker){
+  if(!paperSnapshot)return;
+  if(await changeWatchlist('remove',ticker)&&selected===ticker)setSelected('SPY');
+ }
  const [interval,setIntervalValue]=useState('5');
  const [chainSide,setChainSide]=useState('CALL');
  const [chainOpen,setChainOpen]=useState(()=>new URLSearchParams(window.location.search).get('panel')==='chain');
@@ -135,6 +176,36 @@ export default function TradingOwnerPanel(){
   return ['chart','alert','results','watchlist','scanner','chain','risk'].includes(p)?p:null;
  });
  const [popNotice,setPopNotice]=useState('');
+ // Detached watchlist windows do not mount PaperSession, so fetch the same
+ // authenticated server watchlist instead of leaving every symbol UNTRACKED.
+ useEffect(()=>{
+  if(popPanel!=='watchlist')return;
+  let alive=true;
+  const refresh=async()=>{try{
+   const token=localStorage.getItem('ica_master_token');
+   if(!token)return;
+   const r=await fetch(PAPER_API+'/platform/paper',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+   if(r.ok){const d=await r.json();if(alive)setPaperSnapshot(previous=>!previous||d.revision>=previous.revision?d:previous)}
+  }catch{}};
+  void refresh();const timer=setInterval(refresh,7000);
+  return()=>{alive=false;clearInterval(timer)};
+ },[popPanel]);
+ // One-time migration of browser-only Favorites. Thereafter the server's
+ // extraSymbols powers BOTH Favorites and automatic scanner coverage.
+ useEffect(()=>{
+  if(!paperSnapshot||watchBusy)return;
+  const server=Array.isArray(paperSnapshot.extraSymbols)?paperSnapshot.extraSymbols:[];
+  if(!localWatchlistImported.current){
+   localWatchlistImported.current=true;
+   const legacy=extraTickers.filter(x=>!server.includes(x));
+   if(legacy.length){
+    void changeWatchlist('merge',null,extraTickers);
+    return;
+   }
+  }
+  setExtraTickers(current=>current.length===server.length&&current.every((v,i)=>v===server[i])?current:server);
+  try{localStorage.setItem('ica_trading_extra_tickers',JSON.stringify(server))}catch{}
+ },[paperSnapshot?.revision,watchBusy]);
  const showWide=expanded||Boolean(popPanel);
  useEffect(()=>{
   if(!showWide)return;
@@ -185,11 +256,11 @@ export default function TradingOwnerPanel(){
 <section className="itt-card itt-watchlist">
       <div className="itt-card-heading"><div className="itt-title-group"><span className="itt-title-icon">{icon('radar',18)}</span><div><div className="itt-eyebrow">MARKET RADAR</div><h3>Watchlist</h3></div></div><div className="itt-panel-buttons"><span className="itt-mini-dot">QUOTES</span>{popButton('watchlist')}</div></div>
       <div className="itt-watch-tabs">{Object.keys(groups).map(k=><button type="button" aria-pressed={group===k} key={k} className={group===k?'active':''} onClick={()=>{setGroup(k);if(!groups[k].includes(selected))setSelected(groups[k][0])}}>{k}</button>)}</div>
-      <form className="itt-add-ticker" onSubmit={addTicker}><input value={newTicker} onChange={e=>setNewTicker(e.target.value.toUpperCase())} maxLength={10} aria-label="Add ticker" placeholder="Add ticker, e.g. NVDA"/><button type="submit">＋ ADD</button></form>{tickerError&&<p role="alert" className="itt-watch-error">{tickerError}</p>}
+      <form className="itt-add-ticker" onSubmit={addTicker}><input value={newTicker} onChange={e=>setNewTicker(e.target.value.toUpperCase())} maxLength={10} disabled={watchBusy||!paperSnapshot} aria-label="Add ticker" placeholder={paperSnapshot?"Add ticker, e.g. NVDA":"Connecting to scanner…"}/><button type="submit" disabled={watchBusy||!paperSnapshot}>{watchBusy?'SYNCING…':'＋ ADD & SCAN'}</button></form>{tickerError&&<p role="alert" className="itt-watch-error">{tickerError}</p>}
        <div className="itt-watch-labels"><span>SYMBOL</span><span>LAST</span><span>SCAN</span></div>
-      <div className="itt-watch-rows">{groups[group].map(sym=><button type="button" className={sym===selected?'itt-selected':''} key={sym} onClick={()=>setSelected(sym)}><span><strong>{sym}</strong><small>{descriptions[sym]||"Custom ticker"}</small></span><span className="itt-blank-price">{typeof watchQuotes.find(q=>q.symbol===sym)?.last==='number'?'$'+watchQuotes.find(q=>q.symbol===sym).last.toFixed(2):'—'}</span><span className="itt-ticker-state">{paperSnapshot?.scanUniverse?.includes(sym)?(paperSnapshot?.scanCoverage?.[sym]?.day===todayNY?(paperSnapshot.scanCoverage[sym].state?.replaceAll('_',' ')||'UNAVAILABLE'):'AWAITING CHECK'):'NOT IN SCANNER'}</span></button>)}</div>
-      {group==='Favorites'&&extraTickers.length>0&&<div className="itt-custom-tickers">{extraTickers.map(t=><button type="button" onClick={()=>removeTicker(t)} key={t} title={'Remove '+t}>Remove {t} ×</button>)}</div>}
-       <div className="itt-watch-foot">Favorites and the paper scanner are separate lists. NOT IN SCANNER: add the ticker under Scan Coverage → Extra Tickers and save. AWAITING CHECK: in the scanner but no tracked check today. Select a symbol to update both charts and the options chain.</div>
+      <div className="itt-watch-rows">{groups[group].map(sym=><button type="button" className={sym===selected?'itt-selected':''} key={sym} onClick={()=>setSelected(sym)}><span><strong>{sym}</strong><small>{descriptions[sym]||"Custom ticker"}</small></span><span className="itt-blank-price">{typeof watchQuotes.find(q=>q.symbol===sym)?.last==='number'?'$'+watchQuotes.find(q=>q.symbol===sym).last.toFixed(2):'—'}</span><span className="itt-ticker-state">{paperSnapshot?.scanMode==='SINGLE'&&paperSnapshot?.singleTicker!==sym?'SINGLE MODE':paperSnapshot?.scanUniverse?.includes(sym)?(paperSnapshot?.scanCoverage?.[sym]?.day===todayNY?(paperSnapshot.scanCoverage[sym].state?.replaceAll('_',' ')||'UNAVAILABLE'):'AWAITING CHECK'):'SYNCING'}</span></button>)}</div>
+      {group==='Favorites'&&extraTickers.length>0&&<div className="itt-custom-tickers">{extraTickers.map(t=><button type="button" disabled={watchBusy||!paperSnapshot} onClick={()=>removeTicker(t)} key={t} title={'Remove '+t+' from Favorites and scanner'}>Remove {t} ×</button>)}</div>}
+       <div className="itt-watch-foot">Watchlist and paper scanner are linked on the server. ADD & SCAN adds a ticker to both automatically, including on other devices. AWAITING CHECK means it is queued for the scanner's next rotation. SINGLE MODE scans only the selected ticker; switch to Multiple Tickers for the full watchlist. No real orders.</div>
      </section>
  );
  const chainPanel=(
