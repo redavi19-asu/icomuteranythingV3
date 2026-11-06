@@ -11,7 +11,7 @@ function useMarket(path,enabled,period=30000){
   if(enabled)load();return()=>{cancelled=true;clearTimeout(timer)};
  },[path,enabled,period]);return state;
 }
-function useSchwabQuoteStream(symbol,enabled){
+export function useSchwabQuoteStream(symbol,enabled){
  const [state,setState]=useState({status:'offline',quote:null,lastMessage:0,error:''});
  useEffect(()=>{
   let active=true,socket=null,retry=null,attempt=0,watchedOption=null;
