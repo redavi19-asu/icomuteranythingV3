@@ -22,8 +22,6 @@ export default function PaperScannerLane({engineId,snapshot,now=Date.now(),busy=
  const bad=symbols.find(x=>!goodSymbol(x));
  const universe=saved.universe||[];
  const coverage=saved.coverage||{};
- const checked=universe.filter(t=>coverage[t]?.day===
-  new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(now)).length;
  const save=e=>{
   e.preventDefault();setError('');
   if(bad){setError('Invalid symbol: '+bad+'. Use stock/ETF ticker symbols.');return}
