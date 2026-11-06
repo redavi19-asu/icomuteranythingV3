@@ -75,6 +75,41 @@ async function validateUnderlyingQuote(env,owner,symbol,now=Date.now()){
   return {...status,symbol,quoteTime:quote.quoteTime??null,checkedAt:now};
  }catch{return empty}
 }
+/** New confirmed-price-action alerts must still be in their opportunity
+ * window when the owner presses Approve. The scanner's earlier quote cannot
+ * justify a later paper fill after the underlying loses its setup level. */
+export async function verifyPaperPriceWindow(env,owner,alert,now=Date.now()){
+ const p=alert?.qualification?.priceAction;
+ if(!p)return true; // Legacy alerts retain existing exact-contract checks.
+ if(p.confirmed!==true||!['CALL','PUT'].includes(p.direction)||
+   !Number.isFinite(p.confirmationBarTime)||
+   !Number.isFinite(p.breakoutLevel)||!Number.isFinite(p.invalidation)||
+   !Number.isFinite(p.atr1m)||p.atr1m<=0||
+   now<p.confirmationBarTime+60000||
+   now-p.confirmationBarTime>6*60000)
+  throw Error('Paper entry window expired or price-action evidence is incomplete. Wait for a new setup.');
+ const symbol=alert?.contract?.underlying,side=alert?.contract?.side;
+ if(!validTicker(symbol)||side!==p.direction)
+  throw Error('Paper setup symbol or direction was changed. Wait for a fresh setup.');
+ const r=await schwabQuotes(new Request(
+  'https://internal/platform/schwab/quotes?symbols='+encodeURIComponent(symbol)),env,owner);
+ if(!r.ok)throw Error('Cannot verify a current underlying price. Paper entry held.');
+ const payload=await r.json(),q=payload.quotes?.find(x=>x.symbol===symbol);
+ if(schwabQuoteFreshness(q,Date.now(),10000).code!=='VERIFIED_FRESH'||
+    !Number.isFinite(q?.last)||q.last<=0)
+  throw Error('Underlying Schwab quote is unavailable, delayed or stale. Paper entry held.');
+ const dir=p.direction==='CALL'?1:-1;
+ if(dir*(q.last-p.invalidation)<=0)
+  throw Error('Underlying invalidated the confirmed breakout before approval. Wait for a new setup.');
+ if(dir*(q.last-p.breakoutLevel)/p.atr1m>2.0)
+  throw Error('Underlying already extended beyond the two-ATR opportunity window. Do not chase.');
+ if(Number.isFinite(p.target)){
+  const risk=dir*(q.last-p.invalidation),reward=dir*(p.target-q.last);
+  if(!(risk>0&&reward/risk>=1.5))
+   throw Error('Opposing swing level leaves insufficient price reward/risk for this entry.');
+ }
+ return true;
+}
 export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymbol=null,streamHealth=null}={}){
  const row=await load(env,owner.id),s=row.state;s.heartbeat=Date.now();s.lastError=null;
  s.flowGate={status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'No paid options-flow feed required; Schwab technical, quote and contract checks remain active.'};
@@ -377,6 +412,9 @@ export async function paperApi(request,env,owner){
    if(!a||!liveAlert(a))throw Error('This opportunity is expired or already accepted. Check Open Trades and Closed Trades.');
    if(a.signal?.state!=='TECHNICAL_WATCH'||a.qualification?.technical?.confirmed!==true||a.qualification.technical.asOf!==a.signal.asOf||a.qualification?.marketData?.provider!=='SCHWAB'||a.qualification?.marketData?.realtime!==true)
     throw Error('Verified Schwab quotes and current technical-breakout evidence required. Historical alerts must be re-screened.');
+   // Recheck both the underlying thesis and the exact option quote AT
+   // APPROVAL, never rely on a previously displayed but expired setup.
+   await verifyPaperPriceWindow(env,owner,a);
    const c=a.contract,quote={...c,...await schwabContractQuote(env,owner,c.symbol)};
    if(a.expires<Date.now())throw Error('Setup expired during quote refresh.');
    if(!Number.isFinite(quote.ask)||quote.ask<=0||Math.abs(quote.ask/c.ask-1)>0.02){
