@@ -349,31 +349,35 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      const candidates=rankPaperContracts((chain.contracts||[]).filter(c=>paperEntryEligible(c.expiration,session)&&c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!paperQuoteQualityFailure(c,budget(s),spreadLimit(s))));
      // The stable breakout timestamp is the setup identity. Repeated checks
      // over its 6-minute confirmation window cannot generate duplicate alerts.
-     const contract=candidates[0],id=symbol+'|'+new Date(priceAction.breakoutBarTime).toISOString();
-     if(!contract){
-      s.scanHistory.unshift({symbol,time:checkedAt,state:'CONTRACT_HOLD',reason:'No fresh, liquid contract passed premium, spread, delta and risk checks.'});
+     const id=symbol+'|'+new Date(priceAction.breakoutBarTime).toISOString();
+     // A chain snapshot can differ from an independently refreshed quote.
+     // Try the three best lowest-cent-spread candidates; don't abandon an
+     // otherwise good setup solely because the FIRST quote has widened.
+     let contract=null,actionable=null,contractHold='NO_LIQUID_CONTRACT';
+     for(const candidate of candidates.slice(0,3)){
+      try{
+       const exact=await schwabContractQuote(env,owner,candidate.symbol);
+       const fresh=schwabQuoteFreshness({...exact,realtime:true},Date.now(),10000);
+       const updated={...candidate,bid:exact.bid,ask:exact.ask,quoteTime:exact.quoteTime};
+       const quality=paperQuoteQualityFailure(updated,budget(s),spreadLimit(s));
+       if(fresh.code!=='VERIFIED_FRESH'||quality!==null){
+        contractHold=fresh.code!=='VERIFIED_FRESH'?fresh.code:quality;
+        continue;
+       }
+       contract=candidate;actionable=updated;break;
+      }catch(error){
+       contractHold='EXACT_QUOTE_UNAVAILABLE';
+      }
+     }
+     if(!actionable){
+      s.scanHistory.unshift({symbol,time:checkedAt,state:'CONTRACT_HOLD',
+       reason:'No fresh option contract met maximum '+spreadLimit(s)+'¢ spread and liquidity criteria. Last hold: '+contractHold+'.'});
       s.scanHistory=s.scanHistory.slice(0,30);continue;
      }
-     // Pre-subscribe candidate to live option updates. This cannot override the
-     // independently verified real-time contract bid/ask checks on paper entry.
+     // Subscribe the actual selected contract, not an earlier rejected quote.
      if(env.PAPER_QUOTE_STREAM&&scanSymbol!==null)try{
       await env.PAPER_QUOTE_STREAM.getByName(owner.id).watchOption(contract.symbol,symbol);
      }catch{}
-     // A chain snapshot can be seconds old. Reprice the exact option contract
-     // immediately before publishing any scalp setup, with provider-proven
-     // real-time entitlement and a sub-10s quote timestamp.
-     const exact=await schwabContractQuote(env,owner,contract.symbol);
-     const exactFreshness=schwabQuoteFreshness({...exact,realtime:true},Date.now(),10000);
-     const actionable={...contract,bid:exact.bid,ask:exact.ask,quoteTime:exact.quoteTime};
-     const contractRiskFailure=paperQuoteQualityFailure(actionable,budget(s),spreadLimit(s));
-     // eligiblePaperQuote returns NULL for a valid contract and a reason code
-     // for a rejected contract. Never negate it: that inverted check was
-     // rejecting every otherwise-qualified November 5 scalp opportunity.
-     if(exactFreshness.code!=='VERIFIED_FRESH'||contractRiskFailure!==null){
-      s.scanHistory.unshift({symbol,time:checkedAt,state:'CONTRACT_HOLD',
-       reason:'Exact Schwab option quote held: '+(exactFreshness.code!=='VERIFIED_FRESH'?exactFreshness.code:contractRiskFailure)+'.'});
-      s.scanHistory=s.scanHistory.slice(0,30);continue;
-     }
      const style=classifyTradeHorizon({bars,signal,contract:actionable,
       dailySignal:s.dailySignals?.[symbol],now:checkedAt});
      if(!s.seen.includes(id)){
