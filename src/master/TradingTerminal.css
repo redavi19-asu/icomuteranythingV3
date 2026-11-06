@@ -798,3 +798,16 @@
 .itt-paper-limit-wait{border-color:#70b5a0;background:#1a302d}
 .itt-paper-limit-wait>strong{color:#b5ffdd}
 @media(max-width:480px){.itt-paper-limit-controls{grid-template-columns:minmax(0,1fr)}}
+
+
+/* Always-visible, read-only server auto-start status (not scan-running state). */
+.itt-paper-auto-start-status{display:inline-flex;align-items:center;flex-wrap:wrap;gap:5px 9px;width:fit-content;max-width:100%;margin:4px 0 12px;padding:8px 12px;border:1px solid #474447;border-radius:9px;background:#222225;color:#dedadd;font-size:11px;line-height:1.45}
+.itt-paper-auto-start-status strong{font-size:11px;letter-spacing:.35px;white-space:nowrap}
+.itt-paper-auto-start-status span:last-child{color:#afadb2}
+.itt-paper-auto-start-dot{flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:#7d7c83}
+.itt-paper-auto-start-status.enabled{border-color:#3c6959;background:#1e2c27}
+.itt-paper-auto-start-status.enabled .itt-paper-auto-start-dot{background:#56c98b}
+.itt-paper-auto-start-status.enabled strong{color:#a5f0bc}
+.itt-paper-auto-start-status.disabled .itt-paper-auto-start-dot{background:#cc9262}
+.itt-paper-auto-start-status.disabled strong{color:#f3c99c}
+@media(max-width:500px){.itt-paper-auto-start-status{width:100%;padding:8px 10px}.itt-paper-auto-start-status span:last-child{font-size:10px}}
