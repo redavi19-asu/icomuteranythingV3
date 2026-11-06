@@ -8,7 +8,7 @@ import {assessEntryChase} from '../src/master/trading-entry-chase.js';
 import {assessSwing55Entry} from '../src/master/trading-swing-levels.js';
 import {assessPriceAction} from '../src/master/trading-price-action.js';
 import {rotatingTickerBatch,saveSymbolScanCoverage} from './paper-scan-coverage.js';
-import {paperEntryEligible,paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE} from '../src/master/paper-session-clock.js';
+import {paperEntryEligible,paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE,expiryStatus,paperExpirationCloseDue} from '../src/master/paper-session-clock.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 // Bounded liquid options universe. This is NOT a claim to scan every exchange-listed stock.
 // Every built-in ICA PRIME watchlist ticker is scanned automatically.
@@ -526,6 +526,42 @@ export async function paperApi(request,env,owner){
    const alerts=alertList(s),a=alerts.find(x=>x.id===id);
    if(!a)throw Error('Alert already dismissed or changed.');
    s.alerts=alerts.filter(x=>x.id!==id);event(s,'Owner dismissed '+a.contract.symbol+' ('+a.status+').');
+  }
+  else if(action==='position_override'){
+   const input=JSON.parse(body),position=s.paper.positions.find(p=>p.id===input.id);
+   if(!position||position.closeRequested)throw Error('Position already closed or closing. Override not available.');
+   if(!['EXTEND_TIME','CHANGE_STOP'].includes(input.operation)||input.confirmOverride!==true)
+    throw Error('Select and explicitly confirm a paper-trade override.');
+   const currentSession=marketTime(Date.now());
+   if(!paperSessionOpen(currentSession)||paperExpirationCloseDue(position.expiration,currentSession))
+    throw Error('Market or expiration-day exit is due. Mandatory closing rules cannot be overridden.');
+   const quote=await schwabContractQuote(env,owner,position.symbol);
+   if(schwabQuoteFreshness({...quote,realtime:true},Date.now(),10000).code!=='VERIFIED_FRESH')
+    throw Error('Cannot override with a stale or unavailable option bid.');
+   if(!Number.isFinite(quote.bid)||quote.bid<=0)
+    throw Error('No valid option bid. Paper override held.');
+   const currentPct=selectedStopLossPct(position.stopLossPct);
+   if(quote.bid<=position.fill*(1-currentPct/100))
+    throw Error('Existing stop has already been reached. Cannot override an exit after the trigger.');
+   if(input.operation==='EXTEND_TIME'){
+    if(expiryStatus(position.expiration,currentSession.day)==='FUTURE')
+     throw Error('Overnight-eligible positions have no mandatory 30-minute scalp cap.');
+    const existing=Math.min(390,Math.max(1,Number(position.maxHoldMinutes)||30));
+    if(Date.now()>=position.time+existing*60000)
+     throw Error('Timed exit is already due. Extend before the deadline.');
+    if(existing>=390)throw Error('Maximum 390-minute intraday cap reached.');
+    position.maxHoldMinutes=Math.min(390,existing+10);
+    event(s,'Owner manually extended '+position.symbol+' time exit by 10 minutes to '+
+     position.maxHoldMinutes+' minutes; stop and session safeguards remain active.');
+   }else{
+    const newStop=Number(input.stopLossPct);
+    if(!PAPER_STOP_LOSS_CHOICES.includes(newStop))throw Error('Choose a 15%, 20%, 35%, or 50% option-premium stop.');
+    if(newStop===currentPct)throw Error('Choose a different stop percentage.');
+    position.stopLossPct=newStop;
+    event(s,'Owner deliberately changed OPEN paper stop for '+position.symbol+
+     ' from '+currentPct+'% to '+newStop+'%; live-trade risk explicitly acknowledged.');
+   }
+   normalizePaperPortfolio(s);
   }
   else if(action==='accept'){
    const a=alertList(s).find(x=>x.id===id);
