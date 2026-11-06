@@ -1,5 +1,7 @@
 import React,{useEffect,useState} from 'react';
 import PaperScanCoverage from './PaperScanCoverage.jsx';
+import {marketTime} from './trading-paper-engine.js';
+import {paperSessionOpen} from './paper-session-clock.js';
 
 const goodSymbol=s=>/^[A-Z][A-Z0-9.-]{0,9}$/.test(s);
 const fmt=n=>n?new Date(n).toLocaleTimeString('en-US',{
@@ -32,12 +34,13 @@ export default function PaperScannerLane({engineId,snapshot,now=Date.now(),busy=
   setDirty(false);
   onSave({engine:engineId,enabled,scope,symbols});
  };
- const latest=saved.last,active=!!snapshot?.enabled&&saved.enabled&&!serverStale;
+ const latest=saved.last,marketOpen=paperSessionOpen(marketTime(now));
+ const active=!!snapshot?.enabled&&saved.enabled&&!serverStale&&marketOpen;
  return <section className="itt-paper-radar itt-scanner-lane" aria-label={(second?'Scanner 2':'Scanner 1')+' paper activity'}>
   <header className="itt-paper-radar-heading">
    <div><span className="itt-eyebrow">ICA PRIME · PAPER SCANNER {second?'02':'01'}</span>
     <h3>{second?'Scanner 2':'Scanner 1'}</h3></div>
-   <span className={'itt-radar-state '+(active?'active':'')}>{!saved.enabled?'OFF':serverStale?'SERVER STALE':snapshot?.enabled?'ON':'PAUSED'}</span>
+   <span className={'itt-radar-state '+(active?'active':'')}>{!saved.enabled?'OFF':serverStale?'SERVER STALE':!snapshot?.enabled?'PAUSED':marketOpen?'SCANNING':'SCHEDULED'}</span>
   </header>
   <p className="itt-scanner-engine-help">{second?
    'Independent focused ticker rotation · up to 5 checks each 30-second alarm, plus fresh stream-triggered checks when available.':
@@ -54,7 +57,7 @@ export default function PaperScannerLane({engineId,snapshot,now=Date.now(),busy=
     </select>
    </label>
    {scope==='CUSTOM'&&<label className="itt-scanner-engine-label">Custom stock and ETF symbols
-    <textarea rows={2} value={text} disabled={!snapshot||busy} maxLength={420}
+    <textarea rows={2} value={text} disabled={!snapshot||busy} maxLength={600}
      onChange={e=>{setText(e.target.value.toUpperCase());setDirty(true)}}
      placeholder="SPY, TSLA" spellCheck={false} autoCapitalize="characters"
      aria-label={(second?'Scanner 2':'Scanner 1')+' comma separated ticker list'}/>
