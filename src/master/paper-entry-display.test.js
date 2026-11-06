@@ -18,3 +18,8 @@ test('thinkorswim-style midpoint mark and the conservative sell-at-bid net P/L r
  assert.equal(actualNet,-4.3);
  assert.equal(paperMarkPnlAtMid({...p,mark:{bid:NaN,ask:3}}),null);
 });
+
+
+test('midpoint mark is multiplied by selected quantity but conservative P/L accounting is untouched',()=>{
+ assert.equal(paperMarkPnlAtMid({fill:2.57,quantity:3,mark:{bid:2.55,ask:2.56}}),-4.5);
+});
