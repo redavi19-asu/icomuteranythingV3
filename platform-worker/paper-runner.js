@@ -139,7 +139,7 @@ export async function verifyPaperPriceWindow(env,owner,alert,now=Date.now()){
  }
  return true;
 }
-export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymbol=null,streamHealth=null}={}){
+export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymbol=null,streamHealth=null,scanLane='BOTH'}={}){
  const row=await load(env,owner.id),s=row.state;s.heartbeat=Date.now();s.lastError=null;
  s.flowGate={status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'No paid options-flow feed required; Schwab technical, quote and contract checks remain active.'};
  if(streamHealth){
@@ -190,16 +190,32 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
   if(scan&&s.enabled){
    const now=Date.now(),session=marketTime(now);
    if(paperSessionOpen(session)){
-    const allowed=scannerUniverse(s);
-    // Advance five distinct default ticker slots per scheduled/owner scan.
-    // Streaming scans do not advance this cursor; their only role is to
-    // accelerate specific symbol checks, never to starve the full universe.
-    const scheduledBatch=scanSymbol===null?rotatingTickerBatch(allowed,s.scanIndex,5):[];
-    const universe=scanSymbol===null?scheduledBatch:allowed.filter(t=>t===scanSymbol);
-   for(let i=0;i<universe.length;i++){
-    const symbol=universe[i],checkedAt=Date.now();check.scannedSymbols.push(symbol);
-    if(scanSymbol===null)s.scanIndex++;
-    try{
+    // Two owner-configurable engines, separately rotating up to five tickers
+    // per pass. Both feed one serial D1 coordinator to protect live paper P/L.
+    const selections=new Map();
+    for(const engine of PAPER_SCAN_ENGINES){
+     const conf=scannerEngineConfig(s,engine);
+     if(!conf.enabled||(scanLane!=='BOTH'&&scanLane!==engine))continue;
+     const allowed=scannerEngineUniverse(s,engine);
+     const batch=scanSymbol===null?rotatingTickerBatch(allowed,
+      engine==='MAIN'?s.scanIndex:(s.focusScanIndex||0),5):
+      allowed.includes(scanSymbol)?[scanSymbol]:[];
+     if(scanSymbol===null){
+      if(engine==='MAIN')s.scanIndex+=batch.length;
+      else s.focusScanIndex=(s.focusScanIndex||0)+batch.length;
+     }
+     for(const symbol of batch){
+      const list=selections.get(symbol)||[];
+      list.push(engine);selections.set(symbol,list);
+     }
+    }
+    check.enginePasses={MAIN:[],FOCUS:[]};
+    s.engineCoverage??={MAIN:{},FOCUS:{}};
+    s.engineLast??={};
+    for(const [symbol,engines] of selections){
+     const checkedAt=Date.now();check.scannedSymbols.push(symbol);
+     engines.forEach(engine=>check.enginePasses[engine].push(symbol));
+     try{
      const history=await data(env,owner,'history',symbol);
      const bars=(history.candles||[]).filter(c=>c.time+60000<=checkedAt&&Number.isFinite(c.volume));
      const technical=evaluateSymbol(symbol,bars,{now:checkedAt,staleAfterMinutes:3});
@@ -341,16 +357,28 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      s.scanHistory=[{symbol,time:checkedAt,state:'DATA_HOLD',reason:error.message},...(s.scanHistory||[])].slice(0,30);
      event(s,'SCAN HOLD '+symbol+': '+error.message);
     }finally{
-     // The old rolling 30-event feed hid real checks whenever a busy
-     // streaming symbol (e.g. GOOGL) appeared repeatedly. Track the last
-     // actual evaluation of EVERY symbol separately, regardless of outcome.
+     // Keep per-symbol status by engine rather than allowing busy stream
+     // tickers to hide the rest of the market's actual check history.
      const latest=s.scanHistory?.find(item=>item.symbol===symbol&&item.time>=checkedAt);
-     saveSymbolScanCoverage(s,{
-      symbol,checkedAt:Date.now(),day:session.day,
-      source:scanSymbol===null?'ROTATION':'STREAM',
-      scanState:latest?.state||'DATA_HOLD',
+     const finished=Date.now(),result={
+      symbol,checkedAt:finished,state:latest?.state||'DATA_HOLD',
       reason:latest?.reason||'Scan did not return a final status.'
+     };
+     saveSymbolScanCoverage(s,{
+      symbol,checkedAt:finished,day:session.day,
+      source:scanSymbol===null?'ROTATION':'STREAM',
+      scanState:result.state,reason:result.reason
      });
+     for(const engine of engines){
+      const laneState={scanCoverage:s.engineCoverage[engine]||{}};
+      saveSymbolScanCoverage(laneState,{
+       symbol,checkedAt:finished,day:session.day,
+       source:scanSymbol===null?'ROTATION':'STREAM',
+       scanState:result.state,reason:result.reason
+      });
+      s.engineCoverage[engine]=laneState.scanCoverage;
+      s.engineLast[engine]=result;
+     }
     }
    }
    }else s.lastScan={time:now,note:'Outside regular paper scanning session (9:30 AM–4:00 PM ET weekdays).'};
