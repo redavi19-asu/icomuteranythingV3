@@ -96,8 +96,15 @@ export function assessPriceAction(symbol,bars,{now=Date.now(),liveSignal=null}={
    previousHold??=state('CANDLE_GAP','A missing interval prevents verifying the breakout follow-through.',common);
    continue;
   }
-  if(current.direction!==breakout.direction||
-    !['WATCH','TECHNICAL_WATCH'].includes(current.state)){
+  // The initial breakout met the strict 25–75 RSI entry band. One further
+  // candle can nudge RSI just outside it while EMA/VWAP still align; a small
+  // 20–80 extension is acceptable ONLY with the 2-ATR chase gate below.
+  // Do not demand another brand-new 10-bar high or low for confirmation.
+  const m=current.metrics||{};
+  const directionalTrend=breakout.direction==='CALL'?
+   m.close>m.ema9&&m.ema9>m.ema21&&m.close>m.vwap&&m.rsi14>52&&m.rsi14<=80:
+   m.close<m.ema9&&m.ema9<m.ema21&&m.close<m.vwap&&m.rsi14<48&&m.rsi14>=20;
+  if(!directionalTrend||current.state==='HISTORICAL'){
    previousHold??=state('TREND_LOST','Trend, VWAP, or RSI no longer confirms the breakout direction.',common);
    continue;
   }
