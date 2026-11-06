@@ -1,5 +1,6 @@
 import {PAPER_DEFAULTS,eligiblePaperQuote,marketTime} from './trading-paper-engine.js';
 import {expiryStatus,paperSessionOpen,paperExpirationCloseDue,PAPER_EXPIRY_EXIT_MINUTE} from './paper-session-clock.js';
+import {validatePaperQuantity} from './paper-limit-orders.js';
 export const paperRules={...PAPER_DEFAULTS,stopAfterDailyGoal:false};
 export const PAPER_STOP_LOSS_CHOICES=Object.freeze([15,20,35,50]);
 export const selectedStopLossPct=(value)=>PAPER_STOP_LOSS_CHOICES.includes(value)?value:20;
@@ -42,7 +43,7 @@ export function paperPositionExitWarnings(p,now=Date.now()){
  return warnings;
 }
 
-export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperRules.premiumBudget,stopLossPct=paperRules.stopLossPct,dailyGoal=50,now=Date.now()}){
+export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperRules.premiumBudget,stopLossPct=paperRules.stopLossPct,dailyGoal=50,quantity=1,now=Date.now()}){
  const s=structuredClone(state),session=marketTime(now);
  if(s.day!==session.day){s.day=session.day;s.dayPnl=0;s.dayTrades=0}
  if(!quote||!Number.isFinite(quote.quoteTime)||now-quote.quoteTime>60000||quote.quoteTime>now+5000)throw Error('Waiting for a fresh contract quote.');
@@ -65,7 +66,7 @@ export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperR
    p.bestBid>=p.fill*1.15&&quote.bid<=p.bestBid*0.9?'TRAILING_STOP':
    paperExpirationCloseDue(p.expiration,session)?'SESSION_END':
    timedScalp?'MAX_HOLD':null;
-  if(reason){if(quote.bid<=0)throw Error('No positive bid available; simulated position remains open.');const credit=round(Math.max(0,quote.bid-0.01)*100-0.65),pnl=round(credit-p.cost);s.cash=round(s.cash+credit);s.realized=round(s.realized+pnl);s.dayPnl=round(s.dayPnl+pnl);s.trades.push({...p,exitTime:now,exitFill:quote.bid-0.01,pnl,reason});s.position=null}
+  if(reason){if(quote.bid<=0)throw Error('No positive bid available; simulated position remains open.');const qty=validatePaperQuantity(p.quantity??1),credit=round((Math.max(0,quote.bid-0.01)*100-0.65)*qty),pnl=round(credit-p.cost);s.cash=round(s.cash+credit);s.realized=round(s.realized+pnl);s.dayPnl=round(s.dayPnl+pnl);s.trades.push({...p,exitTime:now,exitFill:quote.bid-0.01,pnl,reason});s.position=null}
  }else if(enter){
   if(!paperSessionOpen(session))throw Error('Paper entries run 9:30 AM–4:00 PM ET on regular market weekdays.');
   const contractExpiry=expiryStatus(quote.expiration,session.day);
@@ -75,10 +76,13 @@ export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperR
   if(quote.nonStandard)throw Error('Nonstandard contracts are excluded.');
   if(![quote.delta,quote.volume,quote.openInterest].every(Number.isFinite))throw Error('Contract quality data is incomplete.');
   const blocked=eligiblePaperQuote(quote,{...paperRules,premiumBudget:maxPremium});if(blocked)throw Error(blocked.replaceAll('_',' '));
-  const cost=round((quote.ask+0.01)*100+0.65);if(cost>s.cash)throw Error('Insufficient paper cash.');
+  const qty=validatePaperQuantity(quantity);
+  const cost=round(((quote.ask+0.01)*100+0.65)*qty);
+  if(cost>maxPremium)throw Error('Order quantity and total entry cost exceed your paper per-trade premium budget.');
+  if(cost>s.cash)throw Error('Insufficient paper cash.');
   // Simulated cash, premium, liquidity and quote freshness still gate entries.
   if(!PAPER_STOP_LOSS_CHOICES.includes(stopLossPct))throw Error('Choose a supported paper stop loss: 15%, 20%, 35%, or 50%.');
-  s.cash=round(s.cash-cost);s.dayTrades++;s.position={...quote,fill:quote.ask+0.01,cost,time:now,day:session.day,bestBid:quote.bid,stopLossPct};
+  s.cash=round(s.cash-cost);s.dayTrades++;s.position={...quote,fill:quote.ask+0.01,quantity:qty,cost,time:now,day:session.day,bestBid:quote.bid,stopLossPct};
  }
  return s;
 }
