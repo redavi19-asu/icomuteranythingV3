@@ -41,6 +41,33 @@ export function scannerStreamUniverse(s){
 }
 const budget=s=>Number.isFinite(s.maxPremium)?s.maxPremium:paperRules.premiumBudget;
 const stopLossPct=s=>selectedStopLossPct(s.stopLossPct);
+export const PAPER_SCALP_MAX_SPREAD_PCT=3;
+/** Explicitly show the bid/ask drag on ONE paper option contract (100 shares). */
+export function paperOptionEntryEstimate(q){
+ if(!Number.isFinite(q?.ask)||!Number.isFinite(q?.bid)||q.ask<=0||q.bid<0||q.bid>q.ask)return null;
+ const cost=Math.round(((q.ask+0.01)*100+0.65)*100)/100;
+ const immediateExit=Math.round(((Math.max(0,q.bid-0.01))*100-0.65)*100)/100;
+ return {cost,immediateExit,immediatePnl:Math.round((immediateExit-cost)*100)/100,
+  spreadPct:Math.round((q.ask-q.bid)/q.ask*10000)/100,
+  spreadDollars:Math.round((q.ask-q.bid)*10000)/100,
+  breakevenBid:Math.round((q.ask+0.033)*1000)/1000};
+}
+export function paperQuoteQualityFailure(quote,premiumBudget){
+ const base=eligiblePaperQuote(quote,{...paperRules,premiumBudget,
+  maxSpreadPct:Math.min(PAPER_SCALP_MAX_SPREAD_PCT,paperRules.maxSpreadPct)});
+ if(base)return base;
+ const estimate=paperOptionEntryEstimate(quote);
+ if(!estimate||estimate.cost<=0)return 'INVALID_QUOTE';
+ if(-estimate.immediatePnl/estimate.cost>0.05)return 'EXCESSIVE_ENTRY_DRAG';
+ return null;
+}
+export function paperNeedsPriceConfirmation(originalAsk,freshAsk,maxApprovedAsk){
+ // An improved ask is never rejected merely because the original quote was
+ // different; a materially WORSE ask requires explicit owner acknowledgement.
+ return Number.isFinite(originalAsk)&&Number.isFinite(freshAsk)&&freshAsk>originalAsk*1.02&&
+  !(Number.isFinite(maxApprovedAsk)&&maxApprovedAsk>=freshAsk);
+}
+
 function alertList(s){
  if(!Array.isArray(s.alerts))s.alerts=[];
  if(s.pending){if(!s.alerts.some(a=>a.id===s.pending.id))s.alerts.unshift({...s.pending,status:'PENDING'});s.seen=[...new Set([...(s.seen||[]),s.pending.id])].slice(-200);s.pending=null;}
@@ -303,7 +330,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      // never imply a measured win probability when it is absent.
      const chain=await data(env,owner,'options',symbol);
      if(chain.delayed!==false)throw Error('Options delay status unconfirmed; skipping setup.');
-     const candidates=(chain.contracts||[]).filter(c=>paperEntryEligible(c.expiration,session)&&c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!eligiblePaperQuote(c,{...paperRules,premiumBudget:budget(s)})).sort((a,b)=>(a.ask-a.bid)/a.ask-(b.ask-b.bid)/b.ask);
+     const candidates=(chain.contracts||[]).filter(c=>paperEntryEligible(c.expiration,session)&&c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!paperQuoteQualityFailure(c,budget(s))).sort((a,b)=>(a.ask-a.bid)/a.ask-(b.ask-b.bid)/b.ask);
      // The stable breakout timestamp is the setup identity. Repeated checks
      // over its 6-minute confirmation window cannot generate duplicate alerts.
      const contract=candidates[0],id=symbol+'|'+new Date(priceAction.breakoutBarTime).toISOString();
@@ -322,7 +349,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      const exact=await schwabContractQuote(env,owner,contract.symbol);
      const exactFreshness=schwabQuoteFreshness({...exact,realtime:true},Date.now(),10000);
      const actionable={...contract,bid:exact.bid,ask:exact.ask,quoteTime:exact.quoteTime};
-     const contractRiskFailure=eligiblePaperQuote(actionable,{...paperRules,premiumBudget:budget(s)});
+     const contractRiskFailure=paperQuoteQualityFailure(actionable,budget(s));
      // eligiblePaperQuote returns NULL for a valid contract and a reason code
      // for a rejected contract. Never negate it: that inverted check was
      // rejecting every otherwise-qualified November 5 scalp opportunity.
@@ -335,7 +362,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
       dailySignal:s.dailySignals?.[symbol],now:checkedAt});
      if(!s.seen.includes(id)){
       const alert={id,created:Date.now(),expires:Date.now()+120000,
-       contract:{...actionable,underlying:symbol},signal,style,
+       contract:{...actionable,underlying:symbol},entryEstimate:paperOptionEntryEstimate(actionable),signal,style,
        qualification:{technical:{confirmed:true,asOf:signal.asOf,direction:signal.direction},priceAction,confluence,entryTiming,swing55,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
       check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);
       s.seen=[...s.seen,id].slice(-200);
