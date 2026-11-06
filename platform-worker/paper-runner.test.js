@@ -750,3 +750,40 @@ test('a falling option ask does not trigger paper buy if underlying breakout inv
   assert.equal(tick.realOrdersEnabled,false);
  }finally{Date.now=oldDate;globalThis.fetch=oldFetch}
 });
+
+
+test('owner can accept an extended but still confirmed paper entry without a 2-ATR chase rejection',async()=>{
+ const oldDate=Date.now,oldFetch=globalThis.fetch;
+ Date.now=()=>now;
+ try{
+  const {env,db}=await fixture();
+  await paperApi(req(),env,owner);
+  const state=freshRunner(),base=pending();
+  state.enabled=true;
+  state.alerts=[{...base,status:'PENDING',
+   contract:{...base.contract,side:'CALL'},
+   qualification:{...base.qualification,priceAction:{
+    confirmed:true,direction:'CALL',confirmationBarTime:now-120000,
+    breakoutLevel:100,invalidation:99.7,atr1m:.2,target:null
+   }}
+  }];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
+  globalThis.fetch=async input=>{
+   const sym=new URL(input).searchParams.get('symbols');
+   if(sym==='SPY'){
+    return Response.json({SPY:{realtime:true,quote:{
+     lastPrice:101.20,bidPrice:101.19,askPrice:101.21,quoteTime:now
+    }}});
+   }
+   return Response.json({[sym]:{realtime:true,quote:{
+    lastPrice:2,bidPrice:1.95,askPrice:2,quoteTime:now
+   }}});
+  };
+  const response=await paperApi(req('accept','setup'),env,owner);
+  assert.equal(response.status,200,JSON.stringify(await response.clone().json()));
+  const result=await response.json();
+  assert.equal(result.paper.positions.length,1);
+  assert.equal(result.realOrdersEnabled,false);
+  assert.equal(result.alerts[0].status,'TAKEN');
+ }finally{Date.now=oldDate;globalThis.fetch=oldFetch}
+});
