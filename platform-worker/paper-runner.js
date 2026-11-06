@@ -19,6 +19,26 @@ const DEFAULT_WATCHLIST_FAVORITES=Object.freeze(['SPY','QQQ','TQQQ','IWM','XLE',
 const validTicker=t=>typeof t==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(t);
 export const scannerUniverse=s=>s.scanMode==='SINGLE'?(validTicker(s.singleTicker)?[s.singleTicker]:[]):
  [...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s.extraSymbols)?s.extraSymbols:[])])].slice(0,60);
+// Two independent, configurable PAPER scanner lanes. Both share the
+// existing owner coordinator and safety / quote validation.
+export const PAPER_SCAN_ENGINES=Object.freeze(['MAIN','FOCUS']);
+export function scannerEngineConfig(s,engine){
+ if(!PAPER_SCAN_ENGINES.includes(engine))throw Error('Unknown scanner engine.');
+ const saved=s?.scannerEngines?.[engine]||{};
+ return {
+  enabled:typeof saved.enabled==='boolean'?saved.enabled:engine==='MAIN',
+  scope:saved.scope==='CUSTOM'?'CUSTOM':saved.scope==='ALL'?'ALL':engine==='MAIN'?'ALL':'CUSTOM',
+  symbols:[...new Set((Array.isArray(saved.symbols)?saved.symbols:[]).filter(validTicker))].slice(0,60)
+ };
+}
+export function scannerEngineUniverse(s,engine){
+ const config=scannerEngineConfig(s,engine);
+ return config.scope==='CUSTOM'?config.symbols:scannerUniverse(s);
+}
+export function scannerStreamUniverse(s){
+ return [...new Set(PAPER_SCAN_ENGINES.flatMap(engine=>
+  scannerEngineConfig(s,engine).enabled?scannerEngineUniverse(s,engine):[]))].slice(0,120);
+}
 const budget=s=>Number.isFinite(s.maxPremium)?s.maxPremium:paperRules.premiumBudget;
 const stopLossPct=s=>selectedStopLossPct(s.stopLossPct);
 function alertList(s){
@@ -28,7 +48,12 @@ function alertList(s){
 }
 const liveAlert=(a,now=Date.now())=>a.status==='PENDING'&&a.expires>now;
 function expireAlerts(s,now=Date.now()){for(const a of alertList(s))if(a.status==='PENDING'&&a.expires<=now){a.status='EXPIRED';event(s,'Approval expired: '+a.contract.symbol);}}
-const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),scanUniverse:scannerUniverse(s),scanMode:s.scanMode==='SINGLE'?'SINGLE':'MULTI',singleTicker:validTicker(s.singleTicker)?s.singleTicker:'SPY',autoStart:s.autoStart===true,mode:'PAPER_ONLY',realOrdersEnabled:false});
+const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),scanUniverse:scannerUniverse(s),
+ scanEngines:Object.fromEntries(PAPER_SCAN_ENGINES.map(engine=>[engine,{
+  ...scannerEngineConfig(s,engine),universe:scannerEngineUniverse(s,engine),
+  coverage:s.engineCoverage?.[engine]||{},last:s.engineLast?.[engine]||null
+ }])),
+ scanMode:s.scanMode==='SINGLE'?'SINGLE':'MULTI',singleTicker:validTicker(s.singleTicker)?s.singleTicker:'SPY',autoStart:s.autoStart===true,mode:'PAPER_ONLY',realOrdersEnabled:false});
 // Optional outbound notification. Requires sender domain and API key in server secrets.
 async function notifyPaperOpportunity(env,owner,alert){
  const api=String(env.RESEND_API_KEY||'').trim(),from=String(env.ICA_TRADING_ALERT_FROM||'').trim();
@@ -41,7 +66,7 @@ async function notifyPaperOpportunity(env,owner,alert){
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
 export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],scanMode:'MULTI',singleTicker:'SPY',dailySignals:{},dailyCheckedDay:{},
- flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,lastAutoStartAt:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],swingLevels:{},priceActionChecks:{},scanCoverage:{}});
+ flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,lastAutoStartAt:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],scannerEngines:{MAIN:{enabled:true,scope:'ALL',symbols:[]},FOCUS:{enabled:false,scope:'CUSTOM',symbols:[]}},focusScanIndex:0,engineCoverage:{MAIN:{},FOCUS:{}},engineLast:{},swingLevels:{},priceActionChecks:{},scanCoverage:{}});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
