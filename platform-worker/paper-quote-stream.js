@@ -67,7 +67,7 @@ export class PaperQuoteStream extends DurableObject {
   // most one full-universe sweep per minute across restarts or cron overlap.
   try{
    if(paperSessionOpen(session))
-    await this.runRotation(config.ownerId,null,true);
+    await this.runRotation(config.ownerId,null,true,'FOCUS');
   }catch(e){
    this.error='Scheduled paper rotation held: '+String(e?.message||'unknown error').slice(0,115);
   }finally{
@@ -187,7 +187,7 @@ export class PaperQuoteStream extends DurableObject {
   * This avoids optimistic-revision conflicts that had silently discarded
   * rotation results whenever GOOGL or another busy ticker updated.
   */
- async runRotation(ownerId,streamHealth=null,scheduled=false){
+ async runRotation(ownerId,streamHealth=null,scheduled=false,scanLane='BOTH'){
   if(typeof ownerId!=='string'||!ownerId||ownerId.length>160)throw Error('Invalid owner.');
   if(this.ownerId&&this.ownerId!==ownerId)throw Error('Scan coordinator owner mismatch.');
   if(this.rotationPromise)return this.rotationPromise;
@@ -196,14 +196,24 @@ export class PaperQuoteStream extends DurableObject {
    // Durable alarm/cron rate limit. A DO restart must not erase the
    // most recent completed full-universe rotation timestamp.
    if(scheduled){
-    const last=Number(await this.ctx.storage.get('lastRotationAt'))||0,now=Date.now();
-    if(!scheduledRotationDue(now,last,marketTime(now),last?marketTime(last):null))
-     return {skipped:true,reason:'ROTATION_RECENT'};
+    const now=Date.now();
+    if(scanLane==='FOCUS'){
+     const last=Number(await this.ctx.storage.get('lastFocusRotationAt'))||0;
+     if(last&&now-last<25000)return {skipped:true,reason:'FOCUS_RECENT'};
+    }else{
+     const last=Number(await this.ctx.storage.get('lastRotationAt'))||0;
+     if(!scheduledRotationDue(now,last,marketTime(now),last?marketTime(last):null))
+      return {skipped:true,reason:'ROTATION_RECENT'};
+    }
    }
    if(this.streamScanPromise)await this.streamScanPromise.catch(()=>{});
    const result=await runPaperTick(this.env,{id:ownerId,role:'owner'},
-    {scan:true,scheduled,streamHealth});
-   if(scheduled)await this.ctx.storage.put('lastRotationAt',Date.now());
+    {scan:true,scheduled,streamHealth,scanLane});
+   if(scheduled){
+    const finished=Date.now();
+    if(scanLane!=='FOCUS')await this.ctx.storage.put('lastRotationAt',finished);
+    await this.ctx.storage.put('lastFocusRotationAt',finished);
+   }
    return result;
   })();
   this.rotationPromise=work.finally(()=>{
