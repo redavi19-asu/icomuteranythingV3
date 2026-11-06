@@ -33,11 +33,18 @@ export function scannerEngineConfig(s,engine){
 }
 export function scannerEngineUniverse(s,engine){
  const config=scannerEngineConfig(s,engine);
- return config.scope==='CUSTOM'?config.symbols:scannerUniverse(s);
+ const all=[...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s.extraSymbols)?s.extraSymbols:[])])].slice(0,60);
+ // Retain legacy Single Ticker operation until both new engine cards are
+ // configured; editing a new card switches the old global mode to MULTI.
+ return config.scope==='CUSTOM'?config.symbols:
+  s.scanMode==='SINGLE'&&!(s.scannerEngines&&s.scannerEngines[engine])?
+   scannerUniverse(s):all;
 }
 export function scannerStreamUniverse(s){
- return [...new Set(PAPER_SCAN_ENGINES.flatMap(engine=>
-  scannerEngineConfig(s,engine).enabled?scannerEngineUniverse(s,engine):[]))].slice(0,120);
+ // Focus gets streaming priority when provider's 40-symbol subscription
+ // allowance is reached; the main engine still receives REST rotation.
+ return [...new Set(['FOCUS','MAIN'].flatMap(engine=>
+  scannerEngineConfig(s,engine).enabled?scannerEngineUniverse(s,engine):[]))];
 }
 const budget=s=>Number.isFinite(s.maxPremium)?s.maxPremium:paperRules.premiumBudget;
 const stopLossPct=s=>selectedStopLossPct(s.stopLossPct);
@@ -466,6 +473,7 @@ export async function paperApi(request,env,owner){
      throw Error('Add at least one ticker before starting a custom scanner.');
     s.scannerEngines??={};
     s.scannerEngines[engine]={enabled:input.enabled,scope:input.scope,symbols};
+    s.scanMode='MULTI'; // New independent per-engine selection supersedes legacy global Single mode.
     if(engine==='MAIN')s.scanIndex=0;
     else s.focusScanIndex=0;
     event(s,'Owner configured '+(engine==='MAIN'?'Scanner 1':'Scanner 2')+
