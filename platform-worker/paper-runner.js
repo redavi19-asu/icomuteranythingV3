@@ -11,10 +11,13 @@ import {rotatingTickerBatch,saveSymbolScanCoverage} from './paper-scan-coverage.
 import {paperEntryEligible,paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE} from '../src/master/paper-session-clock.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 // Bounded liquid options universe. This is NOT a claim to scan every exchange-listed stock.
-export const PAPER_SCAN_UNIVERSE=Object.freeze(['SPY','QQQ','IWM','DIA','XLK','XLF','XLE','USO','BNO','AAPL','NVDA','TSLA','AMZN','META','MSFT','AMD','GOOGL','TLT','GLD','SLV']);
+// Every built-in ICA PRIME watchlist ticker is scanned automatically.
+ // Custom Favorites and manually entered scanner extras share extraSymbols.
+export const PAPER_SCAN_UNIVERSE=Object.freeze(['SPY','QQQ','IWM','DIA','XLK','XLF','XLE','USO','BNO','AAPL','NVDA','TSLA','AMZN','META','MSFT','AMD','GOOGL','TLT','GLD','SLV',
+ 'TQQQ','BAC','SOFI','XOM','CVX','JPM']);
 const validTicker=t=>typeof t==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(t);
 export const scannerUniverse=s=>s.scanMode==='SINGLE'?(validTicker(s.singleTicker)?[s.singleTicker]:[]):
- [...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s.extraSymbols)?s.extraSymbols:[])])].slice(0,40);
+ [...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s.extraSymbols)?s.extraSymbols:[])])].slice(0,60);
 const budget=s=>Number.isFinite(s.maxPremium)?s.maxPremium:paperRules.premiumBudget;
 const stopLossPct=s=>selectedStopLossPct(s.stopLossPct);
 function alertList(s){
@@ -368,6 +371,28 @@ export async function paperApi(request,env,owner){
     s.scanHistory=[];
     s.lastScan={time:Date.now(),note:mode==='SINGLE'?'Scanner restricted to '+symbol:'Multiple Tickers scanner restored.'};
     event(s,mode==='SINGLE'?'Owner selected Single Ticker PAPER scanner: '+symbol:'Owner selected Multiple Tickers PAPER scanner.');
+   }
+   else if(action==='watchlist_update'){
+    // Same server-backed custom symbols for Watchlist Favorites AND the paper
+    // scanner. Supports changes while open paper trades remain protected.
+    const input=JSON.parse(body),op=input.operation;
+    if(!['add','remove','merge'].includes(op))throw Error('Choose add, remove or merge for the watchlist.');
+    const clean=value=>typeof value==='string'&&validTicker(value)?value:null;
+    const symbol=clean(input.symbol);
+    if(op!=='merge'&&!symbol)throw Error('Invalid watchlist ticker symbol.');
+    if(op==='merge'&&(!Array.isArray(input.symbols)||input.symbols.length>20||
+       input.symbols.some(x=>!clean(x))))
+     throw Error('Up to 20 valid ticker symbols may be imported.');
+    const existing=[...new Set((Array.isArray(s.extraSymbols)?s.extraSymbols:[]).filter(validTicker))];
+    // A base-universe ticker is already part of the scanner and needs no
+    // second custom entry.
+    const additions=op==='merge'?input.symbols:op==='add'?[symbol]:[];
+    const next=op==='remove'?existing.filter(x=>x!==symbol):
+     [...new Set([...existing,...additions.filter(x=>!PAPER_SCAN_UNIVERSE.includes(x))])];
+    if(next.length>20)throw Error('Scanner supports 20 extra watchlist tickers. Remove unused custom symbols first.');
+    s.extraSymbols=next;
+    event(s,'Owner '+(op==='merge'?'synchronized':op==='add'?'added to':'removed from')+
+     ' shared paper watchlist'+(symbol?': '+symbol:'.'));
    }
    else if(action==='start'){s.enabled=true;event(s,'Owner enabled paper setup scanning.')}
   else if(action==='settings'){
