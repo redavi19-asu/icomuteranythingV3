@@ -142,7 +142,14 @@ export function SchwabOptions({symbol,side,enabled}){
  {!rows.length&&<p>No contracts returned.</p>}<p style={{fontSize:11}}>Contract data for review; no trade recommendation. * Nonstandard contract.</p></>}</div>;
 }
 export function SchwabWatchPrices({symbols,enabled,onQuotes}){
- const {data}=useMarket('quotes?symbols='+symbols.slice(0,8).join(','),enabled,15000);
- const extra=useMarket('quotes?symbols='+symbols.slice(8).join(','),enabled&&symbols.length>8,15000);
- useEffect(()=>{onQuotes([...(data?.quotes||[]),...(extra.data?.quotes||[])])},[data,extra.data,onQuotes]);return null;
+ // Schwab's owner quotes route accepts at most eight per request.
+ // Favorites now shares up to 20 custom symbols with the scanner; split all
+ // visible watchlist quotes into four independently bounded batches.
+ const a=useMarket('quotes?symbols='+symbols.slice(0,8).join(','),enabled&&symbols.length>0,15000);
+ const b=useMarket('quotes?symbols='+symbols.slice(8,16).join(','),enabled&&symbols.length>8,15000);
+ const c=useMarket('quotes?symbols='+symbols.slice(16,24).join(','),enabled&&symbols.length>16,15000);
+ const d=useMarket('quotes?symbols='+symbols.slice(24,32).join(','),enabled&&symbols.length>24,15000);
+ useEffect(()=>{onQuotes([...(a.data?.quotes||[]),...(b.data?.quotes||[]),
+  ...(c.data?.quotes||[]),...(d.data?.quotes||[])])},[a.data,b.data,c.data,d.data,onQuotes]);
+ return null;
 }
