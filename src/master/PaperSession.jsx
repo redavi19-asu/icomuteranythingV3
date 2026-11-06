@@ -6,6 +6,7 @@ import {marketBellEvent,playMoneyCountingAlert,loadMoneyRecordings} from './trad
 import {readPersonalMoneyClip,savePersonalMoneyClip,clearPersonalMoneyClip,preparePersonalMoneyClip,decodePersonalMoneyClip,playPersonalMoneyClip} from './private-money-alert.js';
 import './PaperExitNotice.css';
 import PaperScannerLane from './PaperScannerLane.jsx';
+import PaperTradeTicket from './PaperTradeTicket.jsx';
 import './PaperStopSettings.css';
 const API=import.meta.env.VITE_ICA_MASTER_API_URL||'https://ica-master-platform.ryanedavis.workers.dev';
 const money=n=>Number.isFinite(n)?(n<0?'-$':'$')+Math.abs(n).toFixed(2):'—';
@@ -34,7 +35,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  const [s,setS]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[now,setNow]=useState(Date.now());
  const [showWindow,setShowWindow]=useState(Boolean(initialTab)),[windowTab,setWindowTab]=useState(initialTab||'opportunities'),[selected,setSelected]=useState(null);
  const [feedback,setFeedback]=useState({}),[queued,setQueued]=useState({}),[exitFeedback,setExitFeedback]=useState('');
- const [requotes,setRequotes]=useState({}),[limitPrices,setLimitPrices]=useState({}),[limitDurations,setLimitDurations]=useState({}),[dismissedExitWarnings,setDismissedExitWarnings]=useState({}),[activeStopDrafts,setActiveStopDrafts]=useState({});
+ const [requotes,setRequotes]=useState({}),[limitPrices,setLimitPrices]=useState({}),[limitDurations,setLimitDurations]=useState({}),[ticketAlertId,setTicketAlertId]=useState(null),[dismissedExitWarnings,setDismissedExitWarnings]=useState({}),[activeStopDrafts,setActiveStopDrafts]=useState({});
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
  const [stopLossDraft,setStopLossDraft]=useState('20'),[stopLossDirty,setStopLossDirty]=useState(false);
  const [spreadCentsDraft,setSpreadCentsDraft]=useState('2'),[spreadCentsDirty,setSpreadCentsDirty]=useState(false);
@@ -369,7 +370,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     if(action==='scan_scope')setOperationNotice(data.scanMode==='SINGLE'?
      'Single Ticker active: '+data.singleTicker+'. Only this ticker is eligible for NEW paper setups. Existing positions stay protected.':
      'Multiple Tickers active: broader watchlist scanning restored.');
-    if(action==='limit_order')setOperationNotice('Paper limit saved. ICA PRIME checks the fresh option ask until your limit fills, you cancel, or the setup expires.');
+    if(action==='limit_order')setOperationNotice('Manual PAPER ticket accepted. The server will fill at a verified ask at or below your fixed limit or let the order expire.');
     if(action==='limit_cancel')setOperationNotice('Resting paper limit cancelled. No paper entry will occur from that order.');
     if(action==='accept'){
      setRequotes(v=>{const next={...v};delete next[id];return next});
@@ -383,6 +384,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
      const left=positionsOf(data).filter(p=>action==='close_all'||p.id===id);
      setExitFeedback(left.length?'Close pending for '+left.length+' contract(s). '+(left.map(p=>p.lastError).filter(Boolean).join(' · ')||'Waiting for fresh positive bids.'):'Paper close completed. See Closed Trades for final profit/loss.');
     }
+    return {ok:true,data};
    }catch(e){setError(e.message);if(action==='tick')setScanStatus({phase:'error',message:'Check failed: '+e.message});if(action==='limit_order'&&id?.alertId)
       setFeedback(v=>({...v,[id.alertId]:{kind:'error',message:e.message}}));
      if(action==='accept'){
@@ -390,7 +392,8 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
        setRequotes(v=>({...v,[id]:e.requote}));
        setFeedback(v=>({...v,[id]:{kind:'warning',message:e.message}}));
       }else setFeedback(v=>({...v,[id]:{kind:'error',message:e.message}}));
-     }if(action==='close'||action==='close_all')setExitFeedback(e.message);if(e.serverState)applyState(e.serverState);else try{applyState(await call())}catch{}}
+     }if(action==='close'||action==='close_all')setExitFeedback(e.message);if(e.serverState)applyState(e.serverState);else try{applyState(await call())}catch{}
+     return {ok:false,error:e.message};}
    finally{if(action==='tick')scanRequested.current=false;requests.current--;setBusy(requests.current>0);if(action==='accept'){pendingAccepts.current.delete(id);setQueued(v=>({...v,[id]:false}))}}
   }
   if(['close','close_all','pause','position_override'].includes(action))return run();
@@ -398,13 +401,19 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  }
  useEffect(()=>{let active=true,t;async function refresh(){if(!requests.current)try{const data=await call();if(active){applyState(data);setError('')}}catch(e){if(active)setError(e.message)}if(active){setNow(Date.now());t=setTimeout(refresh,5000)}}refresh();return()=>{active=false;clearTimeout(t)}},[]);
  const positions=positionsOf(s),alerts=s?.alerts||[],history=s?.paper?.trades||[],liveAlerts=alerts.filter(a=>a.status==='PENDING'&&a.expires>now);
+ const ticketAlert=ticketAlertId?alerts.find(a=>a.id===ticketAlertId):null;
  const {todayRealized,todayTrades,automaticExits}=summarizePaperExits(history,now);
  const stale=!s?.heartbeat||now-s.heartbeat>150000;
  const marked=positions.filter(p=>Number.isFinite(p.mark?.pnl)),totalPnl=positions.length?marked.length===positions.length?marked.reduce((sum,p)=>sum+p.mark.pnl,0):null:0;
  function openWindow(tab=positions.length?'open':liveAlerts.length?'opportunities':history.length?'closed':'opportunities',id=null){setWindowTab(tab);setSelected(id);setShowWindow(true)}
  useEffect(()=>{
   if(!s?.alerts)return;const ids=new Set(s.alerts.map(a=>a.id));
-  if(seenAlerts.current&&s.alerts.some(a=>a.status==='PENDING'&&a.expires>Date.now()&&!seenAlerts.current.has(a.id))){openWindow('opportunities');if(soundOn&&document.visibilityState==='visible')playTradeOpportunitySound()}seenAlerts.current=ids;
+  if(seenAlerts.current){
+   const incoming=s.alerts.find(a=>a.status==='PENDING'&&a.expires>Date.now()&&!seenAlerts.current.has(a.id));
+   if(incoming){openWindow('opportunities');setTicketAlertId(current=>current||incoming.id);
+    if(soundOn&&document.visibilityState==='visible')playTradeOpportunitySound()}
+  }
+  seenAlerts.current=ids;
  },[s?.alerts,soundOn]);
  useEffect(()=>{if(s&&!settingsDirty){setBudgetDraft(String(s.maxPremium??350));setSymbolsDraft((s.extraSymbols||[]).join(', '))}},[s,settingsDirty]);
  useEffect(()=>{if(s&&!stopLossDirty)setStopLossDraft(String([15,20,35,50].includes(s.stopLossPct)?s.stopLossPct:20))},[s,stopLossDirty]);
