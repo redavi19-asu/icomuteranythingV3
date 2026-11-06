@@ -811,3 +811,10 @@
 .itt-paper-auto-start-status.disabled .itt-paper-auto-start-dot{background:#cc9262}
 .itt-paper-auto-start-status.disabled strong{color:#f3c99c}
 @media(max-width:500px){.itt-paper-auto-start-status{width:100%;padding:8px 10px}.itt-paper-auto-start-status span:last-child{font-size:10px}}
+
+
+/* Side-by-side honest paper marks: mid-price isn't executable P/L. */
+.itt-paper-mark-comparison{display:flex;flex-direction:column;gap:4px;margin-top:8px;padding:9px 11px;border-radius:8px;background:rgba(115,138,154,.12);border:1px solid rgba(137,157,178,.35)}
+.itt-paper-mark-comparison>span{font-size:11px;line-height:1.4;color:#e1e6e8}
+.itt-paper-mark-comparison>span strong{font-size:13px}
+.itt-paper-mark-comparison>small{font-size:10px;line-height:1.4;color:#bfc4c8}

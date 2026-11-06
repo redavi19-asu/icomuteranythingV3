@@ -2,12 +2,16 @@ import test from 'node:test';import assert from 'node:assert/strict';import {Dat
 import {paperApi,runPaperTick,freshRunner,ensureDailyPaperAutoStart,scannerUniverse,PAPER_SCAN_UNIVERSE,scannerEngineConfig,scannerEngineUniverse,scannerStreamUniverse,paperOptionEntryEstimate,paperQuoteQualityFailure,paperNeedsPriceConfirmation} from './paper-runner.js';
 import {stepPaper,newPaper} from '../src/master/paper-session.js';import {sealTokens} from './schwab-connection.js';import worker from './index.js';
 const owner={id:'owner-test',role:'owner'},now=Date.parse('2026-11-04T15:00:00Z');
+// Legacy multi-position/approval tests intentionally opt into a 5¢ maximum
+// so their previously accepted 5¢ option snapshots remain valid. Production
+// freshRunner() DEFAULT stays at 2¢ and is tested explicitly below.
+const fixtureRunner=()=>{const s=freshRunner();s.maxOptionSpreadCents=5;return s;};
 const req=(action,id)=>new Request('https://test/platform/paper',{method:action?'POST':'GET',headers:{Origin:'https://icomputeranything.com'},...(action?{body:JSON.stringify({action,id})}:{})});
 async function fixture(){const db=new DatabaseSync(':memory:');for(const f of ['0007_schwab_market_data.sql','0009_paper_runner.sql'])db.exec(readFileSync(new URL('./migrations/'+f,import.meta.url),'utf8'));const DB={prepare(sql){let a=[];const p={bind(...args){a=args;return p},async first(){return db.prepare(sql).get(...a)},async run(){return {meta:{changes:db.prepare(sql).run(...a).changes}}}};return p}};const env={DB,SCHWAB_TOKEN_ENCRYPTION_KEY:btoa('12345678901234567890123456789012')};const payload=await sealTokens(env,owner.id,{access_token:'fixture-token',refresh_token:'fixture-refresh',expires_at:now+86400000});db.prepare('INSERT INTO schwab_connections(owner_id,generation,payload,updated_at) VALUES(?,?,?,?)').run(owner.id,'test',payload,now);return {db,env}}
 function pending(){const asOf='2026-11-04T14:59:00.000Z';return {id:'setup',expires:now+120000,signal:{state:'TECHNICAL_WATCH',asOf,direction:'CALL'},qualification:{technical:{confirmed:true,asOf,direction:'CALL'},marketData:{provider:'SCHWAB',realtime:true},confluence:{confirmed:false}},contract:{symbol:'TEST OPTION',underlying:'SPY',bid:1.95,ask:2,quoteTime:now,delta:0.5,volume:200,openInterest:500}}}
 test('paper routes deny public access',async()=>{for(const method of ['GET','POST'])assert.equal((await worker.fetch(new Request('https://test/platform/paper',{method}),{})).status,403)});
 test('approval is single use, state survives reload, emergency close persists',async()=>{const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});try{
- await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+ await paperApi(req(),env,owner);const s=fixtureRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
  assert.equal((await paperApi(req('accept','setup'),env,owner)).status,200);assert.equal((await paperApi(req('accept','setup'),env,owner)).status,409);
  const restored=await(await paperApi(req(),env,owner)).json();assert.ok(restored.paper.position);assert.equal(restored.paper.dayTrades,1);
  const immediate=await(await paperApi(req('close'),env,owner)).json();assert.equal(immediate.paper.position,null);await paperApi(req('close'),env,owner);const closed=await(await paperApi(req(),env,owner)).json();assert.equal(closed.enabled,true);assert.equal(closed.paper.position,null);assert.equal(closed.paper.trades[0].reason,'MANUAL_CLOSE');assert.equal(closed.paper.trades.length,1);
@@ -16,7 +20,7 @@ test('valid paper setup can be approved without paid options-flow confirmation',
  const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
  try{
   await paperApi(req(),env,owner);
-  const s=freshRunner();s.enabled=true;s.alerts=[{...pending(),status:'PENDING',qualification:{
+  const s=fixtureRunner();s.enabled=true;s.alerts=[{...pending(),status:'PENDING',qualification:{
    marketData:{provider:'SCHWAB',realtime:true},confluence:{confirmed:false},technical:pending().qualification.technical,
    flow:{confirmed:false,provider:'UNUSUAL_WHALES',reason:'Not subscribed'}
   }}];
@@ -42,21 +46,21 @@ test('Nov 4 momentum alert path still produces a Schwab-verified paper opportuni
  let liveLast=confirmationClose;
  const contract='SPY   261106C00100000';
  const chain={isDelayed:false,callExpDateMap:{'2026-11-06:2':{'100':[{symbol:contract,strikePrice:100,
-  bid:1.95,ask:2,delta:0.52,totalVolume:220,openInterest:600,quoteTimeInLong:now,nonStandard:false}]}},putExpDateMap:{}};
+  bid:1.98,ask:2,delta:0.52,totalVolume:220,openInterest:600,quoteTimeInLong:now,nonStandard:false}]}},putExpDateMap:{}};
  globalThis.fetch=async input=>{
   const url=new URL(input);
   if(url.pathname.endsWith('/pricehistory'))return Response.json({candles:bars});
   if(url.pathname.endsWith('/chains'))return Response.json(chain);
   if(url.pathname.endsWith('/quotes')){
    const sym=url.searchParams.get('symbols');
-   return Response.json({[sym]:{realtime:true,quote:{lastPrice:liveLast,bidPrice:1.95,askPrice:2,quoteTime:now}}});
+   return Response.json({[sym]:{realtime:true,quote:{lastPrice:liveLast,bidPrice:1.98,askPrice:2,quoteTime:now}}});
   }
   throw Error('Unexpected fixture endpoint: '+url.pathname);
  };
  try{
   const {db,env}=await fixture();
   await paperApi(req(),env,owner); // Create the paper runner row before updating its fixture.
-  const state=freshRunner();state.enabled=true;state.scanMode='SINGLE';state.singleTicker='SPY';
+  const state=fixtureRunner();state.enabled=true;state.scanMode='SINGLE';state.singleTicker='SPY';
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
   const first=await runPaperTick(env,owner,{scan:true,scanSymbol:'SPY'});
   assert.equal(first.lastCheck.newAlerts,0,'initial breakout candle must NOT publish an unconfirmed alert');
@@ -93,9 +97,9 @@ test('server scanner does not depend on a paid options-flow API',()=>{
  const code=readFileSync(new URL('./paper-runner.js',import.meta.url),'utf8');
  assert.doesNotMatch(code,/getContractFlow|evaluateVerifiedFlow|FLOW_HOLD|UNUSUAL_WHALES/);
 });
-test('stale quote leaves emergency request pending and never fabricates fill',async()=>{const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});try{await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));await paperApi(req('accept','setup'),env,owner);globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now-120000}}});const held=await(await paperApi(req('close'),env,owner)).json();assert.ok(held.paper.position);assert.equal(held.closeRequested,true);assert.match(held.lastError,/fresh/)}finally{Date.now=date;globalThis.fetch=fetcher}});
-test('cross-origin controls and expired approval fail closed',async()=>{const {db,env}=await fixture();assert.equal((await paperApi(new Request('https://test',{method:'POST',body:'{}'}),env,owner)).status,403);await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending={...pending(),expires:0};db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));assert.equal((await paperApi(req('accept','setup'),env,owner)).status,409)});
-test('pause during approval wins over in-flight entry',async()=>{const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;try{await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));globalThis.fetch=async()=>{await paperApi(req('pause'),env,owner);return Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}})};assert.equal((await paperApi(req('accept','setup'),env,owner)).status,409);const after=await(await paperApi(req(),env,owner)).json();assert.equal(after.enabled,false);assert.equal(after.paper.position,null)}finally{Date.now=date;globalThis.fetch=fetcher}});
+test('stale quote leaves emergency request pending and never fabricates fill',async()=>{const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});try{await paperApi(req(),env,owner);const s=fixtureRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));await paperApi(req('accept','setup'),env,owner);globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now-120000}}});const held=await(await paperApi(req('close'),env,owner)).json();assert.ok(held.paper.position);assert.equal(held.closeRequested,true);assert.match(held.lastError,/fresh/)}finally{Date.now=date;globalThis.fetch=fetcher}});
+test('cross-origin controls and expired approval fail closed',async()=>{const {db,env}=await fixture();assert.equal((await paperApi(new Request('https://test',{method:'POST',body:'{}'}),env,owner)).status,403);await paperApi(req(),env,owner);const s=fixtureRunner();s.enabled=true;s.pending={...pending(),expires:0};db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));assert.equal((await paperApi(req('accept','setup'),env,owner)).status,409)});
+test('pause during approval wins over in-flight entry',async()=>{const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;try{await paperApi(req(),env,owner);const s=fixtureRunner();s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));globalThis.fetch=async()=>{await paperApi(req('pause'),env,owner);return Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}})};assert.equal((await paperApi(req('accept','setup'),env,owner)).status,409);const after=await(await paperApi(req(),env,owner)).json();assert.equal(after.enabled,false);assert.equal(after.paper.position,null)}finally{Date.now=date;globalThis.fetch=fetcher}});
 
 test('paper practice allows entries after daily win, daily loss and three prior trades',()=>{
  const quote={symbol:'SPY PAPER 400 C',bid:1.95,ask:2,quoteTime:now,delta:0.5,volume:200,openInterest:500};
@@ -117,7 +121,7 @@ test('paper entries still reject insufficient simulated cash',()=>{
 test('independent paper alerts survive reload, expire and can be dismissed one at a time',async()=>{
  const {db,env}=await fixture();const date=Date.now;Date.now=()=>now;
  try{
-  await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;
+  await paperApi(req(),env,owner);const s=fixtureRunner();s.enabled=true;
   s.alerts=[{...pending(),id:'one',status:'PENDING'},{...pending(),id:'two',status:'PENDING',expires:now-1},{...pending(),id:'three',status:'EXPIRED'}];
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
   const first=await(await paperApi(req(),env,owner)).json();assert.equal(first.alerts.length,3);
@@ -132,7 +136,7 @@ test('distinct approvals for the same contract create independent paper lots wit
  const {db,env}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
  globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});
  try{
-  await paperApi(req(),env,owner);const s=freshRunner();s.enabled=true;s.alerts=[{...pending(),id:'first',status:'PENDING'},{...pending(),id:'second',status:'PENDING'}];
+  await paperApi(req(),env,owner);const s=fixtureRunner();s.enabled=true;s.alerts=[{...pending(),id:'first',status:'PENDING'},{...pending(),id:'second',status:'PENDING'}];
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
   const entry=await paperApi(req('accept','first'),env,owner);assert.equal(entry.status,200);
   const state=await entry.json();assert.ok(state.paper.position);
@@ -145,7 +149,7 @@ test('distinct approvals for the same contract create independent paper lots wit
 // Portfolio regressions: real quotes are replaced only inside this in-memory fixture.
 async function portfolioFixture(count=3){
  const f=await fixture();await paperApi(req(),f.env,owner);
- const state=freshRunner();state.enabled=true;state.paper.day='2026-11-04';state.paper.dayPnl=75.7;state.paper.realized=75.7;state.paper.dayTrades=8;
+ const state=fixtureRunner();state.enabled=true;state.paper.day='2026-11-04';state.paper.dayPnl=75.7;state.paper.realized=75.7;state.paper.dayTrades=8;
  state.alerts=Array.from({length:count},(_,i)=>({...pending(),id:'alert-'+i,status:'PENDING',contract:{...pending().contract,symbol:'OPTION '+i,underlying:'STOCK'+i}}));
  f.db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));return f;
 }
@@ -188,7 +192,7 @@ test('a feed failure on one open contract cannot block a protective target exit 
 });
 test('legacy open position, cash and closed history migrate without reset',async()=>{
  const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;globalThis.fetch=portfolioFeed();
- try{const {env,db}=await portfolioFixture(1);const legacy=freshRunner();legacy.paper=stepPaper(newPaper(),{quote:pending().contract,enter:true,now});legacy.paper.realized=91.7;legacy.paper.trades=[{symbol:'OLD CLOSED',pnl:91.7}];legacy.closeRequested=true;legacy.mark={bid:1.95,ask:2,quoteTime:now,pnl:-8.3};
+ try{const {env,db}=await portfolioFixture(1);const legacy=fixtureRunner();legacy.paper=stepPaper(newPaper(),{quote:pending().contract,enter:true,now});legacy.paper.realized=91.7;legacy.paper.trades=[{symbol:'OLD CLOSED',pnl:91.7}];legacy.closeRequested=true;legacy.mark={bid:1.95,ask:2,quoteTime:now,pnl:-8.3};
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(legacy));const migrated=await(await paperApi(req(),env,owner)).json();assert.equal(migrated.paper.positions.length,1);assert.equal(migrated.paper.cash,1298.35);assert.equal(migrated.paper.realized,91.7);assert.equal(migrated.paper.trades[0].symbol,'OLD CLOSED');assert.equal(migrated.paper.positions[0].closeRequested,true);assert.equal(migrated.paper.positions[0].mark.pnl,-8.3);
  }finally{Date.now=date;globalThis.fetch=fetcher}
 });
@@ -243,7 +247,7 @@ test('legacy paper alerts without verified Schwab data and technical confluence 
  const {env,db}=await fixture(),oldNow=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
  try{
   await paperApi(req(),env,owner);
-  const state=freshRunner();state.enabled=true;state.alerts=[{...pending(),qualification:undefined}];
+  const state=fixtureRunner();state.enabled=true;state.alerts=[{...pending(),qualification:undefined}];
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
   globalThis.fetch=async()=>{throw Error('Legacy acceptance should not request market data')};
   const response=await paperApi(req('accept','setup'),env,owner);
@@ -285,7 +289,7 @@ test('Single Ticker scope invalidates unrelated pending setups but preserves ope
  const originalNow=Date.now;Date.now=()=>now;
  try{
  const {env,db}=await fixture();await paperApi(req(),env,owner);
- const state=freshRunner();state.enabled=true;
+ const state=fixtureRunner();state.enabled=true;
  state.alerts=[{...pending(),id:'other',status:'PENDING',contract:{...pending().contract,underlying:'QQQ'}}];
  const quote={symbol:'QQQ PAPER 400 C',underlying:'QQQ',bid:1.95,ask:2,quoteTime:now,delta:0.5,volume:200,openInterest:500};
  state.paper=stepPaper(state.paper,{quote,enter:true,now});
@@ -313,7 +317,7 @@ test('owner saves adjustable risk for future paper entries without rewriting ope
   assert.equal((await result.json()).stopLossPct,35);
   assert.equal((await paperApi(request(80),env,owner)).status,409,'invalid large loss is rejected');
   const s=JSON.parse(db.prepare('SELECT payload FROM paper_runners').get().payload);
-  s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  s.enabled=true;s.pending=pending();s.maxOptionSpreadCents=5;db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
   globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,
    quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});
   const accepted=await paperApi(req('accept','setup'),env,owner);
@@ -341,7 +345,7 @@ test('stream-origin GOOGL scan is deduplicated across DO restarts using persiste
  try{
   const {db,env}=await fixture();
   await paperApi(req(),env,owner);
-  const state=freshRunner();state.enabled=true;state.scanMode='MULTI';
+  const state=fixtureRunner();state.enabled=true;state.scanMode='MULTI';
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
   const first=await runPaperTick(env,owner,{scan:true,scanSymbol:'GOOGL'});
   assert.deepEqual(first.lastCheck.scannedSymbols,['GOOGL']);
@@ -376,7 +380,7 @@ test('manual Run Scan uses the same owner Durable Object scan coordinator as str
 test('Friday Nov 6 9:30 cron persists auto-start independently of Schwab feed and protects manual pause',async()=>{
  const {env,db}=await fixture();
  await paperApi(req(),env,owner);
- const s=freshRunner();
+ const s=fixtureRunner();
  s.autoStart=true;
  s.enabled=false;
  s.lastAutoStartDay='2026-11-05';
@@ -407,7 +411,7 @@ test('Friday Nov 6 9:30 cron persists auto-start independently of Schwab feed an
 });
 
 test('all built-in watchlist categories are included in server-managed multiple ticker scanner',()=>{
- const state=freshRunner();
+ const state=fixtureRunner();
  for(const ticker of ['SPY','QQQ','TQQQ','BAC','SOFI','XOM','CVX','JPM','USO','BNO'])
   assert.ok(scannerUniverse(state).includes(ticker),ticker+' watchlist ticker missing from scanner');
  assert.equal(scannerUniverse(state).length,PAPER_SCAN_UNIVERSE.length);
@@ -419,7 +423,7 @@ test('all built-in watchlist categories are included in server-managed multiple 
 test('watchlist add/merge/remove updates exactly the same durable server scanner extras even with an open paper position',async()=>{
  const {env,db}=await fixture();
  await paperApi(req(),env,owner);
- const runner=freshRunner();runner.enabled=true;runner.autoStart=true;
+ const runner=fixtureRunner();runner.enabled=true;runner.autoStart=true;
  runner.paper.positions=[{id:'existing',symbol:'FAKE 261106C',time:now,closeRequested:false}];
  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(runner));
  const request=(operation,{symbol,symbols}={})=>new Request('https://test/platform/paper',{
@@ -474,7 +478,7 @@ test('adding NVDA to Favorites persists even though base scanner already covers 
 
 test('twin scanner cards can select any independent custom ticker list with separate, persisted engine settings',async()=>{
  const {env,db}=await fixture();await paperApi(req(),env,owner);
- const s=freshRunner();s.enabled=true;s.autoStart=true;
+ const s=fixtureRunner();s.enabled=true;s.autoStart=true;
  s.paper.positions=[{id:'held',symbol:'HELD OPTION',time:now,closeRequested:false}];
  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
  const change=payload=>new Request('https://test/platform/paper',{method:'POST',
@@ -508,8 +512,10 @@ test('fast scalp uses honest bid/ask P&L and refuses wide bid/ask spread',()=>{
  assert.equal(estimate.cost,201.65);
  assert.equal(estimate.immediatePnl,-8.30);
  assert.equal(estimate.breakevenBid,2.033);
- assert.equal(paperQuoteQualityFailure(q,350),null);
- assert.equal(paperQuoteQualityFailure({...q,bid:1.84},350),'SPREAD_TOO_WIDE');
+ assert.equal(paperQuoteQualityFailure(q,350),'SPREAD_TOO_WIDE_IN_CENTS');
+ assert.equal(paperQuoteQualityFailure(q,350,5),null,'owner can explicitly accept five-cent spread');
+ assert.equal(paperQuoteQualityFailure({...q,bid:1.98},350),null);
+ assert.equal(paperQuoteQualityFailure({...q,bid:1.84},350),'SPREAD_TOO_WIDE_IN_CENTS');
  assert.equal(paperNeedsPriceConfirmation(2,2.08,null),true);
  assert.equal(paperNeedsPriceConfirmation(2,1.90,null),false);
  assert.equal(paperNeedsPriceConfirmation(2,2.08,2.08),false);
@@ -519,7 +525,7 @@ test('a 2% higher ask becomes explicit fresh paper reprice review, not a discard
  const {env,db}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
  try{
   await paperApi(req(),env,owner);
-  const s=freshRunner();s.enabled=true;s.alerts=[{...pending(),status:'PENDING'}];
+  const s=fixtureRunner();s.enabled=true;s.alerts=[{...pending(),status:'PENDING'}];
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
   globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:2.05,askPrice:2.10,quoteTime:now}}});
   const review=await paperApi(req('accept','setup'),env,owner);
@@ -545,7 +551,7 @@ test('manual stop/time override requires explicit confirmation and cannot evade 
  Date.now=()=>now;let bid=1.95;
  try{
   await paperApi(req(),env,owner);
-  const s=freshRunner();s.enabled=true;s.paper.positions=[{
+  const s=fixtureRunner();s.enabled=true;s.paper.positions=[{
    id:'active',symbol:'TEST OPTION',underlying:'SPY',time:now-25*60000,
    day:'2026-11-04',expiration:'2026-11-04',fill:2.01,stopLossPct:20,
    maxHoldMinutes:30,closeRequested:false,mark:{bid,ask:2,quoteTime:now},cost:201.65
@@ -574,7 +580,7 @@ test('two scanner lanes rotate actual different ticker batches, dedupe overlaps 
  Date.now=()=>now;
  try{
   const {db,env}=await fixture();await paperApi(req(),env,owner);
-  const s=freshRunner();s.enabled=true;s.scanMode='MULTI';
+  const s=fixtureRunner();s.enabled=true;s.scanMode='MULTI';
   s.scannerEngines={MAIN:{enabled:true,scope:'CUSTOM',symbols:['SPY','QQQ','AAPL']},
    FOCUS:{enabled:true,scope:'CUSTOM',symbols:['SPY','TSLA']}};
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
@@ -604,7 +610,7 @@ test('disabled focus lane cannot erase last real ticker scan and original verifi
  Date.now=()=>now;
  try{
   await paperApi(req(),env,owner);
-  const s=freshRunner();s.enabled=true;s.scanMode='MULTI';
+  const s=fixtureRunner();s.enabled=true;s.scanMode='MULTI';
   s.lastCheck={id:'genuine',scannedSymbols:['SPY','QQQ'],completedAt:now-1000};
   s.scanCoverage={SPY:{day:'2026-11-04',checkedAt:now-30000,state:'WAIT',source:'ROTATION',scansToday:3},
    QQQ:{day:'2026-11-04',checkedAt:now-30000,state:'WATCH',source:'ROTATION',scansToday:2}};
@@ -644,7 +650,7 @@ test('owner-chosen lower ASK rests on server then fills at actual cheaper ask ev
  Date.now=()=>time;
  try{
   const {db,env}=await fixture();await paperApi(req(),env,owner);
-  const state=freshRunner();state.enabled=true;state.alerts=[limitFixtureAlert(time)];
+  const state=fixtureRunner();state.enabled=true;state.alerts=[limitFixtureAlert(time)];
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
   globalThis.fetch=async input=>{
    const url=new URL(input);assert.ok(url.pathname.endsWith('/quotes'));
@@ -688,7 +694,7 @@ test('resting paper limit can be cancelled, expires automatically and is cancell
  let time=now;Date.now=()=>time;
  try{
   const {db,env}=await fixture();await paperApi(req(),env,owner);
-  const state=freshRunner();state.enabled=true;state.alerts=[limitFixtureAlert(now)];
+  const state=fixtureRunner();state.enabled=true;state.alerts=[limitFixtureAlert(now)];
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
   globalThis.fetch=async input=>{
    const sym=new URL(input).searchParams.get('symbols');
@@ -706,7 +712,7 @@ test('resting paper limit can be cancelled, expires automatically and is cancell
   assert.equal((await paperApi(limitAction('limit_cancel',{id:limit.id}),env,owner)).status,409);
   // Resting limits do not persist beyond their own deadline even if the ask
   // finally returns to the limit after expiry.
-  const fresh=freshRunner();fresh.enabled=true;fresh.alerts=[limitFixtureAlert(now)];
+  const fresh=fixtureRunner();fresh.enabled=true;fresh.alerts=[limitFixtureAlert(now)];
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(fresh));
   const second=await paperApi(limitAction('limit_order',{
    alertId:'setup',limitAsk:1.8,holdMinutes:1}),env,owner);
@@ -730,7 +736,7 @@ test('a falling option ask does not trigger paper buy if underlying breakout inv
  let time=now,ask=2,stock=100.1;Date.now=()=>time;
  try{
   const {db,env}=await fixture();await paperApi(req(),env,owner);
-  const s=freshRunner();s.enabled=true;s.alerts=[limitFixtureAlert(now)];
+  const s=fixtureRunner();s.enabled=true;s.alerts=[limitFixtureAlert(now)];
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
   globalThis.fetch=async input=>{
    const sym=new URL(input).searchParams.get('symbols');
@@ -758,7 +764,7 @@ test('owner can accept an extended but still confirmed paper entry without a 2-A
  try{
   const {env,db}=await fixture();
   await paperApi(req(),env,owner);
-  const state=freshRunner(),base=pending();
+  const state=fixtureRunner(),base=pending();
   state.enabled=true;
   state.alerts=[{...base,status:'PENDING',
    contract:{...base.contract,side:'CALL'},
@@ -786,4 +792,28 @@ test('owner can accept an extended but still confirmed paper entry without a 2-A
   assert.equal(result.realOrdersEnabled,false);
   assert.equal(result.alerts[0].status,'TAKEN');
  }finally{Date.now=oldDate;globalThis.fetch=oldFetch}
+});
+
+test('owner can adjust actual cents spread without disrupting an open paper trade or 9:30 auto-start',async()=>{
+ const {db,env}=await fixture();await paperApi(req(),env,owner);
+ const runner=fixtureRunner();runner.enabled=true;runner.autoStart=true;
+ runner.paper.positions=[{id:'held',symbol:'TEST OPTION',time:now,closeRequested:false}];
+ db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(runner));
+ const update=value=>new Request('https://test/platform/paper',{method:'POST',
+  headers:{Origin:'https://icomputeranything.com'},
+  body:JSON.stringify({action:'spread_settings',id:value})});
+ let state=await(await paperApi(update(5),env,owner)).json();
+ assert.equal(state.maxOptionSpreadCents,5);
+ assert.equal(state.paper.positions.length,1);
+ assert.equal(state.autoStart,true);
+ state=await(await paperApi(req(),env,owner)).json();
+ assert.equal(state.maxOptionSpreadCents,5,'spread cap must persist on the owner server');
+ assert.equal((await paperApi(update(9),env,owner)).status,409);
+ assert.equal((await(await paperApi(req(),env,owner)).json()).maxOptionSpreadCents,5);
+ assert.equal(state.realOrdersEnabled,false);
+});
+
+test('production new owner runner defaults to two cents, unlike explicitly flexible legacy fixtures',()=>{
+ assert.equal(freshRunner().maxOptionSpreadCents,2);
+ assert.equal(fixtureRunner().maxOptionSpreadCents,5);
 });
