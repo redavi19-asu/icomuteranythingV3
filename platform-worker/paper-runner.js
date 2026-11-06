@@ -7,6 +7,8 @@ import {evaluateAristotleConfluence,evaluateDailySwing,classifyTradeHorizon} fro
 import {assessEntryChase} from '../src/master/trading-entry-chase.js';
 import {assessSwing55Entry} from '../src/master/trading-swing-levels.js';
 import {assessPriceAction} from '../src/master/trading-price-action.js';
+import {PAPER_LIMIT_MAX_ORDERS,paperLimitDeadline,validatePaperLimitAsk} from '../src/master/paper-limit-orders.js';
+import {paperLimitOrders,finalizePaperLimit,cancelPaperLimits,processRestingPaperLimits} from './paper-limit-runner.js';
 import {rotatingTickerBatch,saveSymbolScanCoverage} from './paper-scan-coverage.js';
 import {paperEntryEligible,paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE,expiryStatus,paperExpirationCloseDue} from '../src/master/paper-session-clock.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
@@ -101,7 +103,7 @@ async function notifyPaperOpportunity(env,owner,alert){
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
 export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],scanMode:'MULTI',singleTicker:'SPY',dailySignals:{},dailyCheckedDay:{},
- flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,lastAutoStartAt:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],scannerEngines:{MAIN:{enabled:true,scope:'ALL',symbols:[]},FOCUS:{enabled:false,scope:'CUSTOM',symbols:[]}},focusScanIndex:0,engineCoverage:{MAIN:{},FOCUS:{}},engineLast:{},swingLevels:{},priceActionChecks:{},scanCoverage:{}});
+ flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,lastAutoStartAt:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],paperLimitOrders:[],scannerEngines:{MAIN:{enabled:true,scope:'ALL',symbols:[]},FOCUS:{enabled:false,scope:'CUSTOM',symbols:[]}},focusScanIndex:0,engineCoverage:{MAIN:{},FOCUS:{}},engineLast:{},swingLevels:{},priceActionChecks:{},scanCoverage:{}});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
@@ -222,6 +224,13 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
     }catch(error){check.holds.push({symbol:position.symbol,reason:error.message});position.lastError=error.message;s.lastError=position.symbol+': '+error.message;event(s,'POSITION HOLD '+position.symbol+': '+error.message)}
    }
   }
+  // Pending paper-only limit prices are checked even if the underlying's
+  // stream scan was throttled. Never place broker/exchange orders.
+  check.paperLimits=await processRestingPaperLimits({
+   env,owner,s,verifySetup:verifyPaperPriceWindow,
+   quoteQuality:paperQuoteQualityFailure,premiumBudget:budget(s),
+   stopLossPct:stopLossPct(s),event
+  });
   if(scan&&s.enabled){
    const now=Date.now(),session=marketTime(now);
    if(paperSessionOpen(session)){
@@ -540,6 +549,7 @@ export async function paperApi(request,env,owner){
    event(s,'Owner selected '+id+' percent protective stop for future paper trades.');
   }
    else if(action==='pause'){
+    cancelPaperLimits(s,'Owner paused scanning and new paper entries.',event);
     s.enabled=false;
     // An explicit pause must not be undone by the next minute's cron run.
     s.lastAutoStartDay=marketTime(Date.now()).day;
@@ -548,14 +558,62 @@ export async function paperApi(request,env,owner){
   else if(action==='close'||action==='close_all'){
    const selected=action==='close'&&id?s.paper.positions.filter(p=>p.id===id):s.paper.positions;
    if(action==='close'&&id&&!selected.length)throw Error('This contract is already closed. See Closed Trades.');
-   if(action==='close_all'||!id)s.entryEpoch++;
+   if(action==='close_all'||!id){s.entryEpoch++;cancelPaperLimits(s,'Owner closed all paper trades.',event)}
    for(const position of selected)position.closeRequested=true;
    normalizePaperPortfolio(s);event(s,selected.length?'Owner requested simulated close: '+selected.map(p=>p.symbol).join(', '):'No open paper contracts to close.');
   }
   else if(action==='skip'||action==='dismiss'){
    const alerts=alertList(s),a=alerts.find(x=>x.id===id);
    if(!a)throw Error('Alert already dismissed or changed.');
+   if(a.status==='LIMIT_WAITING')throw Error('Cancel the resting paper limit before dismissing this opportunity.');
    s.alerts=alerts.filter(x=>x.id!==id);event(s,'Owner dismissed '+a.contract.symbol+' ('+a.status+').');
+  }
+  else if(action==='limit_order'){
+   const input=JSON.parse(body),a=alertList(s).find(x=>x.id===input.alertId),created=Date.now();
+   if(!s.enabled||!paperSessionOpen(marketTime(created)))
+    throw Error('Paper scanner must be active during market hours to place a limit.');
+   if(!a||!liveAlert(a,created))
+    throw Error('This opportunity is no longer fresh. Wait for a new confirmed setup.');
+   if(s.scanMode==='SINGLE'&&a.contract?.underlying!==s.singleTicker)
+    throw Error('Ticker is outside the current Single Ticker scan scope.');
+   if(a.signal?.state!=='TECHNICAL_WATCH'||a.qualification?.technical?.confirmed!==true||
+      a.qualification.technical.asOf!==a.signal.asOf||
+      a.qualification?.marketData?.provider!=='SCHWAB'||
+      a.qualification?.marketData?.realtime!==true)
+    throw Error('A verified current Schwab price-action setup is required.');
+   if(s.paper.positions.some(p=>p.id===a.id))
+    throw Error('The option is already in Open Paper Trades.');
+   const outstanding=paperLimitOrders(s).filter(o=>o.status==='WAITING');
+   if(outstanding.length>=PAPER_LIMIT_MAX_ORDERS)
+    throw Error('At most eight resting paper limits can be active. Cancel an unused order first.');
+   if(outstanding.some(o=>o.alertId===a.id||o.contractSymbol===a.contract.symbol))
+    throw Error('A resting paper order already exists for this contract.');
+   const maxAsk=validatePaperLimitAsk(input.limitAsk,budget(s));
+   const expires=paperLimitDeadline(a,created,Number(input.holdMinutes));
+   // The order is accepted only while the original breakout still qualifies.
+   // At FILL it will be checked again against a new underlying quote.
+   await verifyPaperPriceWindow(env,owner,a,Date.now());
+   const order={id:crypto.randomUUID(),alertId:a.id,contractSymbol:a.contract.symbol,
+    underlying:a.contract.underlying,side:a.contract.side,maxAsk,
+    created,expires,holdMinutes:Number(input.holdMinutes),checks:0,status:'WAITING',
+    lastAsk:a.contract.ask,lastBid:a.contract.bid,
+    lastStatus:'WAITING_FOR_ASK_AT_OR_BELOW_LIMIT'};
+   paperLimitOrders(s).unshift(order);
+   a.status='LIMIT_WAITING';
+   event(s,'Owner placed PAPER-ONLY resting limit: '+order.contractSymbol+
+    ' · observed ASK must be at most $'+maxAsk.toFixed(2)+
+    ' · expires '+new Date(expires).toISOString()+'.');
+   // If the ask already satisfies the owner's limit, check and simulate now;
+   // otherwise the scheduled/streaming scanner will keep checking.
+   await processRestingPaperLimits({env,owner,s,verifySetup:verifyPaperPriceWindow,
+    quoteQuality:paperQuoteQualityFailure,premiumBudget:budget(s),
+    stopLossPct:stopLossPct(s),event});
+  }
+  else if(action==='limit_cancel'){
+   const order=paperLimitOrders(s).find(o=>o.id===id);
+   if(!order||order.status!=='WAITING')throw Error('This paper limit is no longer waiting.');
+   const a=alertList(s).find(x=>x.id===order.alertId);
+   finalizePaperLimit(s,order,a,'CANCELLED','Owner cancelled resting paper limit.',event);
   }
   else if(action==='position_override'){
    const input=JSON.parse(body),position=s.paper.positions.find(p=>p.id===input.id);

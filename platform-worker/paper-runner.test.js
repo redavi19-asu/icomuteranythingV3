@@ -621,3 +621,132 @@ test('disabled focus lane cannot erase last real ticker scan and original verifi
   assert.equal(state.realOrdersEnabled,false);
  }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
 });
+
+
+function limitFixtureAlert(time){
+ const p=pending();
+ return {...p,expires:time+120000,status:'PENDING',
+  contract:{...p.contract,side:'CALL',expiration:'2026-11-04'},
+  qualification:{...p.qualification,priceAction:{
+   confirmed:true,confirmationBarTime:time-120000,direction:'CALL',
+   breakoutLevel:100,invalidation:99.7,atr1m:0.2,target:null
+  }}
+ };
+}
+const limitAction=(action,fields={})=>new Request('https://test/platform/paper',{
+ method:'POST',headers:{Origin:'https://icomputeranything.com'},
+ body:JSON.stringify({action,...fields})
+});
+
+test('owner-chosen lower ASK rests on server then fills at actual cheaper ask even after original alert expiration',async()=>{
+ const originalDate=Date.now,originalFetch=globalThis.fetch;
+ let time=now,ask=2,bid=1.95,stock=100.1,fetches=0;
+ Date.now=()=>time;
+ try{
+  const {db,env}=await fixture();await paperApi(req(),env,owner);
+  const state=freshRunner();state.enabled=true;state.alerts=[limitFixtureAlert(time)];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
+  globalThis.fetch=async input=>{
+   const url=new URL(input);assert.ok(url.pathname.endsWith('/quotes'));
+   fetches++;
+   const sym=url.searchParams.get('symbols');
+   return Response.json({[sym]:{realtime:true,quote:{
+    lastPrice:sym==='SPY'?stock:ask,bidPrice:sym==='SPY'?stock-.01:bid,
+    askPrice:sym==='SPY'?stock+.01:ask,quoteTime:time
+   }}});
+  };
+  const placed=await paperApi(limitAction('limit_order',{
+   alertId:'setup',limitAsk:1.8,holdMinutes:5}),env,owner);
+  assert.equal(placed.status,200,JSON.stringify(await placed.clone().json()));
+  let saved=await placed.json();
+  assert.equal(saved.paper.positions.length,0,'never simulate a fill at ask 2.00 > owner 1.80');
+  assert.equal(saved.paperLimitOrders[0].status,'WAITING');
+  assert.equal(saved.paperLimitOrders[0].maxAsk,1.8);
+  assert.equal(saved.paperLimitOrders[0].expires,now+4*60000,
+   'six-minute price-action deadline overrides longer requested hold');
+  assert.equal(saved.alerts[0].status,'LIMIT_WAITING');
+  assert.equal((await paperApi(req('accept','setup'),env,owner)).status,409,'no double buy during limit wait');
+  let tick=await runPaperTick(env,owner,{scan:false});
+  assert.equal(tick.paperLimitOrders[0].status,'WAITING');
+  time+=150000; // Original two-minute alert has now expired.
+  ask=1.79;bid=1.75;stock=100.08;
+  tick=await runPaperTick(env,owner,{scan:false});
+  assert.equal(tick.paperLimitOrders[0].status,'FILLED',JSON.stringify(tick.paperLimitOrders[0]));
+  assert.equal(tick.paperLimitOrders[0].filledAsk,1.79);
+  assert.equal(tick.paper.positions.length,1);
+  assert.equal(tick.paper.positions[0].cost,180.65);
+  assert.equal(tick.alerts[0].status,'TAKEN');
+  assert.equal(tick.realOrdersEnabled,false);
+  const repeated=await runPaperTick(env,owner,{scan:false});
+  assert.equal(repeated.paper.positions.length,1,'never fill the same limit twice');
+  assert.ok(fetches>=5);
+ }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
+});
+
+test('resting paper limit can be cancelled, expires automatically and is cancelled by Pause / Close All',async()=>{
+ const oldDate=Date.now,oldFetch=globalThis.fetch;
+ let time=now;Date.now=()=>time;
+ try{
+  const {db,env}=await fixture();await paperApi(req(),env,owner);
+  const state=freshRunner();state.enabled=true;state.alerts=[limitFixtureAlert(now)];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
+  globalThis.fetch=async input=>{
+   const sym=new URL(input).searchParams.get('symbols');
+   return Response.json({[sym]:{realtime:true,quote:{lastPrice:100.1,
+    bidPrice:1.95,askPrice:2,quoteTime:time}}});
+  };
+  const order=await paperApi(limitAction('limit_order',{
+   alertId:'setup',limitAsk:1.8,holdMinutes:1}),env,owner);
+  assert.equal(order.status,200);
+  let s=await order.json(),limit=s.paperLimitOrders[0];
+  assert.equal((await paperApi(limitAction('limit_cancel',{id:limit.id}),env,owner)).status,200);
+  let after=await(await paperApi(req(),env,owner)).json();
+  assert.equal(after.paperLimitOrders[0].status,'CANCELLED');
+  assert.equal(after.paper.positions.length,0);
+  assert.equal((await paperApi(limitAction('limit_cancel',{id:limit.id}),env,owner)).status,409);
+  // Resting limits do not persist beyond their own deadline even if the ask
+  // finally returns to the limit after expiry.
+  const fresh=freshRunner();fresh.enabled=true;fresh.alerts=[limitFixtureAlert(now)];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(fresh));
+  const second=await paperApi(limitAction('limit_order',{
+   alertId:'setup',limitAsk:1.8,holdMinutes:1}),env,owner);
+  assert.equal(second.status,200);
+  time=now+65000;
+  after=await runPaperTick(env,owner,{scan:false});
+  assert.equal(after.paperLimitOrders[0].status,'EXPIRED');
+  assert.equal(after.paper.positions.length,0);
+  time=now;
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(fresh));
+  assert.equal((await paperApi(limitAction('limit_order',{alertId:'setup',
+   limitAsk:1.8,holdMinutes:3}),env,owner)).status,200);
+  after=await(await paperApi(req('pause'),env,owner)).json();
+  assert.equal(after.paperLimitOrders[0].status,'CANCELLED');
+  assert.equal(after.realOrdersEnabled,false);
+ }finally{Date.now=oldDate;globalThis.fetch=oldFetch}
+});
+
+test('a falling option ask does not trigger paper buy if underlying breakout invalidated',async()=>{
+ const oldDate=Date.now,oldFetch=globalThis.fetch;
+ let time=now,ask=2,stock=100.1;Date.now=()=>time;
+ try{
+  const {db,env}=await fixture();await paperApi(req(),env,owner);
+  const s=freshRunner();s.enabled=true;s.alerts=[limitFixtureAlert(now)];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  globalThis.fetch=async input=>{
+   const sym=new URL(input).searchParams.get('symbols');
+   return Response.json({[sym]:{realtime:true,quote:{
+    lastPrice:sym==='SPY'?stock:ask,
+    bidPrice:sym==='SPY'?stock-.01:ask-.04,
+    askPrice:sym==='SPY'?stock+.01:ask,
+    quoteTime:time
+   }}});
+  };
+  assert.equal((await paperApi(limitAction('limit_order',{alertId:'setup',
+   limitAsk:1.8,holdMinutes:3}),env,owner)).status,200);
+  time+=60000;ask=1.79;stock=99.6;
+  const tick=await runPaperTick(env,owner,{scan:false});
+  assert.equal(tick.paper.positions.length,0);
+  assert.equal(tick.paperLimitOrders[0].status,'INVALIDATED');
+  assert.equal(tick.realOrdersEnabled,false);
+ }finally{Date.now=oldDate;globalThis.fetch=oldFetch}
+});

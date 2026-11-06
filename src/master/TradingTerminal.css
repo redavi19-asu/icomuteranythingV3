@@ -784,3 +784,17 @@
 .itt-exit-warning-dismiss{background:transparent;border:1px solid #8e7770;color:#f3e4d8;border-radius:7px;padding:8px 11px;align-self:flex-start;cursor:pointer;font-size:11px}
 @media(max-width:970px){.itt-scanner-duo{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:560px){.itt-scanner-lane{padding:12px}.itt-scanner-engine-live .itt-radar-visual{width:82px;height:82px;flex-basis:82px}.itt-scanner-engine-latest strong{font-size:24px}}
+
+
+/* Paper-only resting limit buys: deliberate user maximum price, never broker order. */
+.itt-paper-limit-entry,.itt-paper-limit-wait{margin:10px 0;padding:12px;border:1px solid #6d6954;background:#262722;border-radius:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.itt-paper-limit-entry>strong,.itt-paper-limit-wait>strong{color:#f6d49a;font-size:12px;letter-spacing:.4px}
+.itt-paper-limit-entry p,.itt-paper-limit-wait p{margin:0;font-size:12px;line-height:1.5;color:#e4dccf}
+.itt-paper-limit-entry small,.itt-paper-limit-wait small{font-size:10px;line-height:1.5;color:#b7b6b0}
+.itt-paper-limit-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.itt-paper-limit-controls label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:800;color:#e8d6ba;min-width:0}
+.itt-paper-limit-controls input,.itt-paper-limit-controls select{width:100%;min-width:0;background:#16191a;color:#fff;border:1px solid #8f8678;border-radius:7px;font:inherit;font-size:14px;padding:10px;outline-offset:2px}
+.itt-paper-limit-entry .itt-wide-button,.itt-paper-limit-wait .itt-wide-button{width:100%;white-space:normal}
+.itt-paper-limit-wait{border-color:#70b5a0;background:#1a302d}
+.itt-paper-limit-wait>strong{color:#b5ffdd}
+@media(max-width:480px){.itt-paper-limit-controls{grid-template-columns:minmax(0,1fr)}}
