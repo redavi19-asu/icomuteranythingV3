@@ -15,6 +15,7 @@ const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':
  // Custom Favorites and manually entered scanner extras share extraSymbols.
 export const PAPER_SCAN_UNIVERSE=Object.freeze(['SPY','QQQ','IWM','DIA','XLK','XLF','XLE','USO','BNO','AAPL','NVDA','TSLA','AMZN','META','MSFT','AMD','GOOGL','TLT','GLD','SLV',
  'TQQQ','BAC','SOFI','XOM','CVX','JPM']);
+const DEFAULT_WATCHLIST_FAVORITES=Object.freeze(['SPY','QQQ','TQQQ','IWM','XLE','XLF','BNO','BAC','SOFI']);
 const validTicker=t=>typeof t==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(t);
 export const scannerUniverse=s=>s.scanMode==='SINGLE'?(validTicker(s.singleTicker)?[s.singleTicker]:[]):
  [...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s.extraSymbols)?s.extraSymbols:[])])].slice(0,60);
@@ -388,7 +389,7 @@ export async function paperApi(request,env,owner){
     // second custom entry.
     const additions=op==='merge'?input.symbols:op==='add'?[symbol]:[];
     const next=op==='remove'?existing.filter(x=>x!==symbol):
-     [...new Set([...existing,...additions.filter(x=>!PAPER_SCAN_UNIVERSE.includes(x))])];
+     [...new Set([...existing,...additions.filter(x=>!DEFAULT_WATCHLIST_FAVORITES.includes(x))])];
     if(next.length>20)throw Error('Scanner supports 20 extra watchlist tickers. Remove unused custom symbols first.');
     s.extraSymbols=next;
     event(s,'Owner '+(op==='merge'?'synchronized':op==='add'?'added to':'removed from')+
