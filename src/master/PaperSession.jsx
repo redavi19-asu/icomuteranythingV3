@@ -392,13 +392,8 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  const minute=Number(clock.hour)*60+Number(clock.minute),marketWindow=!['Sat','Sun'].includes(clock.weekday)&&minute>=570&&minute<960;
  const radarActive=!stale&&(positions.length>0||s?.enabled&&marketWindow);
  const recent=s?.scanHistory||[],latest=recent[0],elapsed=latest?.time?Math.max(0,Math.floor((now-latest.time)/1000)):null;
- // GOOGL and other frequently checked tickers must not appear multiple
- // times inside the tiny radar summary. Full per-symbol coverage is below.
- const shownTickers=new Set([latest?.symbol]);
- const recentDistinct=recent.filter(entry=>{
-  if(!entry?.symbol||shownTickers.has(entry.symbol))return false;
-  shownTickers.add(entry.symbol);return true;
- }).slice(0,4);
+ // The sidebar renders the full configured universe and latest durable check
+ // per ticker, not the truncated rolling event stream.
  const priceActionLatest=latest?.symbol?s?.priceActionChecks?.[latest.symbol]:null;
  const swingChecks=Object.entries(s?.swingLevels||{}).filter(([,x])=>Number.isFinite(x?.checkedAt)&&now-x.checkedAt<30*60000).sort((a,b)=>b[1].checkedAt-a[1].checkedAt);
  const phase=!s?'CONNECTING':stale?'SERVER STALE':s.enabled&&marketWindow?'SCANNING'+(positions.length?' · '+positions.length+' OPEN':''):positions.length?'MANAGING '+positions.length+' OPEN':!s.enabled?'PAUSED':'OUTSIDE SESSION';
@@ -430,13 +425,15 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    <p><strong>{s?.enabled?'SCANNER ENABLED':'SCANNER PAUSED'} · {positions.length} OPEN PAPER CONTRACT{positions.length===1?'':'S'}</strong></p>
 
    <div className="itt-paper-summary"><div><small>PAPER BUYING POWER</small><strong>{money(s?.paper?.cash)}</strong></div><div><small>ALL-TIME REALIZED P/L</small><strong className={s?.paper?.realized<0?'itt-pnl-negative':'itt-pnl-positive'}>{signed(s?.paper?.realized)}</strong><small>All previously closed paper trades</small></div><div><small>TODAY'S REALIZED P/L · ET</small><strong className={todayRealized<0?'itt-pnl-negative':'itt-pnl-positive'}>{signed(todayRealized)}</strong><small>{todayTrades} paper trade{todayTrades===1?'':'s'} closed today</small></div><div><small>OPEN PROFIT / LOSS</small><strong className={totalPnl<0?'itt-pnl-negative':'itt-pnl-positive'}>{signed(totalPnl)}</strong><small>{marked.length!==positions.length?'Some quotes unavailable; see each trade':''}</small></div></div>
-   {automaticExits.length>0&&<section className="itt-paper-automatic-exits" aria-label="Saved automatic paper-trade exit notices">
-    <div className="itt-paper-automatic-exits-header"><strong>AUTOMATIC TRADE EXITS · SAVED</strong><small>These notices are recorded in Closed Trades and remain here after refresh.</small></div>
-    {automaticExits.map(t=><div key={t.id} className={'itt-paper-auto-exit'+(t.pnl<0?' loss':' gain')}>
-     <strong>{t.label}</strong><span>{t.symbol} · {time(t.exitTime)} ET</span>
-     <span>Simulated exit {money(t.exitFill)} · Final realized P/L <b>{signed(t.pnl)}</b></span>
-    </div>)}
-   </section>}
+   {automaticExits.length>0&&<details className="itt-paper-automatic-exits" aria-label="Saved automatic paper-trade exit notices">
+    <summary className="itt-paper-automatic-exits-header"><strong>AUTOMATIC TRADE EXITS · SAVED ({automaticExits.length})</strong><small>Tap to view or hide completed exit notices · saved in Closed Trades.</small></summary>
+    <div className="itt-paper-auto-exit-list">
+     {automaticExits.map(t=><div key={t.id} className={'itt-paper-auto-exit'+(t.pnl<0?' loss':' gain')}>
+      <strong>{t.label}</strong><span>{t.symbol} · {time(t.exitTime)} ET</span>
+      <span>Simulated exit {money(t.exitFill)} · Final realized P/L <b>{signed(t.pnl)}</b></span>
+     </div>)}
+    </div>
+   </details>}
    <details className="itt-sound-card">
     <summary className="itt-sound-card-summary">
      <span className="itt-sound-card-head"><span className="itt-sound-card-icon" aria-hidden="true">🔔</span><strong>Sound Alerts</strong></span>
@@ -469,7 +466,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    <div className="itt-radar-dashboard"><div className={'itt-radar-visual '+(radarActive?'running':'')} aria-hidden="true"><div className="itt-radar-rings"/><div className="itt-radar-sweep"/><div className="itt-radar-blips"><span className="itt-radar-blip green"/><span className="itt-radar-blip red"/><span className="itt-radar-blip green"/><span className="itt-radar-blip red"/><span className="itt-radar-blip green"/><span className="itt-radar-blip red"/></div><div className="itt-radar-core">⌖</div></div><div className="itt-radar-primary"><small>LAST RECORDED SCAN</small><strong>{latest?.symbol||'—'}</strong><span>{latest?.state?.replaceAll('_',' ')||'NO SCANS YET'}</span><p>{latest?.reason||'Waiting for the next scheduled scan.'}</p></div></div>
    <div className="itt-radar-metrics"><div><small>UNIVERSE</small><strong>{s?.scanUniverse?.length??'—'} tickers</strong></div><div><small>OPEN TRADES</small><strong>{positions.length} managed separately</strong></div><div><small>SERVER</small><strong>{stale?'STALE':'RESPONDING'}</strong></div></div>
    <div className="itt-radar-cycle"><div className="itt-radar-cycle-title"><span>{radarActive?'Next scheduled check (approx.)':'Checks paused / outside session'}</span><span>{radarActive&&elapsed!==null?Math.max(0,60-elapsed)+'s':'—'}</span></div><div className="itt-radar-track"><span style={{width:radarActive&&elapsed!==null?Math.min(100,elapsed/60*100)+'%':'0%'}}/></div></div>
-   <div className="itt-radar-recent"><strong>RECENT DISTINCT TICKER CHECKS</strong>{recentDistinct.map((r,i)=><div className="itt-radar-recent-item" key={r.symbol+String(r.time)+i}><span>{r.symbol}</span><span>{r.state?.replaceAll('_',' ')}</span><time>{time(r.time)}</time></div>)}</div><p className="itt-radar-foot"><strong>PRICE ACTION GATES · ACTIVE</strong> — First breakout candle is a watch, not an entry. A second closed candle must confirm within six minutes; extended entries and nearby opposing 5/5 barriers are held. No automatic trades. {priceActionLatest&&<>Latest: <strong>{priceActionLatest.status.replaceAll('_',' ')}</strong> · {priceActionLatest.reason}</>}</p>
+   <div className="itt-radar-recent"><PaperScanCoverage snapshot={s} now={now} embedded/></div><p className="itt-radar-foot"><strong>PRICE ACTION GATES · ACTIVE</strong> — First breakout candle is a watch, not an entry. A second closed candle must confirm within six minutes; extended entries and nearby opposing 5/5 barriers are held. No automatic trades. {priceActionLatest&&<>Latest: <strong>{priceActionLatest.status.replaceAll('_',' ')}</strong> · {priceActionLatest.reason}</>}</p>
   </aside></div>
   <section className="itt-scanner-settings itt-stop-settings" aria-label="Paper stop loss control">
    <h4>STOP LOSS CONTROL · NEXT PAPER TRADE</h4>
@@ -484,8 +481,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
    </div>
    <p><strong>Saved for new entries: {s?.stopLossPct??20}%.</strong> Changing this does not alter any open contract; each trade retains its entry-time stop. A 35% or 50% stop allows a much larger loss, and fast prices can gap through the threshold. Applies to both CALL and PUT paper trades.</p>
   </section>
-  <PaperScanCoverage snapshot={s} now={now}/>
-  <details className="itt-scanner-settings">
+   <details className="itt-scanner-settings">
    <summary>Confirmed 5/5 support &amp; resistance · Schwab (30-minute lookback)</summary>
    <p>Levels use completed one-minute Schwab candles and require five bars on either side of each swing. They may differ from your TradingView indicator. They improve NEW paper entries only; the chosen per-trade protective option stop remains unchanged.</p>
    {swingChecks.length?swingChecks.map(([sym,x])=><p key={sym}><strong>{sym} · Support {money(x.support)} · Resistance {money(x.resistance)}</strong> — {x.status?.replaceAll('_',' ')} · Checked {time(x.checkedAt)} ET. {x.hold?x.reason:''}</p>):
@@ -499,7 +495,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
       <p key={symbol}><strong>{symbol} · {x.direction} · MULTI-DAY WATCH</strong> — {x.reason} Contract affordability, live bid/ask and gap risk not yet validated.</p>):
      <p>No confirmed multi-day daily-chart watches yet. Each ticker gets its daily check once per market day while scanning is enabled.</p>}
   </details>
-  <details className="itt-scanner-settings"><summary>Scan coverage &amp; paper contract budget</summary><div className="itt-scanner-settings-grid"><label>Maximum premium per contract ($)<input type="number" min="1" max="5000" value={budgetDraft} onChange={e=>{setBudgetDraft(e.target.value);setSettingsDirty(true)}}/></label><label>Extra tickers (up to 20)<input value={symbolsDraft} onChange={e=>{setSymbolsDraft(e.target.value);setSettingsDirty(true)}}/></label></div><button type="button" className="itt-wide-button" disabled={busy||positions.length>0||!settingsDirty} onClick={saveSettings}>Save scan settings</button><p>Universe: {(s?.scanUniverse||[]).join(', ')}</p><p>Multiple paper contracts can be open at once. Each accepted opportunity rechecks price, quote quality and available simulated cash. No daily paper profit or trade-count cutoff.</p></details>
+  <details className="itt-scanner-settings"><summary>Scan coverage &amp; paper contract budget</summary><div className="itt-scanner-settings-grid"><label>Maximum premium per contract ($)<input type="number" min="1" max="5000" value={budgetDraft} onChange={e=>{setBudgetDraft(e.target.value);setSettingsDirty(true)}}/></label><label>Shared Watchlist / scanner extras (up to 20)<input value={symbolsDraft} onChange={e=>{setSymbolsDraft(e.target.value);setSettingsDirty(true)}}/></label></div><button type="button" className="itt-wide-button" disabled={busy||positions.length>0||!settingsDirty} onClick={saveSettings}>Save scan settings</button><p>This list is linked to Watchlist Favorites. Adding or removing a ticker here also changes the Watchlist. You can add tickers directly through Watchlist without opening these settings.</p><p>Universe: {(s?.scanUniverse||[]).join(', ')}</p><p>Multiple paper contracts can be open at once. Each accepted opportunity rechecks price, quote quality and available simulated cash. No daily paper profit or trade-count cutoff.</p></details>
   {(error||s?.lastError)&&<p role="alert" className="itt-paper-approval-error">{error||s.lastError}</p>}
   {exitFeedback&&<p role="status" className="itt-paper-exit-feedback">{exitFeedback}</p>}
   <details className="itt-paper-details"><summary>Server checks and trade history</summary><p>Server check {time(s?.heartbeat)} ET. Paper controls only.</p>{s?.events?.slice(0,12).map((e,i)=><p key={i}>{time(e.time)} ET · {e.text}</p>)}</details>

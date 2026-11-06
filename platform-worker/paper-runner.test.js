@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {readFileSync} from 'node:fs';
-import {paperApi,runPaperTick,freshRunner,ensureDailyPaperAutoStart} from './paper-runner.js';
+import {paperApi,runPaperTick,freshRunner,ensureDailyPaperAutoStart,scannerUniverse,PAPER_SCAN_UNIVERSE} from './paper-runner.js';
 import {stepPaper,newPaper} from '../src/master/paper-session.js';import {sealTokens} from './schwab-connection.js';import worker from './index.js';
 const owner={id:'owner-test',role:'owner'},now=Date.parse('2026-11-04T15:00:00Z');
 const req=(action,id)=>new Request('https://test/platform/paper',{method:action?'POST':'GET',headers:{Origin:'https://icomputeranything.com'},...(action?{body:JSON.stringify({action,id})}:{})});
@@ -404,4 +404,52 @@ test('Friday Nov 6 9:30 cron persists auto-start independently of Schwab feed an
  const monday=await(await paperApi(req(),env,owner)).json();
  assert.equal(monday.lastAutoStartDay,'2026-11-09');
  assert.equal(monday.enabled,true);
+});
+
+test('all built-in watchlist categories are included in server-managed multiple ticker scanner',()=>{
+ const state=freshRunner();
+ for(const ticker of ['SPY','QQQ','TQQQ','BAC','SOFI','XOM','CVX','JPM','USO','BNO'])
+  assert.ok(scannerUniverse(state).includes(ticker),ticker+' watchlist ticker missing from scanner');
+ assert.equal(scannerUniverse(state).length,PAPER_SCAN_UNIVERSE.length);
+ assert.ok(PAPER_SCAN_UNIVERSE.length>20);
+ state.scanMode='SINGLE';state.singleTicker='BAC';
+ assert.deepEqual(scannerUniverse(state),['BAC'],'Single Ticker still intentionally scans just one');
+});
+
+test('watchlist add/merge/remove updates exactly the same durable server scanner extras even with an open paper position',async()=>{
+ const {env,db}=await fixture();
+ await paperApi(req(),env,owner);
+ const runner=freshRunner();runner.enabled=true;runner.autoStart=true;
+ runner.paper.positions=[{id:'existing',symbol:'FAKE 261106C',time:now,closeRequested:false}];
+ db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(runner));
+ const request=(operation,{symbol,symbols}={})=>new Request('https://test/platform/paper',{
+  method:'POST',headers:{Origin:'https://icomputeranything.com','Content-Type':'application/json'},
+  body:JSON.stringify({action:'watchlist_update',operation,...(symbol?{symbol}:{}),...(symbols?{symbols}:{})})
+ });
+ let result=await paperApi(request('add',{symbol:'SMCI'}),env,owner);
+ assert.equal(result.status,200);
+ let s=await result.json();
+ assert.deepEqual(s.extraSymbols,['SMCI']);
+ assert.ok(s.scanUniverse.includes('SMCI'),'user-added Favorite is in the scheduled scan universe');
+ assert.equal(s.paper.positions.length,1,'existing open paper position survives watchlist addition');
+ assert.equal(s.autoStart,true,'9:30 auto-start remains enabled');
+ result=await paperApi(request('merge',{symbols:['SMCI','UBER','BAC']}),env,owner);
+ assert.equal(result.status,200);
+ s=await result.json();
+ assert.deepEqual(s.extraSymbols,['SMCI','UBER'],'already covered base tickers are not duplicated');
+ assert.ok(s.scanUniverse.includes('UBER'));
+ assert.equal((await paperApi(request('add',{symbol:'SMCI'}),env,owner)).status,200,'duplicate add is idempotent');
+ result=await paperApi(request('remove',{symbol:'SMCI'}),env,owner);
+ assert.equal(result.status,200);
+ s=await result.json();
+ assert.deepEqual(s.extraSymbols,['UBER']);
+ assert.equal(s.scanUniverse.includes('SMCI'),false);
+ const persisted=await(await paperApi(req(),env,owner)).json();
+ assert.deepEqual(persisted.extraSymbols,['UBER']);
+ assert.equal(persisted.paper.positions.length,1);
+ assert.equal(persisted.autoStart,true);
+ assert.equal(persisted.realOrdersEnabled,false);
+ const invalid=await paperApi(request('merge',{symbols:['AA$']}),env,owner);
+ assert.equal(invalid.status,409,'invalid symbols must be rejected');
+ assert.deepEqual((await(await paperApi(req(),env,owner)).json()).extraSymbols,['UBER']);
 });
