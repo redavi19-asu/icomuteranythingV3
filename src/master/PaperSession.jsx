@@ -1,6 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {summarizePaperExits,paperPositionExitWarnings} from './paper-session.js';
 import {marketTime} from './trading-paper-engine.js';
+import {oneDollarBelowAskPerContract,paperMarkPnlAtMid,optionMidpoint} from './paper-entry-display.js';
 import {marketBellEvent,playMoneyCountingAlert,loadMoneyRecordings} from './trading-session-audio.js';
 import {readPersonalMoneyClip,savePersonalMoneyClip,clearPersonalMoneyClip,preparePersonalMoneyClip,decodePersonalMoneyClip,playPersonalMoneyClip} from './private-money-alert.js';
 import './PaperExitNotice.css';
@@ -36,6 +37,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  const [requotes,setRequotes]=useState({}),[limitPrices,setLimitPrices]=useState({}),[limitDurations,setLimitDurations]=useState({}),[dismissedExitWarnings,setDismissedExitWarnings]=useState({}),[activeStopDrafts,setActiveStopDrafts]=useState({});
  const [budgetDraft,setBudgetDraft]=useState('350'),[symbolsDraft,setSymbolsDraft]=useState(''),[settingsDirty,setSettingsDirty]=useState(false);
  const [stopLossDraft,setStopLossDraft]=useState('20'),[stopLossDirty,setStopLossDirty]=useState(false);
+ const [spreadCentsDraft,setSpreadCentsDraft]=useState('2'),[spreadCentsDirty,setSpreadCentsDirty]=useState(false);
  const [singleTickerDraft,setSingleTickerDraft]=useState('SPY'),[singleTickerDirty,setSingleTickerDirty]=useState(false);
  const [soundOn,setSoundOn]=useState(false),[soundWarning,setSoundWarning]=useState(''),[soundLoading,setSoundLoading]=useState(false);
  const [privateClipReady,setPrivateClipReady]=useState(false),[privateClipBusy,setPrivateClipBusy]=useState(false);
@@ -363,6 +365,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
      if(action==='auto_start')setOperationNotice(data.autoStart?'Automatic PAPER scans scheduled at/after 9:30 AM ET on market weekdays.':'Automatic paper scanner start disabled.');
     if(action==='settings')setOperationNotice('Scan settings saved.');
     if(action==='stop_settings')setOperationNotice('New paper trades will use a '+data.stopLossPct+'% stop. Open trades keep their entry-time stop.');
+    if(action==='spread_settings')setOperationNotice('Option alerts and NEW paper entries now require a spread no wider than '+data.maxOptionSpreadCents+' cents.');
     if(action==='scan_scope')setOperationNotice(data.scanMode==='SINGLE'?
      'Single Ticker active: '+data.singleTicker+'. Only this ticker is eligible for NEW paper setups. Existing positions stay protected.':
      'Multiple Tickers active: broader watchlist scanning restored.');
@@ -374,6 +377,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     }
     if(action==='settings')setSettingsDirty(false);
     if(action==='stop_settings')setStopLossDirty(false);
+    if(action==='spread_settings')setSpreadCentsDirty(false);
     if(action==='scan_scope')setSingleTickerDirty(false);
     if(action==='close'||action==='close_all'){
      const left=positionsOf(data).filter(p=>action==='close_all'||p.id===id);
@@ -404,6 +408,7 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
  },[s?.alerts,soundOn]);
  useEffect(()=>{if(s&&!settingsDirty){setBudgetDraft(String(s.maxPremium??350));setSymbolsDraft((s.extraSymbols||[]).join(', '))}},[s,settingsDirty]);
  useEffect(()=>{if(s&&!stopLossDirty)setStopLossDraft(String([15,20,35,50].includes(s.stopLossPct)?s.stopLossPct:20))},[s,stopLossDirty]);
+ useEffect(()=>{if(s&&!spreadCentsDirty)setSpreadCentsDraft(String([1,2,3,5,10].includes(s.maxOptionSpreadCents)?s.maxOptionSpreadCents:2))},[s,spreadCentsDirty]);
  useEffect(()=>{if(s&&!singleTickerDirty)setSingleTickerDraft(s.singleTicker||'SPY')},[s,singleTickerDirty]);
  const clock=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
  const minute=Number(clock.hour)*60+Number(clock.minute),marketWindow=!['Sat','Sun'].includes(clock.weekday)&&minute>=570&&minute<960;
@@ -422,7 +427,20 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
   }
   act('scan_scope',{mode,...(mode==='SINGLE'?{symbol}:{})});
  }
- function pnlBlock(p,closed=false){const pnl=closed?p.pnl:p.mark?.pnl;return <div className={'itt-trade-pnl '+(pnl>0?'gain':pnl<0?'loss':'')}><small>{closed?'FINAL NET PAPER PROFIT / LOSS':!p.mark?.quoteTime||now-p.mark.quoteTime>60000?'LAST ESTIMATE · QUOTE STALE':'ESTIMATED NET PAPER PROFIT / LOSS'}</small><strong>{signed(pnl)}</strong><span>{percent(pnl,p.cost)}</span><small>{closed?'After simulated fees and fills':'Estimated liquidation at bid less slippage and exit commission'}</small></div>}
+ function pnlBlock(p,closed=false){
+  const pnl=closed?p.pnl:p.mark?.pnl;
+  const midpointPnl=!closed?paperMarkPnlAtMid(p):null;
+  const midpoint=!closed?optionMidpoint(p.mark?.bid,p.mark?.ask):null;
+  return <div className={'itt-trade-pnl '+(pnl>0?'gain':pnl<0?'loss':'')}>
+   <small>{closed?'FINAL NET PAPER PROFIT / LOSS':!p.mark?.quoteTime||now-p.mark.quoteTime>60000?'LAST ESTIMATE · QUOTE STALE':'ESTIMATED NET PAPER PROFIT / LOSS'}</small>
+   <strong>{signed(pnl)}</strong><span>{percent(pnl,p.cost)}</span>
+   <small>{closed?'After simulated fees and fills':'If sold at current bid, after simulated slippage and fees'}</small>
+   {!closed&&midpointPnl!==null&&<div className="itt-paper-mark-comparison">
+    <span>MARK / MIDPOINT P&amp;L (thinkorswim-style): <strong>{signed(midpointPnl)}</strong></span>
+    <small>Bid/ask midpoint {money(midpoint)} · Before hypothetical exit costs. This is an estimate, NOT money you can necessarily sell for.</small>
+   </div>}
+  </div>;
+ }
  function positionCard(p){const quoteStale=!p.mark?.quoteTime||now-p.mark.quoteTime>60000;
   const warnings=paperPositionExitWarnings(p,now).filter(w=>!dismissedExitWarnings[p.id+'|'+w.type]);
   const stopDraft=activeStopDrafts[p.id]??String(p.stopLossPct??20);
@@ -496,6 +514,20 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     snapshot={s} now={now} busy={busy} serverStale={stale}
     onSave={config=>act('scanner_engine',config)}/>)}
   </div></div>
+  <section className="itt-scanner-settings itt-stop-settings" aria-label="Paper option spread control">
+   <h4>OPTION SPREAD CONTROL · NEW PAPER ENTRIES</h4>
+   <label htmlFor="itt-option-spread-cents">Maximum option bid/ask spread (actual cents per share)</label>
+   <div className="itt-stop-settings-row">
+    <select id="itt-option-spread-cents" value={spreadCentsDraft}
+     aria-label="Maximum option bid ask spread in cents"
+     onChange={e=>{setSpreadCentsDraft(e.target.value);setSpreadCentsDirty(true)}}>
+     {[1,2,3,5,10].map(n=><option key={n} value={n}>{n}¢ ({money(n)} per standard 100-share contract)</option>)}
+    </select>
+    <button type="button" className="itt-wide-button" disabled={!s||busy||!spreadCentsDirty}
+     onClick={()=>act('spread_settings',Number(spreadCentsDraft))}>SAVE SPREAD</button>
+   </div>
+   <p><strong>Current limit: {s?.maxOptionSpreadCents??2}¢.</strong> Default is 2¢; the scanner ranks the tightest absolute spreads first, then checks a live exact quote. Wider spreads require your deliberate selection. This setting affects new paper entries; it doesn't change existing positions.</p>
+  </section>
   <section className="itt-scanner-settings itt-stop-settings" aria-label="Paper stop loss control">
    <h4>STOP LOSS CONTROL · NEXT PAPER TRADE</h4>
    <label htmlFor="itt-stop-pct">Protective stop on option premium</label>
@@ -551,11 +583,11 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
     </section>}
     {ready&&!open&&!limitOrder&&<section className="itt-paper-limit-entry" aria-label="Set a resting paper option limit price">
      <strong>YOUR PAPER LIMIT BUY PRICE</strong>
-     <p>Choose your maximum option <strong>ASK</strong> per share. ICA PRIME will wait for that ask or lower rather than buying higher. One contract controls 100 shares.</p>
+     <p>Choose your maximum option <strong>ASK</strong> per share. Defaults to <strong>1 cent below the displayed ask ($1 less for one standard 100-share contract)</strong>. Edit it to your preferred price; ICA PRIME waits for that ask or lower.</p>
      <div className="itt-paper-limit-controls">
       <label>Maximum ask ($)
        <input type="number" min="0.01" max="50" step="0.01" inputMode="decimal"
-        value={limitPrices[item.id]??c.ask.toFixed(2)}
+        value={limitPrices[item.id]??oneDollarBelowAskPerContract(c.ask).toFixed(2)}
         onChange={e=>setLimitPrices(v=>({...v,[item.id]:e.target.value}))}
         aria-label={'Maximum paper option ask for '+c.symbol}/>
       </label>
@@ -568,12 +600,12 @@ export default function PaperSession({connected,initialTab=null,onSnapshot}){
       </label>
      </div>
      <button type="button" className="itt-wide-button" disabled={busy||!connected||!s?.enabled}
-      onClick={()=>act('limit_order',{alertId:item.id,limitAsk:Number(limitPrices[item.id]??c.ask.toFixed(2)),holdMinutes:Number(limitDurations[item.id]??3)})}>
-      PLACE PAPER LIMIT BUY · ASK ≤ {money(Number(limitPrices[item.id]??c.ask.toFixed(2)))}
+      onClick={()=>act('limit_order',{alertId:item.id,limitAsk:Number(limitPrices[item.id]??oneDollarBelowAskPerContract(c.ask).toFixed(2)),holdMinutes:Number(limitDurations[item.id]??3)})}>
+      PLACE PAPER LIMIT BUY · ASK ≤ {money(Number(limitPrices[item.id]??oneDollarBelowAskPerContract(c.ask).toFixed(2)))}
      </button>
      <small>Limit expires at your chosen deadline or the original breakout’s six-minute window, whichever comes first. A fill requires a fresh Schwab quote, valid price action, enough paper cash and the same spread/risk checks. No real order is submitted.</small>
     </section>}
-    {feedback[item.id]&&<p role={feedback[item.id].kind==='error'?'alert':'status'} className={'itt-opportunity-inline-feedback '+feedback[item.id].kind}>{feedback[item.id].message}</p>}{open?<button type="button" className="itt-wide-button" onClick={()=>openWindow('open',open.id)}>OPEN TRADE · P/L &amp; CLOSE</button>:limitOrder?null:item.status==='TAKEN'?<button type="button" className="itt-wide-button" onClick={()=>openWindow('closed',item.id)}>VIEW CLOSED TRADE</button>:<button type="button" className="itt-wide-button" disabled={queued[item.id]||!ready||!connected||!s?.enabled} aria-busy={!!queued[item.id]} onClick={()=>act('accept',item.id)}>{queued[item.id]?'ACCEPTANCE QUEUED…':ready?'ACCEPT PAPER CONTRACT':'EXPIRED · NOT ACTIONABLE'}</button>}</article>})}</>}
+    {feedback[item.id]&&<p role={feedback[item.id].kind==='error'?'alert':'status'} className={'itt-opportunity-inline-feedback '+feedback[item.id].kind}>{feedback[item.id].message}</p>}{open?<button type="button" className="itt-wide-button" onClick={()=>openWindow('open',open.id)}>OPEN TRADE · P/L &amp; CLOSE</button>:limitOrder?null:item.status==='TAKEN'?<button type="button" className="itt-wide-button" onClick={()=>openWindow('closed',item.id)}>VIEW CLOSED TRADE</button>:<button type="button" className="itt-wide-button" disabled={queued[item.id]||!ready||!connected||!s?.enabled} aria-busy={!!queued[item.id]} onClick={()=>act('accept',item.id)}>{queued[item.id]?'ACCEPTANCE QUEUED…':ready?'BUY NOW AT FRESH ASK (PAPER)':'EXPIRED · NOT ACTIONABLE'}</button>}</article>})}</>}
     {windowTab==='open'&&<>{!positions.length&&<p>No open paper contracts. Accepted trades appear here automatically and remain here until closed.</p>}{positions.map(positionCard)}</>}
     {windowTab==='closed'&&<>{!history.length&&<p>No closed paper trades yet.</p>}{history.slice().reverse().map((t,i)=>{const id=t.id||t.symbol+t.exitTime;return <article className="itt-opportunity-card" key={id+i}><span className="itt-eyebrow">CLOSED PAPER TRADE · {t.reason==='STOP_LOSS'?'STOP LOSS TRIGGERED':t.reason?.replaceAll('_',' ')}</span><button type="button" className="itt-trade-symbol" onClick={()=>setSelected(selected===id?null:id)}>{t.symbol} · View trade details</button>{pnlBlock(t,true)}<p>Entry cost {money(t.cost)} · Entry fill {money(t.fill)} · Exit fill {money(t.exitFill)}</p><p>Opened {time(t.time)} ET · Closed {time(t.exitTime)} ET</p>{selected===id&&<p>Strike {money(t.strike)} · Expiration {t.expiration||'—'} · Exit reason {t.reason?.replaceAll('_',' ')}. This contract is closed; there is no open position to exit.</p>}</article>})}</>}
    </div><p className="itt-opportunity-help">Minimize keeps trades open. Close Contract exits one; Close All exits every open paper contract and cancels queued approvals. A fresh positive bid is required. Paper only.</p>
