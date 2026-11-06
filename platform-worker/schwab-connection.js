@@ -230,5 +230,10 @@ export async function schwabContractQuote(env,owner,symbol){
  if(!r.ok)throw Error('Contract feed unavailable.');
  const d=await boundedJson(r,100000),item=d[symbol],q=item?.quote;
  if(item?.realtime!==true||!q)throw Error('A confirmed real-time contract quote is required.');
- return {symbol,bid:q.bidPrice,ask:q.askPrice,quoteTime:q.quoteTime};
+ return {symbol,bid:q.bidPrice,ask:q.askPrice,quoteTime:q.quoteTime,
+  last:Number.isFinite(q.lastPrice)?q.lastPrice:null,
+  bidSize:Number.isFinite(q.bidSize)?q.bidSize:null,
+  askSize:Number.isFinite(q.askSize)?q.askSize:null,
+  tradeTime:Number.isFinite(q.tradeTime)?q.tradeTime:null,
+  realtime:true};
 }
