@@ -426,6 +426,24 @@ export async function paperApi(request,env,owner){
     s.lastScan={time:Date.now(),note:mode==='SINGLE'?'Scanner restricted to '+symbol:'Multiple Tickers scanner restored.'};
     event(s,mode==='SINGLE'?'Owner selected Single Ticker PAPER scanner: '+symbol:'Owner selected Multiple Tickers PAPER scanner.');
    }
+   else if(action==='scanner_engine'){
+    const input=JSON.parse(body),engine=input.engine;
+    if(!PAPER_SCAN_ENGINES.includes(engine))throw Error('Choose Scanner 1 or Scanner 2.');
+    if(typeof input.enabled!=='boolean'||!['ALL','CUSTOM'].includes(input.scope))
+     throw Error('Choose enabled or disabled and all or custom ticker scope.');
+    if(!Array.isArray(input.symbols)||input.symbols.length>40||
+       !input.symbols.every(validTicker))
+     throw Error('Enter up to 40 unique stock or ETF ticker symbols.');
+    const symbols=[...new Set(input.symbols)];
+    if(input.enabled&&input.scope==='CUSTOM'&&!symbols.length)
+     throw Error('Add at least one ticker before starting a custom scanner.');
+    s.scannerEngines??={};
+    s.scannerEngines[engine]={enabled:input.enabled,scope:input.scope,symbols};
+    if(engine==='MAIN')s.scanIndex=0;
+    else s.focusScanIndex=0;
+    event(s,'Owner configured '+(engine==='MAIN'?'Scanner 1':'Scanner 2')+
+     ': '+(input.enabled?'ON':'OFF')+' · '+(input.scope==='ALL'?'full watchlist':symbols.join(', ')));
+   }
    else if(action==='watchlist_update'){
     // Same server-backed custom symbols for Watchlist Favorites AND the paper
     // scanner. Supports changes while open paper trades remain protected.
@@ -525,7 +543,7 @@ export async function scheduledPaper(env){
    const scannerWanted=previous.enabled===true||(previous.autoStart===true&&previous.lastAutoStartDay!==session.day);
    const stub=env.PAPER_QUOTE_STREAM.getByName(owner.id);
    if(sessionActive&&scannerWanted){
-    try{const health=await stub.enable(owner.id,scannerUniverse(previous),previous.scanMode);
+    try{const health=await stub.enable(owner.id,scannerStreamUniverse(previous).slice(0,40),previous.scanMode);
      streamHealth=health;
     }catch{streamHealth={connected:false,transport:'ERROR',error:'Schwab stream coordinator unavailable.',quoteAgeMs:null}}
    }else try{await stub.disable();streamHealth={connected:false,transport:'STOPPED',error:'',quoteAgeMs:null}}catch{}
@@ -536,7 +554,7 @@ export async function scheduledPaper(env){
   // revision race and silently discard every scheduled rotation result.
   if(env.PAPER_QUOTE_STREAM){
    const stub=env.PAPER_QUOTE_STREAM.getByName(owner.id);
-   try{await stub.runRotation(owner.id,streamHealth,true)}
+   try{await stub.runRotation(owner.id,streamHealth,true,'BOTH')}
    catch(error){
     console.error('PAPER_SCHEDULED_ROTATION_RETRY',String(error?.message||error));
     // A failed Durable Object rotation must not prevent the cron's paper
