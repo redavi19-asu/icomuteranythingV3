@@ -29,7 +29,7 @@ export class PaperQuoteStream extends DurableObject {
    lastScanAt:this.lastScanAt||null,error:this.error.slice(0,160),
    realOrdersEnabled:false,quoteEntitlementVerified:false};
  }
- async enable(ownerId,symbols,mode='MULTI'){
+ async enable(ownerId,symbols,mode='MULTI',focusEnabled=false){
   if(typeof ownerId!=='string'||!ownerId||ownerId.length>160)throw Error('Invalid owner.');
   if(!Array.isArray(symbols)||symbols.length>40||!symbols.length||!symbols.every(isStreamTicker))throw Error('Invalid stream watchlist.');
   if(mode!=='SINGLE'&&mode!=='MULTI')throw Error('Invalid stream scope.');
@@ -37,7 +37,7 @@ export class PaperQuoteStream extends DurableObject {
   const next=[...new Set(symbols)];
   const changed=next.join(',')!==this.symbols.join(',');
   this.symbols=next;
-  await this.ctx.storage.put('config',{ownerId,symbols:next,mode});
+  await this.ctx.storage.put('config',{ownerId,symbols:next,mode,focusEnabled:focusEnabled===true});
   await this.ctx.storage.setAlarm(Date.now()+30000);
   if(this.ready&&changed)this.subscribe();
   if(!this.socket&&!this.connecting&&Date.now()>=this.retryAt)await this.connect();
@@ -66,7 +66,9 @@ export class PaperQuoteStream extends DurableObject {
   // owns both triggers, and runRotation's persistent time guard permits at
   // most one full-universe sweep per minute across restarts or cron overlap.
   try{
-   if(paperSessionOpen(session))
+   // Do not write a zero-symbol scan every 30 seconds when Scanner 2 is
+   // disabled; that used to overwrite a real MAIN scan in lastCheck.
+   if(config.focusEnabled===true&&paperSessionOpen(session))
     await this.runRotation(config.ownerId,null,true,'FOCUS');
   }catch(e){
    this.error='Scheduled paper rotation held: '+String(e?.message||'unknown error').slice(0,115);
