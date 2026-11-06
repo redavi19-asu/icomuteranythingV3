@@ -6,6 +6,42 @@ export const selectedStopLossPct=(value)=>PAPER_STOP_LOSS_CHOICES.includes(value
 export const paperDailyGoal=(value)=>Number.isFinite(value)&&value>=10&&value<=500?value:50;
 export const newPaper=()=>({version:1,cash:1500,realized:0,position:null,trades:[],day:'',dayPnl:0,dayTrades:0});
 const round=x=>Math.round(x*100)/100;
+/** Warnings are informational until the paper engine executes an exit.
+ * Dismissing a banner cannot suspend any stop, trailing exit, or deadline. */
+export function paperPositionExitWarnings(p,now=Date.now()){
+ if(!p||p.closeRequested)return [];
+ const warnings=[],session=marketTime(now),expiry=expiryStatus(p.expiration,session.day);
+ const fresh=Number.isFinite(p.mark?.quoteTime)&&p.mark.quoteTime<=now&&
+  now-p.mark.quoteTime<=30000;
+ if(fresh&&Number.isFinite(p.fill)&&p.fill>0&&Number.isFinite(p.mark.bid)){
+  const stop=selectedStopLossPct(p.stopLossPct);
+  const stopBid=p.fill*(1-stop/100);
+  if(p.mark.bid<=stopBid)
+   warnings.push({type:'STOP_TRIGGERED',priority:'critical',actionable:false,
+    message:'Stop level reached. Automatic exit is due; overriding is no longer available.',
+    threshold:round(stopBid)});
+  else if(p.mark.bid<=stopBid*1.08)
+   warnings.push({type:'STOP_NEAR',priority:'warning',actionable:true,
+    message:'Option bid is close to your '+stop+'% stop. The next fresh quote could trigger an exit.',
+    threshold:round(stopBid)});
+ }
+ if(expiry!=='FUTURE'&&p.day===session.day&&Number.isFinite(p.time)){
+  const minutes=Math.min(390,Math.max(1,Number(p.maxHoldMinutes)||30));
+  const secondsLeft=Math.ceil((p.time+minutes*60000-now)/1000);
+  if(secondsLeft<=300)
+   warnings.push({type:'TIME_LIMIT',priority:secondsLeft<=0?'critical':'warning',
+    actionable:secondsLeft>0,
+    secondsLeft:Math.max(0,secondsLeft),maxHoldMinutes:minutes,
+    message:secondsLeft<=0?'Timed scalp exit is due.':
+     'Timed scalp closes in '+Math.ceil(secondsLeft/60)+' minute(s) unless you extend it.'});
+ }
+ if(expiry!=='FUTURE'&&session.minute>=950&&session.minute<955&&
+   !['Sat','Sun'].includes(session.weekday))
+  warnings.push({type:'EXPIRATION_CLOSE',priority:'critical',actionable:false,
+   message:'Expiration-day mandatory 3:55 PM ET exit approaches. This safeguard cannot be overridden.'});
+ return warnings;
+}
+
 export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperRules.premiumBudget,stopLossPct=paperRules.stopLossPct,dailyGoal=50,now=Date.now()}){
  const s=structuredClone(state),session=marketTime(now);
  if(s.day!==session.day){s.day=session.day;s.dayPnl=0;s.dayTrades=0}
