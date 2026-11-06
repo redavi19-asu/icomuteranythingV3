@@ -317,7 +317,7 @@ test('owner saves adjustable risk for future paper entries without rewriting ope
   assert.equal((await result.json()).stopLossPct,35);
   assert.equal((await paperApi(request(80),env,owner)).status,409,'invalid large loss is rejected');
   const s=JSON.parse(db.prepare('SELECT payload FROM paper_runners').get().payload);
-  s.enabled=true;s.pending=pending();db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  s.enabled=true;s.pending=pending();s.maxOptionSpreadCents=5;db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
   globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,
    quote:{bidPrice:1.95,askPrice:2,quoteTime:now}}});
   const accepted=await paperApi(req('accept','setup'),env,owner);
