@@ -35,6 +35,10 @@ test('Nov 4 momentum alert path still produces a Schwab-verified paper opportuni
   const close=100+i*.025+Math.sin(i*.8)*.15+(i===51?.2:0);
   return {datetime:now-53*60000+i*60000,open:close-.06,high:close+.09,low:close-.1,close,volume:i===51?2300:1000};
  });
+ const breakout=bars.at(-1),confirmationClose=breakout.close+.035;
+ const confirm={time:breakout.datetime+60000,datetime:breakout.datetime+60000,
+  open:confirmationClose-.04,high:confirmationClose+.06,
+  low:confirmationClose-.10,close:confirmationClose,volume:1700};
  const contract='SPY   261106C00100000';
  const chain={isDelayed:false,callExpDateMap:{'2026-11-06:2':{'100':[{symbol:contract,strikePrice:100,
   bid:1.95,ask:2,delta:0.52,totalVolume:220,openInterest:600,quoteTimeInLong:now,nonStandard:false}]}},putExpDateMap:{}};
@@ -53,13 +57,19 @@ test('Nov 4 momentum alert path still produces a Schwab-verified paper opportuni
   await paperApi(req(),env,owner); // Create the paper runner row before updating its fixture.
   const state=freshRunner();state.enabled=true;state.scanMode='SINGLE';state.singleTicker='SPY';
   db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(state));
+  const first=await runPaperTick(env,owner,{scan:true,scanSymbol:'SPY'});
+  assert.equal(first.lastCheck.newAlerts,0,'initial breakout candle must NOT publish an unconfirmed alert');
+  assert.equal(first.priceActionChecks.SPY.status,'WAIT_NEXT_CANDLE');
+  bars.push(confirm);
   const result=await runPaperTick(env,owner,{scan:true,scanSymbol:'SPY'});
-  assert.equal(result.lastCheck.newAlerts,1,'verified Nov 4 technical signal should produce a paper opportunity: '+JSON.stringify({lastScan:result.lastScan,check:result.lastCheck,history:result.scanHistory.slice(0,4)}));
+  assert.equal(result.lastCheck.newAlerts,1,'two completed candles should produce a verified paper opportunity: '+JSON.stringify({lastScan:result.lastScan,check:result.lastCheck,history:result.scanHistory.slice(0,4)}));
   assert.equal(result.alerts.length,1);
   assert.equal(result.alerts[0].qualification.technical.confirmed,true);
   assert.equal(result.alerts[0].qualification.confluence.confirmed,false,'extra MACD/OBV confluence is advisory');
   assert.equal(result.alerts[0].qualification.marketData.provider,'SCHWAB');
-  assert.equal(result.scanHistory[0].state,'TECHNICAL_SETUP_REVIEW');
+  assert.equal(result.scanHistory[0].state,'PRICE_ACTION_SETUP_REVIEW');
+  assert.equal(result.alerts[0].qualification.priceAction.confirmed,true);
+  assert.equal(result.alerts[0].qualification.priceAction.breakoutBarTime,breakout.datetime);
   assert.equal(result.realOrdersEnabled,false);
  }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
 });
