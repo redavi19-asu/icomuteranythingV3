@@ -738,3 +738,49 @@
  .itt-brand h2 .itt-money-machine-note::after{right:7px}
  .itt-brand h2 .itt-money-machine{font-size:.81em;letter-spacing:.045em}
 }
+
+
+/* ICA PRIME — independent but safely coordinated PAPER scanner cards */
+.itt-paper-top-grid{grid-template-columns:minmax(0,1fr)}
+.itt-scanner-duo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;align-items:start;min-width:0}
+.itt-scanner-lane{display:flex;flex-direction:column;gap:10px;min-height:420px;min-width:0}
+.itt-scanner-lane .itt-paper-radar-heading{margin-bottom:0}
+.itt-scanner-lane .itt-paper-radar-heading h3{margin:4px 0 0}
+.itt-scanner-engine-help{margin:0;font-size:11px;color:#aaa;line-height:1.5}
+.itt-scanner-engine-form{display:flex;flex-direction:column;gap:9px;padding:12px;background:#202023;border:1px solid #39393b;border-radius:11px}
+.itt-scanner-engine-switch{display:flex;align-items:center;gap:11px;color:#f6c2a2;cursor:pointer}
+.itt-scanner-engine-switch input{accent-color:#ec853c;width:20px;height:20px;flex-shrink:0}
+.itt-scanner-engine-switch strong{font-size:11px;letter-spacing:.4px}
+.itt-scanner-engine-label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:800;color:#c1c1c6}
+.itt-scanner-engine-label select,.itt-scanner-engine-label textarea{width:100%;min-width:0;background:#171719;color:#fff;border:1px solid #555258;border-radius:7px;font:inherit;font-size:12px;padding:9px 11px;resize:vertical}
+.itt-scanner-engine-label small{font-weight:500;color:#b0afb0}
+.itt-scanner-lane .itt-engine-save{width:100%;padding:10px 12px}
+.itt-scanner-engine-live{display:flex;gap:14px;align-items:center;min-width:0}
+.itt-scanner-engine-live .itt-radar-visual{width:96px;height:96px;flex:0 0 96px}
+.itt-scanner-engine-latest{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.itt-scanner-engine-latest small{color:#aaa;font-size:10px}
+.itt-scanner-engine-latest strong{font-size:26px;color:#ffc08d;line-height:1.1;overflow-wrap:anywhere}
+.itt-scanner-engine-latest span{color:#dbdbdd;font-size:11px;font-weight:800;overflow-wrap:anywhere}
+.itt-scanner-engine-latest p{color:#b5b5b7;font-size:10px;margin:0;line-height:1.45}
+.itt-scanner-lane .itt-radar-recent{margin:0}
+.itt-scanner-lane .itt-coverage-embedded .itt-coverage-list{max-height:310px;overflow-y:auto}
+.itt-scanner-lane .itt-radar-foot{font-size:10px;line-height:1.5;color:#b2a8a3}
+.itt-entry-spread-preview{background:#29241f;border:1px solid #a27b52;color:#ead6be;padding:10px;border-radius:9px;font-size:12px;line-height:1.5}
+.itt-requote-review{background:#32271d;border:1px solid #df934b;border-radius:10px;padding:12px;margin:10px 0;display:flex;flex-direction:column;gap:8px}
+.itt-requote-review strong{color:#ffcf9c}
+.itt-requote-review p{margin:0;font-size:12px;line-height:1.45}
+.itt-requote-review .itt-wide-button{width:100%;white-space:normal}
+.itt-spread-entry-explain{font-size:11px;color:#b8b7be;line-height:1.5;margin:0 0 10px}
+.itt-exit-warning-list{display:grid;gap:8px;margin:10px 0 13px}
+.itt-exit-warning{padding:12px;border:1px solid #dc9451;background:#32271f;color:#f3d6b8;border-radius:10px;display:flex;flex-direction:column;gap:8px}
+.itt-exit-warning.critical{border-color:#d15d66;background:#44232b}
+.itt-exit-warning strong{font-size:12px}
+.itt-exit-warning p{margin:5px 0 0;font-size:12px;line-height:1.5}
+.itt-exit-warning small{color:#c7beb6;font-size:10px;line-height:1.45}
+.itt-exit-warning-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.itt-exit-warning-actions label{display:flex;align-items:center;gap:6px;font-size:11px}
+.itt-exit-warning-actions select{border:1px solid #867c77;border-radius:6px;background:#241f21;color:#fff;padding:8px;font:inherit}
+.itt-exit-warning-actions .itt-wide-button{padding:9px 12px}
+.itt-exit-warning-dismiss{background:transparent;border:1px solid #8e7770;color:#f3e4d8;border-radius:7px;padding:8px 11px;align-self:flex-start;cursor:pointer;font-size:11px}
+@media(max-width:970px){.itt-scanner-duo{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:560px){.itt-scanner-lane{padding:12px}.itt-scanner-engine-live .itt-radar-visual{width:82px;height:82px;flex-basis:82px}.itt-scanner-engine-latest strong{font-size:24px}}

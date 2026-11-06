@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newPaper,stepPaper,summarizePaperExits} from './paper-session.js';
+import {newPaper,stepPaper,summarizePaperExits,paperPositionExitWarnings} from './paper-session.js';
 const now=Date.parse('2026-11-04T15:00:00Z');
 const q={symbol:'TEST',underlying:'SPY',bid:1.95,ask:2,quoteTime:now,delta:0.5,volume:200,openInterest:500};
 test('paper entry uses ask, slippage and commission without mutating input',()=>{const s=newPaper();const n=stepPaper(s,{quote:q,enter:true,now});assert.equal(n.cash,1298.35);assert.equal(s.cash,1500);assert.equal(n.position.cost,201.65)});
@@ -86,4 +86,33 @@ test('unsupported paper stop choice is rejected when creating a position',()=>{
  for(const pct of [0,10,60,100,NaN]){
   assert.throws(()=>stepPaper(newPaper(),{quote:q,enter:true,now,stopLossPct:pct}),/supported paper stop/);
  }
+});
+
+test('open paper scalp warns five minutes before forced time exit and near selected stop',()=>{
+ const position={symbol:'TEST',expiration:'2026-11-04',day:'2026-11-04',
+  time:now-25*60000,maxHoldMinutes:30,fill:2.01,stopLossPct:20,
+  mark:{bid:1.66,ask:1.71,quoteTime:now}};
+ const warnings=paperPositionExitWarnings(position,now);
+ assert.deepEqual(warnings.map(w=>w.type),['STOP_NEAR','TIME_LIMIT']);
+ assert.equal(warnings[0].actionable,true);
+ assert.equal(warnings[1].secondsLeft,300);
+ assert.equal(warnings[1].actionable,true);
+ position.mark.bid=1.5;
+ const triggered=paperPositionExitWarnings(position,now);
+ assert.equal(triggered[0].type,'STOP_TRIGGERED');
+ assert.equal(triggered[0].actionable,false,'no override after stop has triggered');
+ position.mark.quoteTime=now-60000;
+ assert.equal(paperPositionExitWarnings(position,now).some(w=>w.type.startsWith('STOP')),false,'stale option marks must not generate false stop warnings');
+ position.maxHoldMinutes=40;
+ assert.equal(paperPositionExitWarnings(position,now).some(w=>w.type==='TIME_LIMIT'),false,'extension removes imminent timed exit warning');
+});
+test('mandatory same-day expiration exit warning is never overrideable',()=>{
+ const nearClose=Date.parse('2026-11-04T20:52:00Z');
+ const position={symbol:'TEST',expiration:'2026-11-04',day:'2026-11-04',
+  time:nearClose-30*60000,maxHoldMinutes:390,fill:2,stopLossPct:20,
+  mark:{bid:2,ask:2.05,quoteTime:nearClose}};
+ const warnings=paperPositionExitWarnings(position,nearClose);
+ const session=warnings.find(w=>w.type==='EXPIRATION_CLOSE');
+ assert.ok(session);
+ assert.equal(session.actionable,false);
 });

@@ -8,7 +8,7 @@ import {assessEntryChase} from '../src/master/trading-entry-chase.js';
 import {assessSwing55Entry} from '../src/master/trading-swing-levels.js';
 import {assessPriceAction} from '../src/master/trading-price-action.js';
 import {rotatingTickerBatch,saveSymbolScanCoverage} from './paper-scan-coverage.js';
-import {paperEntryEligible,paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE} from '../src/master/paper-session-clock.js';
+import {paperEntryEligible,paperSessionOpen,PAPER_MARKET_CLOSE_MINUTE,expiryStatus,paperExpirationCloseDue} from '../src/master/paper-session-clock.js';
 const response=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 // Bounded liquid options universe. This is NOT a claim to scan every exchange-listed stock.
 // Every built-in ICA PRIME watchlist ticker is scanned automatically.
@@ -19,8 +19,62 @@ const DEFAULT_WATCHLIST_FAVORITES=Object.freeze(['SPY','QQQ','TQQQ','IWM','XLE',
 const validTicker=t=>typeof t==='string'&&/^[A-Z][A-Z0-9.-]{0,9}$/.test(t);
 export const scannerUniverse=s=>s.scanMode==='SINGLE'?(validTicker(s.singleTicker)?[s.singleTicker]:[]):
  [...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s.extraSymbols)?s.extraSymbols:[])])].slice(0,60);
+// Two independent, configurable PAPER scanner lanes. Both share the
+// existing owner coordinator and safety / quote validation.
+export const PAPER_SCAN_ENGINES=Object.freeze(['MAIN','FOCUS']);
+export function scannerEngineConfig(s,engine){
+ if(!PAPER_SCAN_ENGINES.includes(engine))throw Error('Unknown scanner engine.');
+ const saved=s?.scannerEngines?.[engine]||{};
+ return {
+  enabled:typeof saved.enabled==='boolean'?saved.enabled:engine==='MAIN',
+  scope:saved.scope==='CUSTOM'?'CUSTOM':saved.scope==='ALL'?'ALL':engine==='MAIN'?'ALL':'CUSTOM',
+  symbols:[...new Set((Array.isArray(saved.symbols)?saved.symbols:[]).filter(validTicker))].slice(0,60)
+ };
+}
+export function scannerEngineUniverse(s,engine){
+ const config=scannerEngineConfig(s,engine);
+ const all=[...new Set([...PAPER_SCAN_UNIVERSE,...(Array.isArray(s.extraSymbols)?s.extraSymbols:[])])].slice(0,60);
+ // Retain legacy Single Ticker operation until both new engine cards are
+ // configured; editing a new card switches the old global mode to MULTI.
+ return config.scope==='CUSTOM'?config.symbols:
+  s.scanMode==='SINGLE'&&!(s.scannerEngines&&s.scannerEngines[engine])?
+   scannerUniverse(s):all;
+}
+export function scannerStreamUniverse(s){
+ // Focus gets streaming priority when provider's 40-symbol subscription
+ // allowance is reached; the main engine still receives REST rotation.
+ return [...new Set(['FOCUS','MAIN'].flatMap(engine=>
+  scannerEngineConfig(s,engine).enabled?scannerEngineUniverse(s,engine):[]))];
+}
 const budget=s=>Number.isFinite(s.maxPremium)?s.maxPremium:paperRules.premiumBudget;
 const stopLossPct=s=>selectedStopLossPct(s.stopLossPct);
+export const PAPER_SCALP_MAX_SPREAD_PCT=3;
+/** Explicitly show the bid/ask drag on ONE paper option contract (100 shares). */
+export function paperOptionEntryEstimate(q){
+ if(!Number.isFinite(q?.ask)||!Number.isFinite(q?.bid)||q.ask<=0||q.bid<0||q.bid>q.ask)return null;
+ const cost=Math.round(((q.ask+0.01)*100+0.65)*100)/100;
+ const immediateExit=Math.round(((Math.max(0,q.bid-0.01))*100-0.65)*100)/100;
+ return {cost,immediateExit,immediatePnl:Math.round((immediateExit-cost)*100)/100,
+  spreadPct:Math.round((q.ask-q.bid)/q.ask*10000)/100,
+  spreadDollars:Math.round((q.ask-q.bid)*10000)/100,
+  breakevenBid:Math.round((q.ask+0.033)*1000)/1000};
+}
+export function paperQuoteQualityFailure(quote,premiumBudget){
+ const base=eligiblePaperQuote(quote,{...paperRules,premiumBudget,
+  maxSpreadPct:Math.min(PAPER_SCALP_MAX_SPREAD_PCT,paperRules.maxSpreadPct)});
+ if(base)return base;
+ const estimate=paperOptionEntryEstimate(quote);
+ if(!estimate||estimate.cost<=0)return 'INVALID_QUOTE';
+ if(-estimate.immediatePnl/estimate.cost>0.05)return 'EXCESSIVE_ENTRY_DRAG';
+ return null;
+}
+export function paperNeedsPriceConfirmation(originalAsk,freshAsk,maxApprovedAsk){
+ // An improved ask is never rejected merely because the original quote was
+ // different; a materially WORSE ask requires explicit owner acknowledgement.
+ return Number.isFinite(originalAsk)&&Number.isFinite(freshAsk)&&freshAsk>originalAsk*1.02&&
+  !(Number.isFinite(maxApprovedAsk)&&maxApprovedAsk>=freshAsk);
+}
+
 function alertList(s){
  if(!Array.isArray(s.alerts))s.alerts=[];
  if(s.pending){if(!s.alerts.some(a=>a.id===s.pending.id))s.alerts.unshift({...s.pending,status:'PENDING'});s.seen=[...new Set([...(s.seen||[]),s.pending.id])].slice(-200);s.pending=null;}
@@ -28,7 +82,13 @@ function alertList(s){
 }
 const liveAlert=(a,now=Date.now())=>a.status==='PENDING'&&a.expires>now;
 function expireAlerts(s,now=Date.now()){for(const a of alertList(s))if(a.status==='PENDING'&&a.expires<=now){a.status='EXPIRED';event(s,'Approval expired: '+a.contract.symbol);}}
-const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),scanUniverse:scannerUniverse(s),scanMode:s.scanMode==='SINGLE'?'SINGLE':'MULTI',singleTicker:validTicker(s.singleTicker)?s.singleTicker:'SPY',autoStart:s.autoStart===true,mode:'PAPER_ONLY',realOrdersEnabled:false});
+const view=s=>({...normalizePaperPortfolio(s),pending:null,alerts:alertList(s),
+ scanUniverse:s.scanMode==='SINGLE'?scannerUniverse(s):scannerStreamUniverse(s),
+ scanEngines:Object.fromEntries(PAPER_SCAN_ENGINES.map(engine=>[engine,{
+  ...scannerEngineConfig(s,engine),universe:scannerEngineUniverse(s,engine),
+  coverage:s.engineCoverage?.[engine]||{},last:s.engineLast?.[engine]||null
+ }])),
+ scanMode:s.scanMode==='SINGLE'?'SINGLE':'MULTI',singleTicker:validTicker(s.singleTicker)?s.singleTicker:'SPY',autoStart:s.autoStart===true,mode:'PAPER_ONLY',realOrdersEnabled:false});
 // Optional outbound notification. Requires sender domain and API key in server secrets.
 async function notifyPaperOpportunity(env,owner,alert){
  const api=String(env.RESEND_API_KEY||'').trim(),from=String(env.ICA_TRADING_ALERT_FROM||'').trim();
@@ -41,7 +101,7 @@ async function notifyPaperOpportunity(env,owner,alert){
  if(!sent.ok)throw Error('Notification not accepted (HTTP '+sent.status+').');
 }
 export const freshRunner=()=>({paper:newPaper(),enabled:false,closeRequested:false,pending:null,alerts:[],seen:[],events:[],heartbeat:null,lastError:null,scanIndex:0,scanHistory:[],scanMode:'MULTI',singleTicker:'SPY',dailySignals:{},dailyCheckedDay:{},
- flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,lastAutoStartAt:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],swingLevels:{},priceActionChecks:{},scanCoverage:{}});
+ flowGate:{status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'Paid options-flow check removed; Schwab data and risk checks still required.'},marketFeed:{code:'UNAVAILABLE',label:'NO VERIFIED LIVE QUOTES YET',symbol:null,checkedAt:null},autoStart:false,lastAutoStartDay:null,lastAutoStartAt:null,maxPremium:paperRules.premiumBudget,stopLossPct:20,extraSymbols:[],scannerEngines:{MAIN:{enabled:true,scope:'ALL',symbols:[]},FOCUS:{enabled:false,scope:'CUSTOM',symbols:[]}},focusScanIndex:0,engineCoverage:{MAIN:{},FOCUS:{}},engineLast:{},swingLevels:{},priceActionChecks:{},scanCoverage:{}});
 async function load(env,id){await env.DB.prepare('INSERT OR IGNORE INTO paper_runners(owner_id,payload) VALUES(?,?)').bind(id,JSON.stringify(freshRunner())).run();const row=await env.DB.prepare('SELECT revision,payload FROM paper_runners WHERE owner_id=?').bind(id).first();return {revision:row.revision,state:{...normalizePaperPortfolio(JSON.parse(row.payload)),revision:row.revision}}}
 async function save(env,id,row){const r=await env.DB.prepare('UPDATE paper_runners SET payload=?,revision=revision+1 WHERE owner_id=? AND revision=?').bind(JSON.stringify(row.state),id,row.revision).run();if(r.meta.changes!==1)throw Error('State changed; refresh and retry.');row.revision++;row.state.revision=row.revision;}
 function event(s,text){s.events=[{time:Date.now(),text},...s.events].slice(0,100)}
@@ -114,7 +174,7 @@ export async function verifyPaperPriceWindow(env,owner,alert,now=Date.now()){
  }
  return true;
 }
-export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymbol=null,streamHealth=null}={}){
+export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymbol=null,streamHealth=null,scanLane='BOTH'}={}){
  const row=await load(env,owner.id),s=row.state;s.heartbeat=Date.now();s.lastError=null;
  s.flowGate={status:'DISABLED',provider:'NONE',level2:'NOT_CONNECTED',reason:'No paid options-flow feed required; Schwab technical, quote and contract checks remain active.'};
  if(streamHealth){
@@ -165,16 +225,32 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
   if(scan&&s.enabled){
    const now=Date.now(),session=marketTime(now);
    if(paperSessionOpen(session)){
-    const allowed=scannerUniverse(s);
-    // Advance five distinct default ticker slots per scheduled/owner scan.
-    // Streaming scans do not advance this cursor; their only role is to
-    // accelerate specific symbol checks, never to starve the full universe.
-    const scheduledBatch=scanSymbol===null?rotatingTickerBatch(allowed,s.scanIndex,5):[];
-    const universe=scanSymbol===null?scheduledBatch:allowed.filter(t=>t===scanSymbol);
-   for(let i=0;i<universe.length;i++){
-    const symbol=universe[i],checkedAt=Date.now();check.scannedSymbols.push(symbol);
-    if(scanSymbol===null)s.scanIndex++;
-    try{
+    // Two owner-configurable engines, separately rotating up to five tickers
+    // per pass. Both feed one serial D1 coordinator to protect live paper P/L.
+    const selections=new Map();
+    for(const engine of PAPER_SCAN_ENGINES){
+     const conf=scannerEngineConfig(s,engine);
+     if(!conf.enabled||(scanLane!=='BOTH'&&scanLane!==engine))continue;
+     const allowed=scannerEngineUniverse(s,engine);
+     const batch=scanSymbol===null?rotatingTickerBatch(allowed,
+      engine==='MAIN'?s.scanIndex:(s.focusScanIndex||0),5):
+      allowed.includes(scanSymbol)?[scanSymbol]:[];
+     if(scanSymbol===null){
+      if(engine==='MAIN')s.scanIndex+=batch.length;
+      else s.focusScanIndex=(s.focusScanIndex||0)+batch.length;
+     }
+     for(const symbol of batch){
+      const list=selections.get(symbol)||[];
+      list.push(engine);selections.set(symbol,list);
+     }
+    }
+    check.enginePasses={MAIN:[],FOCUS:[]};
+    s.engineCoverage??={MAIN:{},FOCUS:{}};
+    s.engineLast??={};
+    for(const [symbol,engines] of selections){
+     const checkedAt=Date.now();check.scannedSymbols.push(symbol);
+     engines.forEach(engine=>check.enginePasses[engine].push(symbol));
+     try{
      const history=await data(env,owner,'history',symbol);
      const bars=(history.candles||[]).filter(c=>c.time+60000<=checkedAt&&Number.isFinite(c.volume));
      const technical=evaluateSymbol(symbol,bars,{now:checkedAt,staleAfterMinutes:3});
@@ -262,7 +338,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      // never imply a measured win probability when it is absent.
      const chain=await data(env,owner,'options',symbol);
      if(chain.delayed!==false)throw Error('Options delay status unconfirmed; skipping setup.');
-     const candidates=(chain.contracts||[]).filter(c=>paperEntryEligible(c.expiration,session)&&c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!eligiblePaperQuote(c,{...paperRules,premiumBudget:budget(s)})).sort((a,b)=>(a.ask-a.bid)/a.ask-(b.ask-b.bid)/b.ask);
+     const candidates=(chain.contracts||[]).filter(c=>paperEntryEligible(c.expiration,session)&&c.side===signal.direction&&!c.nonStandard&&[c.delta,c.volume,c.openInterest,c.quoteTime].every(Number.isFinite)&&checkedAt-c.quoteTime<=60000&&c.quoteTime<=checkedAt+5000&&!paperQuoteQualityFailure(c,budget(s))).sort((a,b)=>(a.ask-a.bid)/a.ask-(b.ask-b.bid)/b.ask);
      // The stable breakout timestamp is the setup identity. Repeated checks
      // over its 6-minute confirmation window cannot generate duplicate alerts.
      const contract=candidates[0],id=symbol+'|'+new Date(priceAction.breakoutBarTime).toISOString();
@@ -281,7 +357,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      const exact=await schwabContractQuote(env,owner,contract.symbol);
      const exactFreshness=schwabQuoteFreshness({...exact,realtime:true},Date.now(),10000);
      const actionable={...contract,bid:exact.bid,ask:exact.ask,quoteTime:exact.quoteTime};
-     const contractRiskFailure=eligiblePaperQuote(actionable,{...paperRules,premiumBudget:budget(s)});
+     const contractRiskFailure=paperQuoteQualityFailure(actionable,budget(s));
      // eligiblePaperQuote returns NULL for a valid contract and a reason code
      // for a rejected contract. Never negate it: that inverted check was
      // rejecting every otherwise-qualified November 5 scalp opportunity.
@@ -294,7 +370,7 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
       dailySignal:s.dailySignals?.[symbol],now:checkedAt});
      if(!s.seen.includes(id)){
       const alert={id,created:Date.now(),expires:Date.now()+120000,
-       contract:{...actionable,underlying:symbol},signal,style,
+       contract:{...actionable,underlying:symbol},entryEstimate:paperOptionEntryEstimate(actionable),signal,style,
        qualification:{technical:{confirmed:true,asOf:signal.asOf,direction:signal.direction},priceAction,confluence,entryTiming,swing55,marketData:{provider:'SCHWAB',realtime:true,underlyingQuoteTime:s.marketFeed.quoteTime,optionQuoteTime:exact.quoteTime}},status:'PENDING'};
       check.newAlerts++;alertList(s).unshift(alert);s.alerts=s.alerts.slice(0,60);
       s.seen=[...s.seen,id].slice(-200);
@@ -316,16 +392,28 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
      s.scanHistory=[{symbol,time:checkedAt,state:'DATA_HOLD',reason:error.message},...(s.scanHistory||[])].slice(0,30);
      event(s,'SCAN HOLD '+symbol+': '+error.message);
     }finally{
-     // The old rolling 30-event feed hid real checks whenever a busy
-     // streaming symbol (e.g. GOOGL) appeared repeatedly. Track the last
-     // actual evaluation of EVERY symbol separately, regardless of outcome.
+     // Keep per-symbol status by engine rather than allowing busy stream
+     // tickers to hide the rest of the market's actual check history.
      const latest=s.scanHistory?.find(item=>item.symbol===symbol&&item.time>=checkedAt);
-     saveSymbolScanCoverage(s,{
-      symbol,checkedAt:Date.now(),day:session.day,
-      source:scanSymbol===null?'ROTATION':'STREAM',
-      scanState:latest?.state||'DATA_HOLD',
+     const finished=Date.now(),result={
+      symbol,checkedAt:finished,state:latest?.state||'DATA_HOLD',
       reason:latest?.reason||'Scan did not return a final status.'
+     };
+     saveSymbolScanCoverage(s,{
+      symbol,checkedAt:finished,day:session.day,
+      source:scanSymbol===null?'ROTATION':'STREAM',
+      scanState:result.state,reason:result.reason
      });
+     for(const engine of engines){
+      const laneState={scanCoverage:s.engineCoverage[engine]||{}};
+      saveSymbolScanCoverage(laneState,{
+       symbol,checkedAt:finished,day:session.day,
+       source:scanSymbol===null?'ROTATION':'STREAM',
+       scanState:result.state,reason:result.reason
+      });
+      s.engineCoverage[engine]=laneState.scanCoverage;
+      s.engineLast[engine]=result;
+     }
     }
    }
    }else s.lastScan={time:now,note:'Outside regular paper scanning session (9:30 AM–4:00 PM ET weekdays).'};
@@ -363,6 +451,10 @@ export async function paperApi(request,env,owner){
     if(mode==='SINGLE'&&!validTicker(symbol))throw Error('Single ticker must be a valid stock or ETF symbol.');
     if(mode==='SINGLE')s.singleTicker=symbol;
     s.scanMode=mode;s.scanIndex=0;
+    s.scannerEngines??={};
+    s.scannerEngines.MAIN={enabled:true,scope:mode==='SINGLE'?'CUSTOM':'ALL',
+     symbols:mode==='SINGLE'?[symbol]:[]};
+    s.scannerEngines.FOCUS={...scannerEngineConfig(s,'FOCUS'),enabled:false};
     // Existing open positions remain independently protected regardless of scanning scope.
     if(mode==='SINGLE')for(const alert of alertList(s)){
      if(alert.status==='PENDING'&&alert.contract?.underlying!==symbol){
@@ -372,6 +464,25 @@ export async function paperApi(request,env,owner){
     s.scanHistory=[];
     s.lastScan={time:Date.now(),note:mode==='SINGLE'?'Scanner restricted to '+symbol:'Multiple Tickers scanner restored.'};
     event(s,mode==='SINGLE'?'Owner selected Single Ticker PAPER scanner: '+symbol:'Owner selected Multiple Tickers PAPER scanner.');
+   }
+   else if(action==='scanner_engine'){
+    const input=JSON.parse(body),engine=input.engine;
+    if(!PAPER_SCAN_ENGINES.includes(engine))throw Error('Choose Scanner 1 or Scanner 2.');
+    if(typeof input.enabled!=='boolean'||!['ALL','CUSTOM'].includes(input.scope))
+     throw Error('Choose enabled or disabled and all or custom ticker scope.');
+    if(!Array.isArray(input.symbols)||input.symbols.length>40||
+       !input.symbols.every(validTicker))
+     throw Error('Enter up to 40 unique stock or ETF ticker symbols.');
+    const symbols=[...new Set(input.symbols)];
+    if(input.enabled&&input.scope==='CUSTOM'&&!symbols.length)
+     throw Error('Add at least one ticker before starting a custom scanner.');
+    s.scannerEngines??={};
+    s.scannerEngines[engine]={enabled:input.enabled,scope:input.scope,symbols};
+    s.scanMode='MULTI'; // New independent per-engine selection supersedes legacy global Single mode.
+    if(engine==='MAIN')s.scanIndex=0;
+    else s.focusScanIndex=0;
+    event(s,'Owner configured '+(engine==='MAIN'?'Scanner 1':'Scanner 2')+
+     ': '+(input.enabled?'ON':'OFF')+' · '+(input.scope==='ALL'?'full watchlist':symbols.join(', ')));
    }
    else if(action==='watchlist_update'){
     // Same server-backed custom symbols for Watchlist Favorites AND the paper
@@ -429,6 +540,42 @@ export async function paperApi(request,env,owner){
    if(!a)throw Error('Alert already dismissed or changed.');
    s.alerts=alerts.filter(x=>x.id!==id);event(s,'Owner dismissed '+a.contract.symbol+' ('+a.status+').');
   }
+  else if(action==='position_override'){
+   const input=JSON.parse(body),position=s.paper.positions.find(p=>p.id===input.id);
+   if(!position||position.closeRequested)throw Error('Position already closed or closing. Override not available.');
+   if(!['EXTEND_TIME','CHANGE_STOP'].includes(input.operation)||input.confirmOverride!==true)
+    throw Error('Select and explicitly confirm a paper-trade override.');
+   const currentSession=marketTime(Date.now());
+   if(!paperSessionOpen(currentSession)||paperExpirationCloseDue(position.expiration,currentSession))
+    throw Error('Market or expiration-day exit is due. Mandatory closing rules cannot be overridden.');
+   const quote=await schwabContractQuote(env,owner,position.symbol);
+   if(schwabQuoteFreshness({...quote,realtime:true},Date.now(),10000).code!=='VERIFIED_FRESH')
+    throw Error('Cannot override with a stale or unavailable option bid.');
+   if(!Number.isFinite(quote.bid)||quote.bid<=0)
+    throw Error('No valid option bid. Paper override held.');
+   const currentPct=selectedStopLossPct(position.stopLossPct);
+   if(quote.bid<=position.fill*(1-currentPct/100))
+    throw Error('Existing stop has already been reached. Cannot override an exit after the trigger.');
+   if(input.operation==='EXTEND_TIME'){
+    if(expiryStatus(position.expiration,currentSession.day)==='FUTURE')
+     throw Error('Overnight-eligible positions have no mandatory 30-minute scalp cap.');
+    const existing=Math.min(390,Math.max(1,Number(position.maxHoldMinutes)||30));
+    if(Date.now()>=position.time+existing*60000)
+     throw Error('Timed exit is already due. Extend before the deadline.');
+    if(existing>=390)throw Error('Maximum 390-minute intraday cap reached.');
+    position.maxHoldMinutes=Math.min(390,existing+10);
+    event(s,'Owner manually extended '+position.symbol+' time exit by 10 minutes to '+
+     position.maxHoldMinutes+' minutes; stop and session safeguards remain active.');
+   }else{
+    const newStop=Number(input.stopLossPct);
+    if(!PAPER_STOP_LOSS_CHOICES.includes(newStop))throw Error('Choose a 15%, 20%, 35%, or 50% option-premium stop.');
+    if(newStop===currentPct)throw Error('Choose a different stop percentage.');
+    position.stopLossPct=newStop;
+    event(s,'Owner deliberately changed OPEN paper stop for '+position.symbol+
+     ' from '+currentPct+'% to '+newStop+'%; live-trade risk explicitly acknowledged.');
+   }
+   normalizePaperPortfolio(s);
+  }
   else if(action==='accept'){
    const a=alertList(s).find(x=>x.id===id);
    if(!s.enabled)throw Error('Scanner is paused. Start Scan before accepting a new paper setup.');
@@ -443,11 +590,24 @@ export async function paperApi(request,env,owner){
    await verifyPaperPriceWindow(env,owner,a);
    const c=a.contract,quote={...c,...await schwabContractQuote(env,owner,c.symbol)};
    if(a.expires<Date.now())throw Error('Setup expired during quote refresh.');
-   if(!Number.isFinite(quote.ask)||quote.ask<=0||Math.abs(quote.ask/c.ask-1)>0.02){
-    a.status='REPRICED';event(s,'Contract repriced; alert no longer actionable: '+c.symbol);
-    await save(env,owner.id,row);
-    return response({error:'Contract price moved over 2%. This alert was marked repriced. Wait for a fresh setup.',code:'CONTRACT_REPRICED',status:view(s)},409);
+   if(schwabQuoteFreshness({...quote,realtime:true},Date.now(),10000).code!=='VERIFIED_FRESH')
+    throw Error('Fresh real-time option bid/ask was not verified. Wait for a current quote.');
+   const quality=paperQuoteQualityFailure(quote,budget(s));
+   if(quality)throw Error('Updated option quote no longer meets scalp quality: '+quality.replaceAll('_',' '));
+   // Quotes that improve can fill immediately. An increased ask over 2%
+   // opens an explicit review rather than permanently cancelling the trade.
+   if(paperNeedsPriceConfirmation(c.ask,quote.ask,input.maxApprovedAsk)){
+    return response({code:'REQUOTE_REVIEW',
+      error:'Option ask moved higher. Review the fresh cost and spread, then explicitly confirm your paper scalp.',
+      requote:{symbol:c.symbol,oldAsk:c.ask,ask:quote.ask,bid:quote.bid,
+       quoteTime:quote.quoteTime,originalPriceChangePct:Math.round((quote.ask/c.ask-1)*10000)/100,
+       estimate:paperOptionEntryEstimate(quote),expires:a.expires},
+      status:view(s)},409);
    }
+   // Never treat a prior acknowledgement as permission for a still-higher ask.
+   if(input.maxApprovedAsk!==undefined&&(!Number.isFinite(input.maxApprovedAsk)||
+      input.maxApprovedAsk<=0||quote.ask>input.maxApprovedAsk))
+    throw Error('Option ask increased again. Refresh the setup and review the updated cost.');
    enterPaperPosition(s,a,quote,{maxPremium:budget(s),stopLossPct:stopLossPct(s)});
    a.status='TAKEN';a.enteredAt=Date.now();event(s,'OWNER APPROVED simulated entry: '+c.symbol);
   }else throw Error('Unknown action.');
@@ -472,7 +632,7 @@ export async function scheduledPaper(env){
    const scannerWanted=previous.enabled===true||(previous.autoStart===true&&previous.lastAutoStartDay!==session.day);
    const stub=env.PAPER_QUOTE_STREAM.getByName(owner.id);
    if(sessionActive&&scannerWanted){
-    try{const health=await stub.enable(owner.id,scannerUniverse(previous),previous.scanMode);
+    try{const health=await stub.enable(owner.id,scannerStreamUniverse(previous).slice(0,40),previous.scanMode);
      streamHealth=health;
     }catch{streamHealth={connected:false,transport:'ERROR',error:'Schwab stream coordinator unavailable.',quoteAgeMs:null}}
    }else try{await stub.disable();streamHealth={connected:false,transport:'STOPPED',error:'',quoteAgeMs:null}}catch{}
@@ -483,7 +643,7 @@ export async function scheduledPaper(env){
   // revision race and silently discard every scheduled rotation result.
   if(env.PAPER_QUOTE_STREAM){
    const stub=env.PAPER_QUOTE_STREAM.getByName(owner.id);
-   try{await stub.runRotation(owner.id,streamHealth,true)}
+   try{await stub.runRotation(owner.id,streamHealth,true,'BOTH')}
    catch(error){
     console.error('PAPER_SCHEDULED_ROTATION_RETRY',String(error?.message||error));
     // A failed Durable Object rotation must not prevent the cron's paper

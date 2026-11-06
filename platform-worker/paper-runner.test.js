@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {readFileSync} from 'node:fs';
-import {paperApi,runPaperTick,freshRunner,ensureDailyPaperAutoStart,scannerUniverse,PAPER_SCAN_UNIVERSE} from './paper-runner.js';
+import {paperApi,runPaperTick,freshRunner,ensureDailyPaperAutoStart,scannerUniverse,PAPER_SCAN_UNIVERSE,scannerEngineConfig,scannerEngineUniverse,scannerStreamUniverse,paperOptionEntryEstimate,paperQuoteQualityFailure,paperNeedsPriceConfirmation} from './paper-runner.js';
 import {stepPaper,newPaper} from '../src/master/paper-session.js';import {sealTokens} from './schwab-connection.js';import worker from './index.js';
 const owner={id:'owner-test',role:'owner'},now=Date.parse('2026-11-04T15:00:00Z');
 const req=(action,id)=>new Request('https://test/platform/paper',{method:action?'POST':'GET',headers:{Origin:'https://icomputeranything.com'},...(action?{body:JSON.stringify({action,id})}:{})});
@@ -470,4 +470,131 @@ test('adding NVDA to Favorites persists even though base scanner already covers 
  const after=await removed.json();
  assert.deepEqual(after.extraSymbols,[]);
  assert.ok(after.scanUniverse.includes('NVDA'),'core scanner remains independent of custom Favorite membership');
+});
+
+test('twin scanner cards can select any independent custom ticker list with separate, persisted engine settings',async()=>{
+ const {env,db}=await fixture();await paperApi(req(),env,owner);
+ const s=freshRunner();s.enabled=true;s.autoStart=true;
+ s.paper.positions=[{id:'held',symbol:'HELD OPTION',time:now,closeRequested:false}];
+ db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+ const change=payload=>new Request('https://test/platform/paper',{method:'POST',
+  headers:{Origin:'https://icomputeranything.com','Content-Type':'application/json'},
+  body:JSON.stringify({action:'scanner_engine',...payload})});
+ let resp=await paperApi(change({engine:'FOCUS',enabled:true,scope:'CUSTOM',symbols:['SPY','TSLA']}),env,owner);
+ assert.equal(resp.status,200);let state=await resp.json();
+ assert.deepEqual(state.scanEngines.FOCUS.universe,['SPY','TSLA']);
+ assert.equal(state.scanEngines.FOCUS.enabled,true);
+ assert.equal(state.scanEngines.MAIN.enabled,true);
+ assert.ok(state.scanEngines.MAIN.universe.includes('AMD'));
+ assert.ok(scannerStreamUniverse(state).includes('SPY'));
+ assert.equal(state.paper.positions.length,1);
+ assert.equal(state.autoStart,true);
+ resp=await paperApi(change({engine:'MAIN',enabled:true,scope:'CUSTOM',symbols:['GOOGL','BAC','NVDA']}),env,owner);
+ assert.equal(resp.status,200);state=await resp.json();
+ assert.deepEqual(state.scanEngines.MAIN.universe,['GOOGL','BAC','NVDA']);
+ assert.deepEqual(state.scanEngines.FOCUS.universe,['SPY','TSLA']);
+ assert.deepEqual(state.scanUniverse,['SPY','TSLA','GOOGL','BAC','NVDA']);
+ assert.equal(state.realOrdersEnabled,false);
+ const persisted=await(await paperApi(req(),env,owner)).json();
+ assert.deepEqual(persisted.scanEngines.FOCUS.universe,['SPY','TSLA']);
+ assert.equal(persisted.paper.positions.length,1);
+ assert.equal((await paperApi(change({engine:'FOCUS',enabled:true,scope:'CUSTOM',symbols:[]}),env,owner)).status,409);
+ assert.deepEqual((await(await paperApi(req(),env,owner)).json()).scanEngines.FOCUS.universe,['SPY','TSLA']);
+});
+test('fast scalp uses honest bid/ask P&L and refuses wide bid/ask spread',()=>{
+ const q={symbol:'SPY TEST',bid:1.95,ask:2,delta:.5,volume:500,openInterest:1200};
+ const estimate=paperOptionEntryEstimate(q);
+ assert.equal(estimate.spreadPct,2.5);
+ assert.equal(estimate.cost,201.65);
+ assert.equal(estimate.immediatePnl,-8.30);
+ assert.equal(estimate.breakevenBid,2.033);
+ assert.equal(paperQuoteQualityFailure(q,350),null);
+ assert.equal(paperQuoteQualityFailure({...q,bid:1.84},350),'SPREAD_TOO_WIDE');
+ assert.equal(paperNeedsPriceConfirmation(2,2.08,null),true);
+ assert.equal(paperNeedsPriceConfirmation(2,1.90,null),false);
+ assert.equal(paperNeedsPriceConfirmation(2,2.08,2.08),false);
+ assert.equal(paperNeedsPriceConfirmation(2,2.09,2.08),true);
+});
+test('a 2% higher ask becomes explicit fresh paper reprice review, not a discarded alert',async()=>{
+ const {env,db}=await fixture();const date=Date.now,fetcher=globalThis.fetch;Date.now=()=>now;
+ try{
+  await paperApi(req(),env,owner);
+  const s=freshRunner();s.enabled=true;s.alerts=[{...pending(),status:'PENDING'}];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:2.05,askPrice:2.10,quoteTime:now}}});
+  const review=await paperApi(req('accept','setup'),env,owner);
+  assert.equal(review.status,409);
+  const info=await review.json();
+  assert.equal(info.code,'REQUOTE_REVIEW');
+  assert.equal(info.requote.ask,2.1);
+  assert.equal(info.requote.estimate.cost,211.65);
+  assert.equal((await(await paperApi(req(),env,owner)).json()).alerts[0].status,'PENDING','alert stays actionable');
+  const confirm=new Request('https://test/platform/paper',{method:'POST',
+   headers:{Origin:'https://icomputeranything.com'},
+   body:JSON.stringify({action:'accept',id:'setup',maxApprovedAsk:2.10})});
+  const approved=await paperApi(confirm,env,owner);
+  assert.equal(approved.status,200,JSON.stringify(await approved.clone().json()));
+  const state=await approved.json();
+  assert.equal(state.paper.positions.length,1);
+  assert.equal(state.paper.positions[0].cost,211.65);
+  assert.equal(state.realOrdersEnabled,false);
+ }finally{Date.now=date;globalThis.fetch=fetcher;}
+});
+test('manual stop/time override requires explicit confirmation and cannot evade reached stop',async()=>{
+ const {env,db}=await fixture();const date=Date.now,fetcher=globalThis.fetch;
+ Date.now=()=>now;let bid=1.95;
+ try{
+  await paperApi(req(),env,owner);
+  const s=freshRunner();s.enabled=true;s.paper.positions=[{
+   id:'active',symbol:'TEST OPTION',underlying:'SPY',time:now-25*60000,
+   day:'2026-11-04',expiration:'2026-11-04',fill:2.01,stopLossPct:20,
+   maxHoldMinutes:30,closeRequested:false,mark:{bid,ask:2,quoteTime:now},cost:201.65
+  }];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  globalThis.fetch=async()=>Response.json({'TEST OPTION':{realtime:true,quote:{bidPrice:bid,askPrice:bid+0.05,quoteTime:now}}});
+  const command=(operation,more={})=>new Request('https://test/platform/paper',{method:'POST',
+   headers:{Origin:'https://icomputeranything.com'},
+   body:JSON.stringify({action:'position_override',id:'active',operation,...more})});
+  assert.equal((await paperApi(command('EXTEND_TIME'),env,owner)).status,409);
+  let response=await paperApi(command('EXTEND_TIME',{confirmOverride:true}),env,owner);
+  assert.equal(response.status,200,JSON.stringify(await response.clone().json()));
+  assert.equal((await response.json()).paper.positions[0].maxHoldMinutes,40);
+  response=await paperApi(command('CHANGE_STOP',{stopLossPct:35,confirmOverride:true}),env,owner);
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).paper.positions[0].stopLossPct,35);
+  bid=1.2; // already crosses 35% stop on 2.01 fill.
+  response=await paperApi(command('CHANGE_STOP',{stopLossPct:50,confirmOverride:true}),env,owner);
+  assert.equal(response.status,409,'cannot override a stop after the bid already crosses it');
+  assert.equal((await(await paperApi(req(),env,owner)).json()).paper.positions[0].stopLossPct,35);
+ }finally{Date.now=date;globalThis.fetch=fetcher}
+});
+
+test('two scanner lanes rotate actual different ticker batches, dedupe overlaps and retain independent per-engine coverage',async()=>{
+ const originalDate=Date.now,originalFetch=globalThis.fetch;
+ Date.now=()=>now;
+ try{
+  const {db,env}=await fixture();await paperApi(req(),env,owner);
+  const s=freshRunner();s.enabled=true;s.scanMode='MULTI';
+  s.scannerEngines={MAIN:{enabled:true,scope:'CUSTOM',symbols:['SPY','QQQ','AAPL']},
+   FOCUS:{enabled:true,scope:'CUSTOM',symbols:['SPY','TSLA']}};
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  // A provider hold must be reported, never fabricated as a positive setup.
+  globalThis.fetch=async()=>Response.json({candles:[]});
+  const first=await runPaperTick(env,owner,{scan:true,scanLane:'BOTH'});
+  assert.deepEqual(first.lastCheck.scannedSymbols,['SPY','QQQ','AAPL','TSLA']);
+  assert.deepEqual(first.lastCheck.enginePasses.MAIN,['SPY','QQQ','AAPL']);
+  assert.deepEqual(first.lastCheck.enginePasses.FOCUS,['SPY','TSLA']);
+  assert.equal(first.scanIndex,3);
+  assert.equal(first.focusScanIndex,2);
+  assert.ok(first.scanEngines.MAIN.coverage.SPY);
+  assert.ok(first.scanEngines.FOCUS.coverage.SPY);
+  assert.ok(first.scanEngines.FOCUS.coverage.TSLA);
+  assert.equal(first.scanEngines.MAIN.coverage.TSLA,undefined,
+   'focus-only stock must not appear as visited by MAIN');
+  const focusOnly=await runPaperTick(env,owner,{scan:true,scanLane:'FOCUS'});
+  assert.deepEqual(focusOnly.lastCheck.scannedSymbols,['SPY','TSLA']);
+  assert.equal(focusOnly.scanIndex,3,'focused pass cannot advance main rotation cursor');
+  assert.equal(focusOnly.focusScanIndex,4);
+  assert.equal(focusOnly.realOrdersEnabled,false);
+ }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
 });
