@@ -67,7 +67,7 @@ export function stepPaper(state,{quote,enter=false,close=false,maxPremium=paperR
    timedScalp?'MAX_HOLD':null;
   if(reason){if(quote.bid<=0)throw Error('No positive bid available; simulated position remains open.');const credit=round(Math.max(0,quote.bid-0.01)*100-0.65),pnl=round(credit-p.cost);s.cash=round(s.cash+credit);s.realized=round(s.realized+pnl);s.dayPnl=round(s.dayPnl+pnl);s.trades.push({...p,exitTime:now,exitFill:quote.bid-0.01,pnl,reason});s.position=null}
  }else if(enter){
-  if(!paperSessionOpen(session))throw Error('Paper entries run 9:35 AM–4:00 PM ET on regular market weekdays.');
+  if(!paperSessionOpen(session))throw Error('Paper entries run 9:30 AM–4:00 PM ET on regular market weekdays.');
   const contractExpiry=expiryStatus(quote.expiration,session.day);
   if(contractExpiry==='EXPIRED'||(session.minute>=PAPER_EXPIRY_EXIT_MINUTE&&contractExpiry!=='FUTURE'))
    throw Error('Same-day/unknown-expiration options cannot open after 3:55 PM ET.');
