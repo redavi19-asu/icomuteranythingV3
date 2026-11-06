@@ -19,7 +19,7 @@ export function enterPaperPosition(runner,alert,quote,options={}){
  if(previous.some(p=>p.id===alert.id))throw Error('This opportunity is already accepted. Select Open Trades to manage it.');
  const next=stepPaper({...runner.paper,position:null},{...options,quote,enter:true});
  const overnightEligible=expiryStatus(quote.expiration,marketTime(next.position.time).day)==='FUTURE';
- const position={...next.position,id:alert.id,alertId:alert.id,style:alert.style||null,overnightEligible,maxHoldMinutes:overnightEligible?null:(alert.style?.type==='INTRADAY_HOLD'?390:30),closeRequested:false,mark:{bid:quote.bid,ask:quote.ask,quoteTime:quote.quoteTime,pnl:Math.round(((quote.bid-0.01)*100-0.65-next.position.cost)*100)/100}};
+ const position={...next.position,id:alert.id,alertId:alert.id,style:alert.style||null,overnightEligible,maxHoldMinutes:overnightEligible?null:(alert.style?.type==='INTRADAY_HOLD'?390:30),closeRequested:false,mark:{bid:quote.bid,ask:quote.ask,quoteTime:quote.quoteTime,pnl:Math.round((((quote.bid-0.01)*100-0.65)*(next.position.quantity??1)-next.position.cost)*100)/100}};
  next.positions=[...previous,position];runner.paper=next;normalizePaperPortfolio(runner);
  return position;
 }
@@ -28,7 +28,7 @@ export function managePaperPosition(runner,id,quote,options={}){
  const previous=runner.paper.positions,position=previous.find(p=>p.id===id);
  if(!position)return null;
  const next=stepPaper({...runner.paper,position},{...options,quote,close:!!position.closeRequested});
- const mark={bid:quote.bid,ask:quote.ask,quoteTime:quote.quoteTime,pnl:Math.round(((quote.bid-0.01)*100-0.65-position.cost)*100)/100};
+ const mark={bid:quote.bid,ask:quote.ask,quoteTime:quote.quoteTime,pnl:Math.round(((((quote.bid-0.01)*100-0.65)*(position.quantity??1))-position.cost)*100)/100};
  next.positions=next.position?previous.map(p=>p.id===id?{...next.position,mark,lastError:null}:p):previous.filter(p=>p.id!==id);
  runner.paper=next;normalizePaperPortfolio(runner);
  return next.positions.find(p=>p.id===id)||null;

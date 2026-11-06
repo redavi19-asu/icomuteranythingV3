@@ -80,7 +80,7 @@ export async function processRestingPaperLimits({
    if(!paperLimitMeetsPrice(quote.ask,order.maxAsk)||!paperSessionOpen(marketTime(Date.now()))){
     order.lastStatus='WAITING_VALID_ENTRY';summary.held++;continue;
    }
-   enterPaperPosition(s,alert,quote,{maxPremium:premiumBudget,stopLossPct});
+   enterPaperPosition(s,alert,quote,{maxPremium:premiumBudget,stopLossPct,quantity:order.quantity??1});
    order.filledAsk=quote.ask;order.filledAt=Date.now();
    finish('FILLED','Simulated buy at observed ask $'+quote.ask.toFixed(2)+
     ' (owner limit $'+order.maxAsk.toFixed(2)+').');

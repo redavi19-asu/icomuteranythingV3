@@ -18,5 +18,5 @@ export function paperMarkPnlAtMid(position){
  if(mid===null||!Number.isFinite(entry))return null;
  // Thinkorswim-style unrealized mark, BEFORE a hypothetical closing trade.
  // Paper broker accounting continues to use BID less fees/slippage.
- return round((mid-entry)*100);
+ return round((mid-entry)*100*(Number.isInteger(position?.quantity)&&position.quantity>=1?position.quantity:1));
 }

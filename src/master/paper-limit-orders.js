@@ -5,14 +5,26 @@
  */
 export const PAPER_LIMIT_MINUTES=Object.freeze([1,3,5]);
 export const PAPER_LIMIT_MAX_ORDERS=8;
+export const PAPER_MAX_CONTRACT_QUANTITY=10;
+/** A contract quantity is always explicitly chosen and validated server-side. */
+export function validatePaperQuantity(value=1){
+ const n=Number(value);
+ if(!Number.isInteger(n)||n<1||n>PAPER_MAX_CONTRACT_QUANTITY)
+  throw Error('Choose between 1 and '+PAPER_MAX_CONTRACT_QUANTITY+' whole option contracts.');
+ return n;
+}
+export function paperMaximumEntryCost(maxAsk,quantity=1){
+ const qty=validatePaperQuantity(quantity);
+ return Math.round(((maxAsk+0.01)*100+0.65)*qty*100)/100;
+}
 
 /** Reject invalid prices rather than silently rounding a larger limit up. */
-export function validatePaperLimitAsk(value,budget){
+export function validatePaperLimitAsk(value,budget,quantity=1){
  const n=Number(value);
  if(!Number.isFinite(n)||n<0.01||n>50||Math.abs(n*100-Math.round(n*100))>1e-6)
   throw Error('Enter a valid maximum option ask in $0.01 increments.');
  if(!Number.isFinite(budget)||budget<=0||
-    (n+0.01)*100+0.65>budget+1e-6)
+    paperMaximumEntryCost(n,quantity)>budget+1e-6)
   throw Error('Limit plus simulated $0.01 slippage and $0.65 commission exceeds your paper premium budget.');
  return n;
 }

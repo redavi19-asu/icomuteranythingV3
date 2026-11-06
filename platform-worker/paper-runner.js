@@ -6,7 +6,7 @@ import {schwabQuoteFreshness} from '../src/master/schwab-quote-freshness.js';
 import {evaluateAristotleConfluence,evaluateDailySwing,classifyTradeHorizon} from '../src/master/trading-smart-money.js';
 import {assessSwing55Entry} from '../src/master/trading-swing-levels.js';
 import {assessPriceAction} from '../src/master/trading-price-action.js';
-import {PAPER_LIMIT_MAX_ORDERS,paperLimitDeadline,validatePaperLimitAsk} from '../src/master/paper-limit-orders.js';
+import {PAPER_LIMIT_MAX_ORDERS,paperLimitDeadline,validatePaperLimitAsk,validatePaperQuantity} from '../src/master/paper-limit-orders.js';
 import {paperLimitOrders,finalizePaperLimit,cancelPaperLimits,processRestingPaperLimits} from './paper-limit-runner.js';
 import {DEFAULT_PAPER_SPREAD_CENTS,PAPER_SPREAD_CENT_CHOICES,normalizePaperSpreadCents,absoluteSpreadFailure,rankPaperContracts} from '../src/master/paper-contract-selection.js';
 import {rotatingTickerBatch,saveSymbolScanCoverage} from './paper-scan-coverage.js';
@@ -442,7 +442,34 @@ export async function runPaperTick(env,owner,{scan=true,scheduled=false,scanSymb
 }
 export async function paperApi(request,env,owner){
  if(!owner?.id||owner.role!=='owner')return response({error:'Owner access required.'},403);
- if(request.method==='GET'){const row=await load(env,owner.id);return response({...view(row.state),serverTime:Date.now()})}
+ if(request.method==='GET'){
+  const quoteId=new URL(request.url).searchParams.get('ticketQuote');
+  if(quoteId!==null){
+   if(quoteId.length<1||quoteId.length>180)return response({error:'Invalid paper ticket.'},400);
+   const row=await load(env,owner.id),alert=alertList(row.state).find(a=>a.id===quoteId);
+   if(!alert||alert.status!=='PENDING'||alert.expires<=Date.now())
+    return response({error:'This paper setup expired. Select a new alert.'},410);
+   try{
+    // Only an owner-specific saved alert may request a contract quote.
+    // This endpoint has no brokerage order capability.
+    const contract=await schwabContractQuote(env,owner,alert.contract.symbol);
+    const status=schwabQuoteFreshness(contract,Date.now(),10000);
+    let underlying=null;
+    try{
+     const raw=await schwabQuotes(new Request(
+      'https://internal/platform/schwab/quotes?symbols='+encodeURIComponent(alert.contract.underlying)),env,owner);
+     if(raw.ok){
+      const payload=await raw.json();underlying=payload.quotes?.find(q=>q.symbol===alert.contract.underlying)||null;
+     }
+    }catch{}
+    return new Response(JSON.stringify({
+     provider:'SCHWAB',realOrdersEnabled:false,symbol:contract.symbol,
+     underlying,option:contract,quoteStatus:status.code,receivedAt:Date.now()
+    }),{status:200,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
+   }catch(e){return response({error:'Current Schwab contract price unavailable. '+String(e.message||'Retry.'),code:'QUOTE_UNAVAILABLE'},503)}
+  }
+  const row=await load(env,owner.id);return response({...view(row.state),serverTime:Date.now()});
+ }
  if(!['https://icomputeranything.com','https://www.icomputeranything.com','https://redavi19-asu.github.io'].includes(request.headers.get('Origin')))return response({error:'Unrecognized origin.'},403);
  try{
   const body=await request.text();if(body.length>2048)return response({error:'Request too large.'},413);const {action,id}=JSON.parse(body);
@@ -587,21 +614,22 @@ export async function paperApi(request,env,owner){
     throw Error('At most eight resting paper limits can be active. Cancel an unused order first.');
    if(outstanding.some(o=>o.alertId===a.id||o.contractSymbol===a.contract.symbol))
     throw Error('A resting paper order already exists for this contract.');
-   const maxAsk=validatePaperLimitAsk(input.limitAsk,budget(s));
+   const quantity=validatePaperQuantity(input.quantity??1);
+   const maxAsk=validatePaperLimitAsk(input.limitAsk,budget(s),quantity);
    const expires=paperLimitDeadline(a,created,Number(input.holdMinutes));
    // The order is accepted only while the original breakout still qualifies.
    // At FILL it will be checked again against a new underlying quote.
    await verifyPaperPriceWindow(env,owner,a,Date.now());
    const order={id:crypto.randomUUID(),alertId:a.id,contractSymbol:a.contract.symbol,
-    underlying:a.contract.underlying,side:a.contract.side,maxAsk,
+    underlying:a.contract.underlying,side:a.contract.side,maxAsk,quantity,
     created,expires,holdMinutes:Number(input.holdMinutes),checks:0,status:'WAITING',
     lastAsk:a.contract.ask,lastBid:a.contract.bid,
     lastStatus:'WAITING_FOR_ASK_AT_OR_BELOW_LIMIT'};
    paperLimitOrders(s).unshift(order);
    a.status='LIMIT_WAITING';
    event(s,'Owner placed PAPER-ONLY resting limit: '+order.contractSymbol+
-    ' · observed ASK must be at most $'+maxAsk.toFixed(2)+
-    ' · expires '+new Date(expires).toISOString()+'.');
+    ' · '+quantity+' contract(s) · maximum option ask '+maxAsk.toFixed(2)+
+    ' USD · expires '+new Date(expires).toISOString()+'.');
    // If the ask already satisfies the owner's limit, check and simulate now;
    // otherwise the scheduled/streaming scanner will keep checking.
    await processRestingPaperLimits({env,owner,s,verifySetup:verifyPaperPriceWindow,

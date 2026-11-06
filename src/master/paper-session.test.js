@@ -116,3 +116,18 @@ test('mandatory same-day expiration exit warning is never overrideable',()=>{
  assert.ok(session);
  assert.equal(session.actionable,false);
 });
+
+
+test('manual paper ticket quantity correctly changes entry cash and full exit P&L',()=>{
+ const opened=stepPaper(newPaper(),{quote:q,enter:true,now,quantity:2,maxPremium:500});
+ assert.equal(opened.position.quantity,2);
+ assert.equal(opened.position.cost,403.30);
+ assert.equal(opened.cash,1096.70);
+ const closed=stepPaper(opened,{quote:{...q,bid:2.70,ask:2.75},now});
+ assert.equal(closed.position,null);
+ assert.equal(closed.trades.at(-1).quantity,2);
+ assert.equal(closed.trades.at(-1).pnl,133.40);
+ assert.equal(closed.cash,1633.40);
+ assert.throws(()=>stepPaper(newPaper(),{quote:q,enter:true,now,quantity:2,maxPremium:350}),/premium budget/);
+ assert.throws(()=>stepPaper(newPaper(),{quote:q,enter:true,now,quantity:1.5,maxPremium:500}),/whole option contracts/);
+});
