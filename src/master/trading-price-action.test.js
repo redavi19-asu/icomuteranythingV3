@@ -80,3 +80,15 @@ test('weekend candles cannot produce a paper setup even with bullish volume',()=
  const b=next(bullish()).map(x=>({...x,time:x.time+2*86400000}));
  assert.equal(assessPriceAction('SPY',b,{now:atClose(b)}).confirmed,false);
 });
+
+test('a confirmed nearby opposing 5/5 pivot blocks a poor underlying reward/risk entry',()=>{
+ const b=next(bullish());
+ // The earlier candle is a genuine 5-left / 5-right swing high, visible
+ // before the final breakout. It sits barely above the current entry.
+ b[25]={...b[25],high:b.at(-1).close+.07};
+ const p=assessPriceAction('SPY',b,{now:atClose(b)});
+ assert.equal(p.confirmed,false,'near resistance must not be approved blindly');
+ assert.equal(p.status,'INSUFFICIENT_PRICE_ROOM',JSON.stringify(p));
+ assert.ok(p.rewardRisk<1.5);
+ assert.ok(p.target>p.entryPrice);
+});
