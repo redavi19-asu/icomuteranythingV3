@@ -817,3 +817,72 @@ test('production new owner runner defaults to two cents, unlike explicitly flexi
  assert.equal(freshRunner().maxOptionSpreadCents,2);
  assert.equal(fixtureRunner().maxOptionSpreadCents,5);
 });
+
+
+test('live paper ticket quotes are owner-scoped, real-time labeled and read-only',async()=>{
+ const originalDate=Date.now,originalFetch=globalThis.fetch;Date.now=()=>now;
+ try{
+  const {env,db}=await fixture();await paperApi(req(),env,owner);
+  const s=fixtureRunner();s.enabled=true;s.alerts=[{...pending(),status:'PENDING'}];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  globalThis.fetch=async input=>{
+   const symbol=new URL(input).searchParams.get('symbols');
+   const option=symbol==='TEST OPTION';
+   return Response.json({[symbol]:{realtime:true,quote:option?
+    {bidPrice:1.98,askPrice:2,lastPrice:1.99,bidSize:100,askSize:50,quoteTime:now}:
+    {bidPrice:100.10,askPrice:100.13,lastPrice:100.12,quoteTime:now}}});
+  };
+  const url='https://test/platform/paper?ticketQuote='+encodeURIComponent('setup');
+  const quote=await paperApi(new Request(url),env,owner);
+  assert.equal(quote.status,200);
+  const data=await quote.json();
+  assert.equal(data.provider,'SCHWAB');
+  assert.equal(data.quoteStatus,'VERIFIED_FRESH');
+  assert.equal(data.option.symbol,'TEST OPTION');
+  assert.equal(data.option.last,1.99);
+  assert.equal(data.option.askSize,50);
+  assert.equal(data.underlying.last,100.12);
+  assert.equal(data.realOrdersEnabled,false);
+  assert.equal((await paperApi(new Request(url),env,{id:'other',role:'viewer'})).status,403);
+  assert.equal((await paperApi(new Request('https://test/platform/paper?ticketQuote=unknown'),env,owner)).status,410);
+  assert.equal((await(await paperApi(req(),env,owner)).json()).paper.positions.length,0,
+   'opening the ticket never creates a position');
+ }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
+});
+
+test('two-contract manual paper ticket rests at the fixed owner limit, fills at observed ask and closes twice-sized',async()=>{
+ const originalDate=Date.now,originalFetch=globalThis.fetch;
+ let time=now,ask=2,stock=100.1;Date.now=()=>time;
+ try{
+  const {db,env}=await fixture();await paperApi(req(),env,owner);
+  const s=fixtureRunner();s.enabled=true;s.maxPremium=500;s.alerts=[limitFixtureAlert(now)];
+  db.prepare('UPDATE paper_runners SET payload=?').run(JSON.stringify(s));
+  globalThis.fetch=async input=>{
+   const sym=new URL(input).searchParams.get('symbols');
+   return Response.json({[sym]:{realtime:true,quote:{
+    lastPrice:sym==='SPY'?stock:ask,
+    bidPrice:sym==='SPY'?stock-.01:ask-.02,
+    askPrice:sym==='SPY'?stock+.01:ask,
+    quoteTime:time
+   }}});
+  };
+  const initial=await paperApi(limitAction('limit_order',{
+   alertId:'setup',limitAsk:1.8,quantity:2,holdMinutes:3}),env,owner);
+  assert.equal(initial.status,200,JSON.stringify(await initial.clone().json()));
+  let state=await initial.json();
+  assert.equal(state.paper.positions.length,0);
+  assert.equal(state.paperLimitOrders[0].quantity,2);
+  assert.equal(state.paperLimitOrders[0].maxAsk,1.8);
+  assert.equal(state.paperLimitOrders[0].status,'WAITING');
+  time+=60000;ask=1.79;
+  state=await runPaperTick(env,owner,{scan:false});
+  assert.equal(state.paper.positions.length,1);
+  assert.equal(state.paper.positions[0].quantity,2);
+  assert.equal(state.paper.positions[0].cost,361.30);
+  assert.equal(state.paper.cash,1138.70);
+  assert.equal(state.paperLimitOrders[0].filledAsk,1.79);
+  assert.equal(state.realOrdersEnabled,false);
+  const again=await runPaperTick(env,owner,{scan:false});
+  assert.equal(again.paper.positions.length,1,'one manual confirmation cannot buy twice');
+ }finally{Date.now=originalDate;globalThis.fetch=originalFetch}
+});
