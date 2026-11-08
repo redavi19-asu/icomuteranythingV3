@@ -482,59 +482,28 @@ function SoftwareShowcase({ onRequestService }) {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-2xl border border-white/10 bg-black/45 p-4 shadow-2xl">
-                <div className="flex items-center justify-between border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
-                  <span>Urban Director Studio Director</span>
-                  <span className="text-amber-200">Room Online</span>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="aspect-video rounded-xl border border-white/10 bg-gradient-to-br from-zinc-800 to-black flex flex-col items-center justify-center">
-                    <span className="text-[10px] tracking-[0.18em] text-gray-500">PREVIEW</span>
-                    <strong className="mt-2 text-lg">CAM 07</strong>
-                  </div>
-                  <div className="aspect-video rounded-xl border border-amber-300/20 bg-gradient-to-br from-amber-950/40 to-black flex flex-col items-center justify-center">
-                    <span className="text-[10px] tracking-[0.18em] text-amber-300">PROGRAM</span>
-                    <strong className="mt-2 text-lg">LIVE</strong>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {[1, 2, 3, 4, 5, 6].map((camera) => (
-                    <div key={camera} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-4 text-center text-[10px] font-semibold tracking-[0.12em] text-gray-400">
-                      CAM {String(camera).padStart(2, '0')}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {['MASTER AUDIO', 'REPLAY', 'GRAPHICS', 'BROADCAST'].map((tool) => (
-                    <div key={tool} className="rounded-lg border border-amber-300/10 bg-amber-300/[0.04] px-2 py-3 text-center text-[9px] font-bold tracking-[0.1em] text-amber-100">
-                      {tool}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-fuchsia-400/20 bg-gradient-to-br from-fuchsia-950/30 via-black/60 to-indigo-950/30 p-4 shadow-xl">
-                <div className="flex items-center justify-between border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
-                  <span>AI Studio</span>
-                  <span className="text-fuchsia-200">Create → Preview → Save / Edit</span>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {[
-                    ['AI PHOTOS', 'Template-based stills'],
-                    ['5S MOTION', 'Cinematic AI video'],
-                    ['8S MOVIE', 'Premium scene + audio'],
-                    ['SAVE / EDIT', 'Keep it or send to Director Edit'],
-                  ].map(([title, description]) => (
-                    <div key={title} className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-                      <strong className="block text-xs text-white">{title}</strong>
-                      <span className="mt-1 block text-[10px] leading-relaxed text-gray-500">{description}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {[
+                {
+                  src: '/images/urban-director/director-soundboard.jpg',
+                  title: 'Director console · Soundboard',
+                  alt: 'Actual Urban Director Studio soundboard with six colorful pads, microphone recording, volume and production controls',
+                },
+                {
+                  src: '/images/urban-director/ai-studio.jpg',
+                  title: 'AI Studio',
+                  alt: 'Actual Urban Director Studio AI workspace showing creative templates, reference previews and generation controls',
+                },
+              ].map(({ src, title, alt }) => (
+                <figure key={src} className="overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 shadow-2xl">
+                  <figcaption className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+                    <span>{title}</span>
+                    <span className="text-amber-200">Actual studio screenshot</span>
+                  </figcaption>
+                  <a href={src} target="_blank" rel="noopener noreferrer" aria-label={`View full ${title} screenshot`} className="block rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300">
+                    <img src={src} alt={alt} loading="lazy" decoding="async" className="h-auto w-full rounded-lg border border-white/10" />
+                  </a>
+                </figure>
+              ))}
             </div>
           </div>
         </motion.div>
