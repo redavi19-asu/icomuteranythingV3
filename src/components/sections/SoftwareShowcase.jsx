@@ -199,7 +199,7 @@ function SoftwareShowcase({ onRequestService }) {
               <img
                 src={ICA_UNIFIED_ICON_URL}
                 alt="ICA Unified icon"
-                className="mb-6 h-24 w-24 rounded-2xl bg-white object-contain p-2 shadow-2xl shadow-[#178cff]/15"
+                className="mb-6 h-24 w-24 rounded-2xl bg-[#080e1c] object-contain shadow-2xl shadow-[#178cff]/20"
               />
               <div className="inline-flex px-3 py-1 rounded-full border border-[#29445b] bg-[#0a1723] text-xs font-semibold text-[#d9e9f5] mb-5">
                 Multi-Tenant Cloud SaaS
