@@ -9,7 +9,7 @@ const ICA_UNIFIED_ICON_URL = '/images/ica-unified-icon.svg'
 const ICA_CONTROL_ICON_URL = 'https://redavi19-asu.github.io/ica-control/branding/icon-512.png'
 const URBAN_DIRECTOR_ICON_URL = 'https://scenepilot.ryanedavis.workers.dev/urban-director-icon.svg'
 const URBAN_CARRIER_ICON_URL = '/images/urban-carrier-icon.svg'
-const SCENEPILOT_URL = 'https://scenepilot.ryanedavis.workers.dev/'
+const SCENEPILOT_URL = 'https://urbandirector.icomputeranything.com/'
 const ICA_CONTROL_URL = 'https://redavi19-asu.github.io/ica-control/'
 const ICA_CONTROL_CONSOLE_URL = 'https://redavi19-asu.github.io/ica-control/#/console'
 
@@ -123,7 +123,7 @@ function SoftwareShowcase({ onRequestService }) {
                 ))}
               </div>
 
-              <div className="mt-9 flex flex-col sm:flex-row gap-3">
+              <div className="mt-9 flex flex-col sm:flex-row sm:flex-wrap items-start gap-3">
                 <a
                   href={DISPATCH_URL}
                   target="_blank"
@@ -223,7 +223,7 @@ function SoftwareShowcase({ onRequestService }) {
                 ))}
               </div>
 
-              <div className="mt-9 flex flex-col sm:flex-row gap-3">
+              <div className="mt-9 flex flex-col sm:flex-row sm:flex-wrap items-start gap-3">
                 <a
                   href={ICA_UNIFIED_URL}
                   target="_blank"
@@ -311,7 +311,7 @@ function SoftwareShowcase({ onRequestService }) {
                 ))}
               </div>
 
-              <div className="mt-9 flex flex-col sm:flex-row gap-3">
+              <div className="mt-9 flex flex-col sm:flex-row sm:flex-wrap items-start gap-3">
                 <a
                   href={ICA_CONTROL_URL}
                   target="_blank"
@@ -459,7 +459,7 @@ function SoftwareShowcase({ onRequestService }) {
                 ))}
               </div>
 
-              <div className="mt-9 flex flex-col sm:flex-row gap-3">
+              <div className="mt-9 flex flex-col sm:flex-row sm:flex-wrap items-start gap-3">
                 <a
                   href={SCENEPILOT_URL}
                   target="_blank"
@@ -468,9 +468,7 @@ function SoftwareShowcase({ onRequestService }) {
                 >
                   Open Urban Director Studio
                 </a>
-                <span className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-white/10 bg-white/5 text-gray-300 font-semibold">
-                  App Store + Play Store Release Prep
-                </span>
+                <a href="https://apps.apple.com/us/app/urban-director-studio/id6811694662" target="_blank" rel="noopener noreferrer" aria-label="Download Urban Director Studio on the App Store" style={{display:'inline-flex',padding:12,alignSelf:'flex-start'}}><img src="/images/download-on-the-app-store.svg" alt="Download on the App Store" width="144" height="48" style={{display:'block',width:144,height:48}} /></a><a href="https://urbandirector.icomputeranything.com/downloads" target="_blank" rel="noopener noreferrer" className="inline-flex justify-center items-center px-7 py-4 rounded-xl border border-white/10 bg-white/5 text-gray-300 font-semibold">Windows &amp; desktop downloads</a>
               </div>
 
               <div className="mt-5 rounded-xl border border-fuchsia-400/15 bg-fuchsia-400/[0.05] p-4 max-w-2xl">

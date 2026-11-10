@@ -200,13 +200,13 @@ function MeetTheLeadTech() {
 
                 <div className="mb-8 rounded-2xl border border-cyan-400/25 bg-blue-500/10 p-5">
                   <p className="text-sm font-semibold text-blue-300 mb-2 uppercase tracking-wide">App Development &amp; Releases</p>
-                  <h4 className="text-lg font-semibold text-cyan-200">Apple · Android · Windows Developer</h4>
-                  <p className="mt-2 text-sm text-gray-300 leading-relaxed">Building and releasing ICA apps across desktop and mobile platforms.</p>
+                  <h4 className="text-lg font-semibold text-cyan-200">Published iOS App Developer</h4>
+                  <p className="mt-2 text-sm text-gray-300 leading-relaxed">Creator of Urban Director Studio, available on the App Store. Building across desktop and mobile platforms.</p>
                   <dl className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
                     <div className="rounded-xl border border-white/20 bg-gradient-to-br from-white/10 to-white/5 p-4">
                       <div className="mb-4 flex h-20 items-center justify-center rounded-xl bg-black/20"><PlatformLogo platform="apple" /></div>
-                      <dt className="font-semibold text-cyan-200">Apple / macOS</dt>
-                      <dd className="mt-2 text-gray-300 leading-relaxed">Developer ID signed and notarized macOS releases.</dd>
+                      <dt className="font-semibold text-cyan-200">iPhone &amp; iPad</dt>
+                      <dd className="mt-2 text-gray-300 leading-relaxed">Urban Director Studio is published on the App Store.</dd><dd className="mt-3"><a href="https://apps.apple.com/us/app/urban-director-studio/id6811694662" target="_blank" rel="noopener noreferrer" aria-label="Download Urban Director Studio on the App Store" style={{display:'inline-flex',padding:12,alignSelf:'flex-start'}}><img src="/images/download-on-the-app-store.svg" alt="Download on the App Store" width="144" height="48" style={{display:'block',width:144,height:48}} /></a></dd>
                     </div>
                     <div className="rounded-xl border border-lime-400/25 bg-gradient-to-br from-lime-400/10 to-white/5 p-4">
                       <div className="mb-4 flex h-20 items-center justify-center rounded-xl bg-black/20"><PlatformLogo platform="android" /></div>
