@@ -380,6 +380,92 @@ function SoftwareShowcase({ onRequestService }) {
         </motion.div>
 
 
+        {/* ICA Social Director: pre-launch concept, not a functioning checkout or connected integration. */}
+        <div id="ica-social-director" className="scroll-mt-24 text-center max-w-4xl mx-auto mt-24 mb-14">
+          <p className="text-xs uppercase tracking-[0.3em] text-fuchsia-300 mb-4">Social Media Software • Coming Soon</p>
+          <h2 className="section-title mb-3">ICA Social Director</h2>
+          <p className="text-sm md:text-base font-semibold uppercase tracking-[0.18em] text-cyan-300 mb-6">
+            Instagram • TikTok • Facebook Pages • ChatGPT
+          </p>
+          <p className="section-subtitle">
+            A social media command center built for small businesses. Prepare campaigns, organize your profiles,
+            preview each post, and schedule platform-supported content from one workspace.
+          </p>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.55 }}
+          className="relative overflow-hidden rounded-3xl border border-fuchsia-400/25 bg-gradient-to-br from-[#0b0921] via-[#101d39] to-[#0e2b3e] p-8 md:p-12 shadow-2xl shadow-fuchsia-950/25"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_15%,rgba(217,70,239,0.18),transparent_38%),radial-gradient(circle_at_90%_85%,rgba(34,211,238,0.13),transparent_40%)]" />
+          <div className="relative z-10 grid gap-9 lg:grid-cols-[1.03fr_.97fr] lg:items-center">
+            <div>
+              <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-[1.4rem] border border-fuchsia-300/40 bg-gradient-to-br from-fuchsia-500/30 to-cyan-400/20 text-4xl shadow-xl shadow-fuchsia-950/20" aria-hidden="true">◎</div>
+              <div className="mb-5 inline-flex rounded-full border border-fuchsia-300/30 bg-fuchsia-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-fuchsia-100">In Development • Early Access Interest</div>
+              <h3 className="mb-4 text-3xl font-bold leading-tight tracking-tight text-white md:text-5xl">One command center. Every social campaign.</h3>
+              <p className="mb-5 text-lg font-semibold text-cyan-200">Discover → Create → Review → Schedule</p>
+              <p className="max-w-xl text-base leading-relaxed text-slate-300 md:text-lg">
+                A guided, story-inspired experience meets the practical tools social media managers use.
+                Start with a friendly walkthrough; jump to the full dashboard whenever you're ready.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-2">
+                {['5 Instagram profiles', '1 TikTok account', '1 Facebook Page', 'Web + iPhone / iPad', 'ChatGPT companion'].map((item) => (
+                  <span key={item} className="rounded-full border border-white/15 bg-white/[0.05] px-3 py-2 text-xs font-medium text-slate-200">{item}</span>
+                ))}
+              </div>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <div className="rounded-xl border border-cyan-300/25 bg-cyan-400/[0.06] px-5 py-4">
+                  <span className="block text-xs uppercase tracking-[0.16em] text-cyan-200">Proposed Business Plan</span>
+                  <strong className="mt-1 block text-3xl text-white">$10<span className="text-base font-normal text-slate-300"> / month</span></strong>
+                  <span className="mt-1 block text-xs text-slate-400">7 social destinations • Not yet for sale</span>
+                </div>
+                <button type="button" onClick={() => onRequestService('ICA Social Director Early Access')}
+                  className="inline-flex items-center justify-center rounded-xl bg-fuchsia-500 px-6 py-4 font-bold text-white shadow-xl shadow-fuchsia-950/30 transition hover:bg-fuchsia-400">
+                  Ask About Early Access
+                </button>
+              </div>
+              <p className="mt-5 max-w-xl text-xs leading-relaxed text-slate-400">
+                In development. Account connections, automatic posting, mobile apps, and subscriptions will launch only after testing and platform approval.
+              </p>
+            </div>
+            <div className="overflow-hidden rounded-[1.6rem] border border-white/15 bg-[#071322]/90 p-5 shadow-2xl shadow-black/35" aria-label="Concept preview of the ICA Social Director guided workflow">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <span className="text-sm font-bold tracking-wide text-slate-100">ICA Social Director</span>
+                <span className="rounded-full border border-fuchsia-300/20 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-fuchsia-200">Concept Preview</span>
+              </div>
+              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Your Connected Destinations</p>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                {[
+                  ['05', 'Instagram'], ['01', 'TikTok'], ['01', 'Facebook Page'],
+                ].map(([count, label]) => (
+                  <div key={label} className="rounded-xl border border-white/10 bg-gradient-to-br from-fuchsia-600/15 to-cyan-500/10 p-3 text-center">
+                    <strong className="block text-2xl text-white">{count}</strong>
+                    <span className="mt-1 block text-[10px] text-slate-300">{label}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Your First Campaign Mission</p>
+              <div className="mt-3 space-y-2">
+                {[
+                  ['01', 'Choose your destination', 'Select'], ['02', 'Tell your brand story', 'Create'],
+                  ['03', 'Review the preview', 'Approve'], ['04', 'Schedule your post', 'Queue'],
+                ].map(([step, label, status]) => (
+                  <div key={step} className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+                    <span className="text-xs font-black text-fuchsia-300">{step}</span>
+                    <span className="flex-1 text-xs font-medium text-slate-200">{label}</span>
+                    <span className="text-[10px] text-slate-400">{status}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-5 text-xs italic text-slate-400">Story-style guidance for beginners. Standard dashboard for experienced users.</p>
+            </div>
+          </div>
+        </motion.div>
+
+
         <div id="urban-director" className="scroll-mt-24 text-center max-w-4xl mx-auto mt-24 mb-14">
           <p className="text-xs uppercase tracking-[0.3em] text-amber-300 mb-4">Live Production + AI Media SaaS</p>
           <h2 className="section-title mb-3">Urban Director Studio</h2>
