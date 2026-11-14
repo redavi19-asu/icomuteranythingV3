@@ -487,17 +487,17 @@ function SoftwareShowcase({ onRequestService }) {
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(245,158,11,0.13),transparent_34%),radial-gradient(circle_at_82%_82%,rgba(255,255,255,0.06),transparent_34%)] pointer-events-none" />
 
-          <div className="relative z-10 grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-start">
-            <div>
+          <div className="relative z-10 grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
+            <div className="flex min-w-0 flex-col items-center text-center">
               <img
                 src={URBAN_DIRECTOR_ICON_URL}
                 alt="Urban Director Studio icon"
-                className="mb-6 h-24 w-24 rounded-2xl bg-white object-contain p-2 shadow-2xl shadow-amber-950/30"
+                className="mx-auto mb-6 h-24 w-24 rounded-2xl bg-white object-contain p-2 shadow-2xl shadow-amber-950/30"
               />
               <div className="inline-flex px-3 py-1 rounded-full border border-amber-300/25 bg-amber-300/10 text-xs font-semibold text-amber-100 mb-5">
                 ICA SaaS • Live Production + AI Studio
               </div>
-              <div className="mb-6 max-w-2xl rounded-2xl border border-cyan-300/40 bg-gradient-to-r from-cyan-950/70 via-slate-900/85 to-blue-950/70 p-5 shadow-xl shadow-cyan-950/30">
+              <div className="mx-auto mb-6 w-full max-w-2xl rounded-2xl border border-cyan-300/40 bg-gradient-to-r from-cyan-950/70 via-slate-900/85 to-blue-950/70 p-5 shadow-xl shadow-cyan-950/30">
                 <span className="inline-block rounded-full border border-cyan-300/40 bg-cyan-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">Featured technology • In development</span>
                 <h4 className="mt-3 text-xl font-bold text-white md:text-2xl">Meta Ray-Ban smart glasses × Urban Director Studio</h4>
                 <p className="mt-2 text-sm leading-relaxed text-slate-200 md:text-base">
@@ -510,11 +510,11 @@ function SoftwareShowcase({ onRequestService }) {
               <p className="text-amber-200 font-semibold tracking-wide mb-5">
                 Director → Wireless Cameras → Preview → Program → Replay / Edit / AI
               </p>
-              <p className="text-gray-300 leading-relaxed text-lg max-w-2xl">
+              <p className="mx-auto max-w-2xl text-gray-300 leading-relaxed text-lg">
                 Urban Director Studio gives one authorized Director a full production control room while camera operators join from compatible phones and tablets through secure camera links and QR workflows. Monitor sources in multiview, prepare Preview, switch Program, communicate with the crew, manage production audio, trigger graphics, record, build instant replays, edit media, control broadcast destinations, and create AI photos and short cinematic video from inside the same product.
               </p>
 
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
                 {[
                   'Director Console',
                   'Wireless Phone + Tablet Cameras',
@@ -545,7 +545,7 @@ function SoftwareShowcase({ onRequestService }) {
                 ))}
               </div>
 
-              <div className="mt-9 flex flex-col sm:flex-row sm:flex-wrap items-start gap-3">
+              <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
                 <a
                   href={SCENEPILOT_URL}
                   target="_blank"
@@ -554,13 +554,13 @@ function SoftwareShowcase({ onRequestService }) {
                 >
                   Open Urban Director Studio
                 </a>
-                <a href="https://apps.apple.com/us/app/urban-director-studio/id6811694662" target="_blank" rel="noopener noreferrer" aria-label="Download Urban Director Studio on the App Store" style={{display:'inline-flex',padding:12,alignSelf:'flex-start'}}><img src="/images/download-on-the-app-store.svg" alt="Download on the App Store" width="144" height="48" style={{display:'block',width:144,height:48}} /></a>
+                <a href="https://apps.apple.com/us/app/urban-director-studio/id6811694662" target="_blank" rel="noopener noreferrer" aria-label="Download Urban Director Studio on the App Store" style={{display:'inline-flex',padding:12,alignSelf:'center'}}><img src="/images/download-on-the-app-store.svg" alt="Download on the App Store" width="144" height="48" style={{display:'block',width:144,height:48}} /></a>
                 <a
                   href="https://apps.apple.com/us/app/urban-director-studio/id6811694662"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="View Urban Director Studio for macOS on the App Store"
-                  style={{display:'inline-flex',padding:12,alignSelf:'flex-start',textDecoration:'none'}}
+                  style={{display:'inline-flex',padding:12,alignSelf:'center',textDecoration:'none'}}
                 >
                   <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',gap:9,width:144,height:48,boxSizing:'border-box',border:'1px solid rgba(255,255,255,.65)',borderRadius:8,background:'#080808',color:'#fff',boxShadow:'0 3px 8px rgba(0,0,0,.2)'}}>
                     <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style={{flexShrink:0}}>
@@ -572,7 +572,7 @@ function SoftwareShowcase({ onRequestService }) {
                       <strong style={{fontSize:18,fontWeight:600,letterSpacing:'-.3px'}}>macOS</strong>
                     </span>
                   </span>
-                </a><a href="https://urbandirector.icomputeranything.com/register" aria-label="Create an Urban Director Studio account for Windows" style={{display:'inline-flex',padding:12,alignSelf:'flex-start',textDecoration:'none'}}>
+                </a><a href="https://urbandirector.icomputeranything.com/register" aria-label="Create an Urban Director Studio account for Windows" style={{display:'inline-flex',padding:12,alignSelf:'center',textDecoration:'none'}}>
                   <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',gap:9,width:144,height:48,boxSizing:'border-box',border:'1px solid rgba(255,255,255,.65)',borderRadius:8,background:'#080808',color:'#fff',boxShadow:'0 3px 8px rgba(0,0,0,.2)'}}>
                     <svg width="25" height="25" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style={{flexShrink:0}}>
                       <path fill="currentColor" d="M2 4.25 10.5 3v8.5H2V4.25Zm10-1.45L22 1.4v10.1H12V2.8ZM2 12.75h8.5v8.5L2 20v-7.25Zm10 0h10v10.1l-10-1.4v-8.7Z"/>
@@ -585,7 +585,7 @@ function SoftwareShowcase({ onRequestService }) {
                 </a>
               </div>
 
-              <div className="mt-5 rounded-xl border border-fuchsia-400/15 bg-fuchsia-400/[0.05] p-4 max-w-2xl">
+              <div className="mx-auto mt-5 w-full max-w-2xl rounded-xl border border-fuchsia-400/15 bg-fuchsia-400/[0.05] p-4">
                 <p className="text-[10px] uppercase tracking-[0.16em] text-fuchsia-200 mb-2">Director AI Studio</p>
                 <p className="m-0 text-sm leading-relaxed text-gray-300">
                   Choose a creative template, add your photos, generate premium AI media, preview the result, save it, or send it into Director Edit. Generator/model routing stays automatic behind the scenes so the customer only chooses what they want to create.
@@ -593,7 +593,7 @@ function SoftwareShowcase({ onRequestService }) {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="mx-auto w-full max-w-xl space-y-4">
               {[
                 {
                   src: '/images/urban-director/director-soundboard.jpg',
@@ -606,8 +606,8 @@ function SoftwareShowcase({ onRequestService }) {
                   alt: 'Actual Urban Director Studio AI workspace showing creative templates, reference previews and generation controls',
                 },
               ].map(({ src, title, alt }) => (
-                <figure key={src} className="overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 shadow-2xl">
-                  <figcaption className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+                <figure key={src} className="overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 text-center shadow-2xl">
+                  <figcaption className="mb-4 flex flex-wrap items-center justify-center gap-2 border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
                     <span>{title}</span>
                     <span className="text-amber-200">Actual studio screenshot</span>
                   </figcaption>
