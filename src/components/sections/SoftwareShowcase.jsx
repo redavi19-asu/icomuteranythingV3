@@ -512,7 +512,7 @@ function SoftwareShowcase({ onRequestService }) {
         </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={false}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.55 }}
@@ -527,24 +527,6 @@ function SoftwareShowcase({ onRequestService }) {
                 alt="Urban Director Studio icon"
                 className="mx-auto mb-6 h-36 w-36 md:h-44 md:w-44 rounded-[1.75rem] bg-white object-contain p-2.5 shadow-2xl shadow-amber-950/30"
               />
-              {/* Show the actual screenshots immediately on phones instead of burying them after the long feature list. */}
-              <div className="mb-8 w-full min-w-0 space-y-4 lg:hidden" aria-label="Urban Director Studio screenshots on mobile">
-                <h4 className="text-lg font-bold text-amber-100">See the live Studio in action</h4>
-                {urbanDirectorShots.map(([file, title, alt]) => (
-                  <UrbanDirectorShot key={file} file={file} title={title} alt={alt} />
-                ))}
-                {[
-                  {src:'/images/urban-director/director-soundboard.jpg',title:'Director console · Soundboard'},
-                  {src:'/images/urban-director/ai-studio.jpg',title:'AI Studio'},
-                ].map(({src,title}) => (
-                  <figure key={src} className="overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 text-center shadow-2xl">
-                    <figcaption className="mb-3 text-sm font-semibold text-gray-200">{title}</figcaption>
-                    <a href={src} target="_blank" rel="noopener noreferrer" aria-label={`View full ${title} screenshot`}>
-                      <img src={src} alt={title} loading="lazy" className="block h-auto w-full rounded-lg border border-white/10" />
-                    </a>
-                  </figure>
-                ))}
-              </div>
               <div className="inline-flex px-3 py-1 rounded-full border border-amber-300/25 bg-amber-300/10 text-xs font-semibold text-amber-100 mb-5">
                 ICA SaaS • Live Production + AI Studio
               </div>
@@ -644,7 +626,7 @@ function SoftwareShowcase({ onRequestService }) {
               </div>
             </div>
 
-            <div className="mx-auto hidden w-full max-w-xl space-y-4 lg:block">
+            <div className="order-first mx-auto grid w-full min-w-0 max-w-xl grid-cols-1 gap-4 self-start sm:grid-cols-2 lg:order-last lg:grid-cols-1" aria-label="Urban Director Studio screenshots">
               {urbanDirectorShots.map(([file, title, alt]) => (
                 <UrbanDirectorShot key={file} file={file} title={title} alt={alt} />
               ))}
@@ -661,7 +643,7 @@ function SoftwareShowcase({ onRequestService }) {
                   alt: 'Actual Urban Director Studio AI workspace showing creative templates, reference previews and generation controls',
                 },
               ].map(({ src, title, alt }) => (
-                <figure key={src} className="overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 text-center shadow-2xl">
+                <figure key={src} className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 text-center shadow-2xl">
                   <figcaption className="mb-4 flex flex-wrap items-center justify-center gap-2 border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-400">
                     <span>{title}</span>
                     <span className="text-amber-200">Actual studio screenshot</span>
