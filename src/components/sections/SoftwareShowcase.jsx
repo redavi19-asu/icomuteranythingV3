@@ -7,7 +7,7 @@ const ICA_UNIFIED_TRIAL_URL = 'https://unified.icomputeranything.com/register'
 const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview-light.svg'
 const ICA_UNIFIED_ICON_URL = '/images/ica-unified-icon.svg'
 const ICA_CONTROL_ICON_URL = 'https://redavi19-asu.github.io/ica-control/branding/icon-512.png'
-const URBAN_DIRECTOR_ICON_URL = 'https://scenepilot.ryanedavis.workers.dev/urban-director-icon.svg'
+const URBAN_DIRECTOR_ICON_URL = '/images/urban-director-icon.svg?v=20261115-ringless'
 const URBAN_CARRIER_ICON_URL = '/images/urban-carrier-icon.svg'
 const SCENEPILOT_URL = 'https://urbandirector.icomputeranything.com/'
 const ICA_CONTROL_URL = 'https://redavi19-asu.github.io/ica-control/'
@@ -525,7 +525,7 @@ function SoftwareShowcase({ onRequestService }) {
               <img
                 src={URBAN_DIRECTOR_ICON_URL}
                 alt="Urban Director Studio icon"
-                className="mx-auto mb-6 h-36 w-36 md:h-44 md:w-44 rounded-[1.75rem] bg-white object-contain p-2.5 shadow-2xl shadow-amber-950/30"
+                className="mx-auto mb-6 h-36 w-36 md:h-44 md:w-44 rounded-[1.75rem] object-contain shadow-2xl shadow-amber-950/30"
               />
               <div className="inline-flex px-3 py-1 rounded-full border border-amber-300/25 bg-amber-300/10 text-xs font-semibold text-amber-100 mb-5">
                 ICA SaaS • Live Production + AI Studio
