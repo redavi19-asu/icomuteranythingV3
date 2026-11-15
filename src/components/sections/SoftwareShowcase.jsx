@@ -517,7 +517,7 @@ function SoftwareShowcase({ onRequestService }) {
               <img
                 src={URBAN_DIRECTOR_ICON_URL}
                 alt="Urban Director Studio icon"
-                className="mx-auto mb-6 h-24 w-24 rounded-2xl bg-white object-contain p-2 shadow-2xl shadow-amber-950/30"
+                className="mx-auto mb-6 h-36 w-36 md:h-44 md:w-44 rounded-[1.75rem] bg-white object-contain p-2.5 shadow-2xl shadow-amber-950/30"
               />
               <div className="inline-flex px-3 py-1 rounded-full border border-amber-300/25 bg-amber-300/10 text-xs font-semibold text-amber-100 mb-5">
                 ICA SaaS • Live Production + AI Studio
