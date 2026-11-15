@@ -527,6 +527,24 @@ function SoftwareShowcase({ onRequestService }) {
                 alt="Urban Director Studio icon"
                 className="mx-auto mb-6 h-36 w-36 md:h-44 md:w-44 rounded-[1.75rem] bg-white object-contain p-2.5 shadow-2xl shadow-amber-950/30"
               />
+              {/* Show the actual screenshots immediately on phones instead of burying them after the long feature list. */}
+              <div className="mb-8 w-full min-w-0 space-y-4 lg:hidden" aria-label="Urban Director Studio screenshots on mobile">
+                <h4 className="text-lg font-bold text-amber-100">See the live Studio in action</h4>
+                {urbanDirectorShots.map(([file, title, alt]) => (
+                  <UrbanDirectorShot key={file} file={file} title={title} alt={alt} />
+                ))}
+                {[
+                  {src:'/images/urban-director/director-soundboard.jpg',title:'Director console · Soundboard'},
+                  {src:'/images/urban-director/ai-studio.jpg',title:'AI Studio'},
+                ].map(({src,title}) => (
+                  <figure key={src} className="overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 text-center shadow-2xl">
+                    <figcaption className="mb-3 text-sm font-semibold text-gray-200">{title}</figcaption>
+                    <a href={src} target="_blank" rel="noopener noreferrer" aria-label={`View full ${title} screenshot`}>
+                      <img src={src} alt={title} loading="lazy" className="block h-auto w-full rounded-lg border border-white/10" />
+                    </a>
+                  </figure>
+                ))}
+              </div>
               <div className="inline-flex px-3 py-1 rounded-full border border-amber-300/25 bg-amber-300/10 text-xs font-semibold text-amber-100 mb-5">
                 ICA SaaS • Live Production + AI Studio
               </div>
@@ -626,7 +644,7 @@ function SoftwareShowcase({ onRequestService }) {
               </div>
             </div>
 
-            <div className="mx-auto w-full max-w-xl space-y-4">
+            <div className="mx-auto hidden w-full max-w-xl space-y-4 lg:block">
               {urbanDirectorShots.map(([file, title, alt]) => (
                 <UrbanDirectorShot key={file} file={file} title={title} alt={alt} />
               ))}
