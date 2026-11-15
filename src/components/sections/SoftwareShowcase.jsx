@@ -24,16 +24,24 @@ const urbanDirectorShots = [
 
 function UrbanDirectorShot({ file, title, alt }) {
   const [failed, setFailed] = useState(false)
-  if (failed) return null
-  const src = `/images/urban-director/${file}`
+  const [attempt, setAttempt] = useState(0)
+  // Explicit asset revision helps iPhone Safari refresh a previously cached failure.
+  const src = `/images/urban-director/${file}?v=20261115-2${attempt ? `-${attempt}` : ''}`
   return (
-    <figure className="overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 text-center shadow-2xl">
+    <figure className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 text-center shadow-2xl">
       <figcaption className="mb-4 flex flex-wrap items-center justify-center gap-2 border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-300">
         <span>{title}</span><span className="text-amber-200">Actual studio screenshot</span>
       </figcaption>
-      <a href={src} target="_blank" rel="noopener noreferrer" aria-label={`View full ${title} screenshot`} className="block rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300">
-        <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} className="h-auto w-full rounded-lg border border-white/10" />
-      </a>
+      {failed ? (
+        <div className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-lg border border-amber-300/25 bg-black/50 p-4 text-sm text-gray-200">
+          <p className="m-0">Screenshot couldn't load on this device.</p>
+          <button type="button" className="rounded-lg border border-amber-300/50 px-4 py-2 text-amber-200" onClick={() => { setFailed(false); setAttempt((n) => n + 1) }}>Retry screenshot</button>
+        </div>
+      ) : (
+        <a href={src} target="_blank" rel="noopener noreferrer" aria-label={`View full ${title} screenshot`} className="block rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300">
+          <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} className="block h-auto w-full rounded-lg border border-white/10" />
+        </a>
+      )}
     </figure>
   )
 }
