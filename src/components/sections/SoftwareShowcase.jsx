@@ -13,6 +13,31 @@ const SCENEPILOT_URL = 'https://urbandirector.icomputeranything.com/'
 const ICA_CONTROL_URL = 'https://redavi19-asu.github.io/ica-control/'
 const ICA_CONTROL_CONSOLE_URL = 'https://redavi19-asu.github.io/ica-control/#/console'
 
+const urbanDirectorShots = [
+  ['01-director-console.png', 'Director Console and Multiview', 'Live Preview and Program monitors, camera slots, and production status'],
+  ['02-camera-sources.png', 'Camera Sources', 'Director camera, main camera and screen sharing controls'],
+  ['03-production-controls.png', 'Live Production Controls', 'Transition, audio, recording and instant replay controls'],
+  ['04-broadcast-graphics.png', 'Broadcast Graphics', 'Lower thirds, ticker, countdown, images and logo tools'],
+  ['05-multistream.png', 'Broadcast and Multistream', 'Live streaming destinations and broadcast setup'],
+  ['06-editor-launch.png', 'Pro Editor and Replay Studio', 'Editor entry point from the production console'],
+]
+
+function UrbanDirectorShot({ file, title, alt }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return null
+  const src = `/images/urban-director/${file}`
+  return (
+    <figure className="overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 text-center shadow-2xl">
+      <figcaption className="mb-4 flex flex-wrap items-center justify-center gap-2 border-b border-white/10 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-300">
+        <span>{title}</span><span className="text-amber-200">Actual studio screenshot</span>
+      </figcaption>
+      <a href={src} target="_blank" rel="noopener noreferrer" aria-label={`View full ${title} screenshot`} className="block rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300">
+        <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} className="h-auto w-full rounded-lg border border-white/10" />
+      </a>
+    </figure>
+  )
+}
+
 function SoftwareShowcase({ onRequestService }) {
   const [showUnifiedPreview, setShowUnifiedPreview] = useState(false)
 
@@ -594,6 +619,10 @@ function SoftwareShowcase({ onRequestService }) {
             </div>
 
             <div className="mx-auto w-full max-w-xl space-y-4">
+              {urbanDirectorShots.map(([file, title, alt]) => (
+                <UrbanDirectorShot key={file} file={file} title={title} alt={alt} />
+              ))}
+
               {[
                 {
                   src: '/images/urban-director/director-soundboard.jpg',
