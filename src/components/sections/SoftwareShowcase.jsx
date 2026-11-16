@@ -5,7 +5,7 @@ const DISPATCH_URL = 'https://redavi19-asu.github.io/icomputer-dispatch-platform
 const ICA_UNIFIED_URL = 'https://unified.icomputeranything.com/'
 const ICA_UNIFIED_TRIAL_URL = 'https://unified.icomputeranything.com/register'
 const ICA_PREVIEW_URL = '/images/ica-unified-dashboard-preview-light.svg'
-const ICA_UNIFIED_ICON_URL = '/images/ica-unified-icon.png'
+const ICA_UNIFIED_ICON_URL = 'https://raw.githubusercontent.com/redavi19-asu/ICA-unified-/main/Daylight%20Global%20News%20LMS%20AMS%20Icon.png'
 const ICA_CONTROL_ICON_URL = 'https://redavi19-asu.github.io/ica-control/branding/icon-512.png'
 const URBAN_DIRECTOR_ICON_URL = '/images/urban-director-icon.svg?v=20261115-ringless'
 const URBAN_CARRIER_ICON_URL = '/images/urban-carrier-icon.svg'
