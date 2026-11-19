@@ -974,3 +974,23 @@
   cursor: pointer;
 }
 .master-metric-link:hover span { text-decoration: underline; }
+
+.master-email-audience {
+  display: grid;
+  gap: 8px;
+  max-width: 360px;
+  margin: 0 0 18px;
+}
+
+.master-email-audience select {
+  width: 100%;
+  padding: 10px;
+  color: inherit;
+  background: #111923;
+  border: 1px solid var(--ica-line);
+  border-radius: 8px;
+}
+
+.master-capacity-head {
+  cursor: pointer;
+}

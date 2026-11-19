@@ -399,12 +399,13 @@ function MasterDashboard({ user, onLogout }) {
   const [selectedLiveUser, setSelectedLiveUser] = useState(null)
   const [selectedLiveDetail, setSelectedLiveDetail] = useState(null)
   const [liveBusy, setLiveBusy] = useState(false)
-  const [view, setView] = useState(() => { const requested = new URLSearchParams(window.location.search).get('view'); return ['free-access','trading'].includes(requested) ? requested : 'overview' })
+  const [view, setView] = useState(() => { const requested = new URLSearchParams(window.location.search).get('view'); return ['admin','free-access','trading'].includes(requested) ? requested : 'overview' })
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [productUsers, setProductUsers] = useState([])
   const [productEmail, setProductEmail] = useState('')
   const [productBusy, setProductBusy] = useState(false)
   const [grantProduct, setGrantProduct] = useState('all')
+  const [emailProduct, setEmailProduct] = useState('all')
   const [emailAudience, setEmailAudience] = useState([])
   const [emailCampaigns, setEmailCampaigns] = useState([])
   const [emailSubject, setEmailSubject] = useState('')
@@ -569,13 +570,14 @@ function MasterDashboard({ user, onLogout }) {
     }
   }
 
-  async function loadEmailUpdates() {
+  async function loadEmailUpdates(productSlug = emailProduct) {
     setEmailBusy(true)
     setEmailMessage('')
+    setEmailAudience([])
     setError('')
     try {
       const [audienceData, campaignData] = await Promise.all([
-        api('/platform/email-audience'),
+        api(`/platform/email-audience?product=${encodeURIComponent(productSlug)}`),
         api('/platform/email-campaigns'),
       ])
       setEmailAudience(audienceData.audience || [])
@@ -599,12 +601,13 @@ function MasterDashboard({ user, onLogout }) {
         body: JSON.stringify({
           subject: emailSubject.trim(),
           bodyText: emailBody.trim(),
+          productSlug: emailProduct,
         }),
       })
       setEmailSubject('')
       setEmailBody('')
-      setEmailMessage('Campaign draft saved in ICA Master.')
       await loadEmailUpdates()
+      setEmailMessage('Campaign draft saved in ICA Master.')
     } catch (err) {
       setError(err.message)
       setEmailBusy(false)
@@ -940,9 +943,18 @@ function MasterDashboard({ user, onLogout }) {
             <div className="master-metrics">
               <article><span>OPTED IN</span><strong>{emailAudience.length}</strong></article>
               <article><span>DRAFTS</span><strong>{emailCampaigns.length}</strong></article>
-              <article><span>DELIVERY</span><strong>MANUAL</strong></article>
-              <article><span>SOURCE</span><strong>ICA USERS</strong></article>
             </div>
+
+            <label className="master-email-audience">
+              Product audience
+              <select value={emailProduct} disabled={emailBusy} onChange={(event) => {
+                setEmailProduct(event.target.value)
+                void loadEmailUpdates(event.target.value)
+              }}>
+                <option value="all">All opted-in customers</option>
+                {products.map((product) => <option key={product.slug} value={product.slug}>{product.name}</option>)}
+              </select>
+            </label>
 
             {emailMessage && <div className="dc-live-success">{emailMessage}</div>}
 
@@ -952,9 +964,9 @@ function MasterDashboard({ user, onLogout }) {
                   <div>
                     <p className="master-eyebrow">CENTRAL OPT-IN AUDIENCE</p>
                     <h2>Customers who asked for updates</h2>
-                    <p>Only active ICA accounts that explicitly opted in appear here.</p>
+                    <p>This list uses central ICA accounts and their active product access. Customers appear after they opt in to updates.</p>
                   </div>
-                  <button type="button" className="master-table-action" onClick={copyEmailAudience}>
+                  <button type="button" className="master-table-action" onClick={copyEmailAudience} disabled={emailBusy || !emailAudience.length}>
                     COPY BCC LIST
                   </button>
                 </div>
@@ -993,7 +1005,7 @@ function MasterDashboard({ user, onLogout }) {
                   <div>
                     <p className="master-eyebrow">MASS UPDATE DRAFT</p>
                     <h2>Write once, send later</h2>
-                    <p>Draft product updates here. One-click bulk delivery will be connected when the email provider is added.</p>
+                    <p>Save a draft for the selected audience. Use Copy BCC List to send it from your email app.</p>
                   </div>
                 </div>
 
@@ -1027,7 +1039,7 @@ function MasterDashboard({ user, onLogout }) {
                     <article key={campaign.id}>
                       <strong>{campaign.subject}</strong>
                       <span>
-                        {String(campaign.status || 'draft').toUpperCase()} •{' '}
+                        {campaign.product_slug === 'all' || !campaign.product_slug ? 'All opted-in customers' : (products.find((product) => product.slug === campaign.product_slug)?.name || campaign.product_slug)} ·{' '}
                         {campaign.created_at ? new Date(Number(campaign.created_at)).toLocaleDateString() : '—'}
                       </span>
                     </article>
@@ -1194,7 +1206,12 @@ function MasterDashboard({ user, onLogout }) {
           </section>
         )}
 
-        {view === 'dc-live-admin' && <DcLiveAdmin />}
+        {view === 'dc-live-admin' && (
+          <section>
+            <button type="button" className="master-table-action" onClick={() => setView('admin')}>← Back to Admin</button>
+            <DcLiveAdmin />
+          </section>
+        )}
 
         {view === 'health' && (
           <section className="master-placeholder">
@@ -1238,11 +1255,11 @@ function MasterDashboard({ user, onLogout }) {
                 </article>
               </div>
 
-              <div className="master-capacity-table">
-                <div className="master-capacity-head">
-                  <span>LOAD TEST TARGETS</span>
+              <details className="master-capacity-table">
+                <summary className="master-capacity-head">
+                  <span>Load test targets</span>
                   <small>Planning estimate at ~6 Mbps per 1080p viewer if viewers hit the origin directly.</small>
-                </div>
+                </summary>
                 {viewerTiers.map((tier) => (
                   <div className="master-capacity-row" key={tier.viewers}>
                     <strong>{tier.viewers} VIEWERS</strong>
@@ -1250,7 +1267,7 @@ function MasterDashboard({ user, onLogout }) {
                     <b>{tier.viewers <= 50 ? 'EARLY TEST' : tier.viewers === 100 ? 'TARGET TEST' : 'CDN RECOMMENDED'}</b>
                   </div>
                 ))}
-              </div>
+              </details>
 
               <div className="master-capacity-note">
                 ICA Master is now ready to display real stream-server telemetry. When the Debian RTMP/RTMPS server is installed,

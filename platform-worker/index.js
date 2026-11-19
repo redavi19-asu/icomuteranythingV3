@@ -727,7 +727,7 @@ async function dashboardSummary(request, env) {
 }
 
 async function ensureEmailCampaignTable(env) {
-  await env.DB.prepare(
+  await env.DB.batch([env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS email_campaigns (
       id TEXT PRIMARY KEY,
       subject TEXT NOT NULL,
@@ -738,12 +738,22 @@ async function ensureEmailCampaignTable(env) {
       sent_at TEXT,
       FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
     )`
-  ).run();
+  ), env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS email_campaign_audiences (
+      campaign_id TEXT PRIMARY KEY REFERENCES email_campaigns(id) ON DELETE CASCADE,
+      product_slug TEXT NOT NULL
+    )`
+  )]);
 }
 
 async function listEmailAudience(request, env) {
   const auth = await requireOwner(request, env);
   if (auth.response) return auth.response;
+
+  const productSlug = new URL(request.url).searchParams.get("product") || "all";
+  if (productSlug !== "all" && !(await getProductBySlug(env, productSlug))) {
+    return json({ error: "Choose a valid product audience." }, 400);
+  }
 
   const result = await env.DB.prepare(
     `SELECT
@@ -755,10 +765,15 @@ async function listEmailAudience(request, env) {
       u.created_at,
       GROUP_CONCAT(DISTINCT p.name) AS products
     FROM users u
-    LEFT JOIN user_products up ON up.user_id = u.id
+    LEFT JOIN user_products up ON up.user_id = u.id AND up.access_status = 'active'
     LEFT JOIN products p ON p.id = up.product_id
     WHERE u.marketing_opt_in = 1
       AND u.status = 'active'
+      AND (? = 'all' OR EXISTS (
+        SELECT 1 FROM user_products access
+        JOIN products product ON product.id = access.product_id
+        WHERE access.user_id = u.id AND access.access_status = 'active' AND product.slug = ?
+      ))
     GROUP BY
       u.id,
       u.email,
@@ -768,7 +783,7 @@ async function listEmailAudience(request, env) {
       u.created_at
     ORDER BY u.created_at DESC
     LIMIT 1000`
-  ).all();
+  ).bind(productSlug, productSlug).all();
 
   return json({
     audience: result.results || [],
@@ -784,9 +799,11 @@ async function emailCampaigns(request, env) {
 
   if (request.method === "GET") {
     const result = await env.DB.prepare(
-      `SELECT id, subject, body_text, status, created_at, sent_at
-       FROM email_campaigns
-       ORDER BY created_at DESC
+      `SELECT c.id, c.subject, c.body_text, c.status, c.created_at, c.sent_at,
+              COALESCE(a.product_slug, 'all') AS product_slug
+       FROM email_campaigns c
+       LEFT JOIN email_campaign_audiences a ON a.campaign_id = c.id
+       ORDER BY c.created_at DESC
        LIMIT 100`
     ).all();
 
@@ -803,14 +820,21 @@ async function emailCampaigns(request, env) {
     return json({ error: "Campaign subject and message are required." }, 400);
   }
 
+  const productSlug = String(body.productSlug || "all");
+  if (productSlug !== "all" && !(await getProductBySlug(env, productSlug))) {
+    return json({ error: "Choose a valid product audience." }, 400);
+  }
+
   const id = crypto.randomUUID();
   const now = Date.now();
 
-  await env.DB.prepare(
+  await env.DB.batch([env.DB.prepare(
     `INSERT INTO email_campaigns (
       id, subject, body_text, status, created_by, created_at
     ) VALUES (?, ?, ?, 'draft', ?, ?)`
-  ).bind(id, subject, bodyText, auth.owner.id, now).run();
+  ).bind(id, subject, bodyText, auth.owner.id, now), env.DB.prepare(
+    "INSERT INTO email_campaign_audiences (campaign_id, product_slug) VALUES (?, ?)"
+  ).bind(id, productSlug)]);
 
   return json({
     ok: true,
@@ -818,6 +842,7 @@ async function emailCampaigns(request, env) {
       id,
       subject,
       bodyText,
+      productSlug,
       status: "draft",
       createdAt: now,
     },
