@@ -994,3 +994,28 @@
 .master-capacity-head {
   cursor: pointer;
 }
+
+/* Uniform overview KPI layout: keep the existing styling and responsive grid. */
+.master-metrics article {
+  justify-content: flex-start;
+}
+.master-metrics .master-metric-link {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 94px;
+  font: inherit;
+}
+.master-metrics .master-metric-link span,
+.master-metrics .master-metric-link strong {
+  display: block;
+  margin: 0;
+  line-height: 1.15;
+}
+.master-metrics .master-metric-link:focus-visible {
+  outline: 2px solid #55e6ff;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
