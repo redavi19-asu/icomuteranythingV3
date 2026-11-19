@@ -286,7 +286,7 @@ function MasterLogin({ onAuthenticated }) {
   )
 }
 
-function ProductCard({ product, health, onManageUsers }) {
+function ProductCard({ product, health, onManageUsers, onOpenUnifiedAdmin }) {
   const slug = product.slug
   const publicUrl = PRODUCT_LINKS[slug]
 
@@ -337,7 +337,7 @@ function ProductCard({ product, health, onManageUsers }) {
       <div className="master-product-actions">
         {publicUrl && <a href={publicUrl} target="_blank" rel="noreferrer">OPEN PRODUCT</a>}
         {slug === 'ica-unified' ? (
-          <a href={PRODUCT_ADMIN_LINKS[slug]} target="_blank" rel="noreferrer" className="secondary">MANAGE USERS</a>
+          <button type="button" className="secondary" onClick={onOpenUnifiedAdmin}>MANAGE USERS</button>
         ) : (
           <button type="button" onClick={() => onManageUsers(product)}>MANAGE USERS</button>
         )}
@@ -492,6 +492,26 @@ function MasterDashboard({ user, onLogout }) {
       setError(err.message)
     } finally {
       setLiveBusy(false)
+    }
+  }
+
+  async function openUnifiedAdmin() {
+    setError('')
+    try {
+      const { code } = await api('/auth/unified-owner-handoff', { method: 'POST' })
+      const form = document.createElement('form')
+      form.method = 'POST'
+      form.action = 'https://unified.icomputeranything.com/api/platform/master-handoff'
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = 'code'
+      input.value = code
+      form.append(input)
+      document.body.append(form)
+      form.submit()
+      form.remove()
+    } catch (err) {
+      setError(err.message)
     }
   }
 
@@ -710,6 +730,7 @@ function MasterDashboard({ user, onLogout }) {
                   product={product}
                   health={summary?.health?.[product.slug]}
                   onManageUsers={openProductUsers}
+                  onOpenUnifiedAdmin={openUnifiedAdmin}
                 />
               ))}
               <PrivateTradingCard onOpen={() => setView('trading')} />
@@ -731,7 +752,9 @@ function MasterDashboard({ user, onLogout }) {
                 <h3>{name}</h3>
                 <p>{description}</p>
                 <div className="master-product-actions">
-                  {target.startsWith('https://') ? (
+                  {name === 'ICA Unified' ? (
+                    <button type="button" onClick={openUnifiedAdmin}>OPEN ADMIN</button>
+                  ) : target.startsWith('https://') ? (
                     <a href={target} target="_blank" rel="noreferrer">OPEN ADMIN</a>
                   ) : (
                     <button type="button" onClick={() => setView(target)}>OPEN ADMIN</button>
@@ -803,7 +826,7 @@ function MasterDashboard({ user, onLogout }) {
           <section className="master-table-card">
             <div className="master-section-heading">
               <div>
-                <p className="master-eyebrow">ALL ICA SAAS CUSTOMERS</p>
+                <p className="master-eyebrow">CENTRAL COMPANY DIRECTORY</p>
                 <h2>Companies</h2>
               </div>
             </div>
@@ -835,7 +858,10 @@ function MasterDashboard({ user, onLogout }) {
               </div>
             ) : (
               <div className="master-empty-box">
-                No company records are available in ICA Master. For Unified company records, open ICA Unified in Admin.
+                No company records are available in the central directory.
+                <div className="master-product-actions">
+                  <button type="button" onClick={openUnifiedAdmin}>OPEN UNIFIED COMPANIES</button>
+                </div>
               </div>
             )}
           </section>

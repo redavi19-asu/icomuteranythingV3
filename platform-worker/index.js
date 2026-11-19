@@ -257,6 +257,30 @@ async function requireOwner(request, env) {
   };
 }
 
+async function issueUnifiedOwnerHandoff(request, env) {
+  const auth = await requireOwner(request, env);
+  if (auth.response) return auth.response;
+
+  const origin = request.headers.get("Origin");
+  if (!["https://icomputeranything.com", "https://www.icomputeranything.com"].includes(origin)) {
+    return json({ error: "Open Unified administration from ICA Master." }, 403);
+  }
+
+  const code = randomToken();
+  const [codeHash, sessionId] = await Promise.all([
+    sha256(code),
+    sha256(bearerToken(request)),
+  ]);
+  const now = Date.now();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM unified_owner_handoffs WHERE expires_at <= ?").bind(now),
+    env.DB.prepare(
+      "INSERT INTO unified_owner_handoffs (code_hash, session_id, expires_at) VALUES (?, ?, ?)"
+    ).bind(codeHash, sessionId, now + 60_000),
+  ]);
+  return json({ code });
+}
+
 async function handleLogin(request, env) {
   const body = await request.json().catch(() => ({}));
   const check = await verifyTurnstile(request, env, String(body.turnstileToken || "").trim(), "ica_master_login");
@@ -1269,6 +1293,8 @@ export default {
         response = await handleLogin(request, env);
       } else if (url.pathname === "/auth/logout" && request.method === "POST") {
         response = await handleLogout(request, env);
+      } else if (url.pathname === "/auth/unified-owner-handoff" && request.method === "POST") {
+        response = await issueUnifiedOwnerHandoff(request, env);
       } else if (url.pathname === "/auth/me" && request.method === "GET") {
         const owner = await currentOwner(request, env);
         response = owner
