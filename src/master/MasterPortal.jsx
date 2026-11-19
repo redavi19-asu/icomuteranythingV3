@@ -13,9 +13,9 @@ const TURNSTILE_SITE_KEY =
 
 const PRODUCT_LINKS = {
   'ica-control': 'https://control.icomputeranything.com/',
-  scenepilot: 'https://scenepilot.ryanedavis.workers.dev/app',
+  scenepilot: 'https://urbandirector.icomputeranything.com/',
   dispatchos: 'https://redavi19-asu.github.io/icomputer-dispatch-platform/',
-  'ica-unified': 'https://unified.icomputeranything.com/platform',
+  'ica-unified': 'https://unified.icomputeranything.com/',
   'dc-live': 'https://redavi19-asu.github.io/dc-live/',
 }
 
@@ -23,7 +23,6 @@ const PRODUCT_ADMIN_LINKS = {
   scenepilot: 'https://scenepilot.ryanedavis.workers.dev/admin',
   dispatchos: 'https://redavi19-asu.github.io/icomputer-dispatch-platform/admin',
   'ica-unified': 'https://unified.icomputeranything.com/platform',
-  'dc-live': 'https://redavi19-asu.github.io/dc-live/',
 }
 
 function getToken() {
@@ -225,7 +224,7 @@ function MasterLogin({ onAuthenticated }) {
       <section className="master-login-shell">
         <div className="master-login-copy">
           <p className="master-eyebrow">I COMPUTER ANYTHING / OWNER CONTROL</p>
-          <h1>SUPER<br/>PLATFORM</h1>
+          <h1>ICA MASTER</h1>
           <p className="master-login-sub">
             One private ICA Master entrance for the entire ICA software portfolio.
           </p>
@@ -235,6 +234,8 @@ function MasterLogin({ onAuthenticated }) {
             <span>URBAN DIRECTOR STUDIO</span>
             <span>URBAN CARRIER OS</span>
             <span>ICA UNIFIED</span>
+            <span>DC LIVE</span>
+            <span>PRIVATE TRADING PLATFORM</span>
           </div>
         </div>
 
@@ -285,10 +286,9 @@ function MasterLogin({ onAuthenticated }) {
   )
 }
 
-function ProductCard({ product, health, onManageUsers, onOpenDcLiveAdmin }) {
+function ProductCard({ product, health, onManageUsers }) {
   const slug = product.slug
   const publicUrl = PRODUCT_LINKS[slug]
-  const adminUrl = PRODUCT_ADMIN_LINKS[slug]
 
   return (
     <article className="master-product-card">
@@ -335,23 +335,12 @@ function ProductCard({ product, health, onManageUsers, onOpenDcLiveAdmin }) {
       </div>
 
       <div className="master-product-actions">
-        <button type="button" onClick={() => onManageUsers(product)}>
-          MANAGE USERS
-        </button>
-        {publicUrl && (
-          <a href={publicUrl} target="_blank" rel="noreferrer">
-            OPEN PRODUCT
-          </a>
+        {publicUrl && <a href={publicUrl} target="_blank" rel="noreferrer">OPEN PRODUCT</a>}
+        {slug === 'ica-unified' ? (
+          <a href={PRODUCT_ADMIN_LINKS[slug]} target="_blank" rel="noreferrer" className="secondary">MANAGE USERS</a>
+        ) : (
+          <button type="button" onClick={() => onManageUsers(product)}>MANAGE USERS</button>
         )}
-        {slug === 'dc-live' ? (
-          <button type="button" className="secondary" onClick={onOpenDcLiveAdmin}>
-            DC LIVE CONTROL
-          </button>
-        ) : adminUrl ? (
-          <a href={adminUrl} target="_blank" rel="noreferrer" className="secondary">
-            PRODUCT ADMIN
-          </a>
-        ) : null}
       </div>
     </article>
   )
@@ -655,18 +644,11 @@ function MasterDashboard({ user, onLogout }) {
           <button className={view === 'email-updates' ? 'active' : ''} onClick={() => { setView('email-updates'); loadEmailUpdates() }}>
             EMAIL UPDATES
           </button>
-          <button className={view === 'sales' ? 'active' : ''} onClick={() => setView('sales')}>
-            SALES / BILLING
-          </button>
           <button className={view === 'health' ? 'active' : ''} onClick={() => setView('health')}>
             PLATFORM HEALTH
           </button>
-          <button className={view === 'trading' ? 'active' : ''} onClick={() => setView('trading')}>TRADING PLATFORM</button>
-          <button className={view === 'control-ops' ? 'active' : ''} onClick={() => setView('control-ops')}>
-            CONTROL OPS
-          </button>
-          <button className={view === 'dc-live-admin' ? 'active' : ''} onClick={() => setView('dc-live-admin')}>
-            DC LIVE ADMIN
+          <button className={['admin', 'control-ops', 'dc-live-admin'].includes(view) ? 'active' : ''} onClick={() => setView('admin')}>
+            ADMIN
           </button>
         </nav>
 
@@ -687,7 +669,7 @@ function MasterDashboard({ user, onLogout }) {
               {view === 'free-access' && 'Give Free Access'}
               {view === 'users' && 'Users & Access'}
               {view === 'email-updates' && 'Email Updates'}
-              {view === 'sales' && 'Sales & Billing'}
+              {view === 'admin' && 'Product Administration'}
               {view === 'health' && 'Platform Health'}
               {view === 'product-users' && `${selectedProduct?.name || 'Product'} Users`}
               {view === 'user-live' && 'Live Broadcast Monitor'}
@@ -708,38 +690,11 @@ function MasterDashboard({ user, onLogout }) {
         {view === 'overview' && (
           <>
             <div className="master-metrics">
-              <article><span>TOTAL USERS</span><strong>{summary?.metrics?.users || 0}</strong></article>
+              <article><button className="master-metric-link" onClick={() => setView('users')}><span>TOTAL USERS</span><strong>{summary?.metrics?.users ?? '—'}</strong></button></article>
               <article><span>ACTIVE USERS</span><strong>{summary?.metrics?.activeUsers || 0}</strong></article>
-              <article><span>COMPANIES</span><strong>{summary?.metrics?.organizations || 0}</strong></article>
+              <article><button className="master-metric-link" onClick={() => setView('companies')}><span>COMPANIES</span><strong>{summary?.metrics?.organizations ?? '—'}</strong></button></article>
               <article><span>ACTIVE ACCESS</span><strong>{summary?.metrics?.activeProductAccess || 0}</strong></article>
             </div>
-
-            <section className="master-control-summary">
-              <div className="master-section-heading">
-                <div>
-                  <p className="master-eyebrow">ICA CONTROL · AUTOMATED OPERATIONS</p>
-                  <h2>Universal security summary</h2>
-                </div>
-                <button type="button" onClick={() => setView('control-ops')}>OPEN CONTROL OPS</button>
-              </div>
-              {summary?.controlReport ? (
-                <>
-                  <div className="master-control-metrics">
-                    <article><span>SECURITY EVENTS</span><strong>{Number(summary.controlReport.metrics?.securityEvents || 0)}</strong></article>
-                    <article><span>AUTO RESOLVED</span><strong>{Number(summary.controlReport.metrics?.autoResolved || 0)}</strong></article>
-                    <article><span>NEEDS REVIEW</span><strong>{Number(summary.controlReport.metrics?.needsReview || 0)}</strong></article>
-                    <article><span>ENDPOINTS ONLINE</span><strong>{Number(summary.controlReport.metrics?.endpointsOnline || 0)}/{Number(summary.controlReport.metrics?.managedEndpoints || 0)}</strong></article>
-                  </div>
-                  <div className="master-control-engines">
-                    {(summary.controlReport.engines || []).map((engine) => (
-                      <span key={engine.id || engine.label}><i className={engine.state === 'online' ? 'good' : engine.state === 'pending' ? 'waiting' : 'bad'} />{engine.label || engine.provider}<small>{String(engine.state || 'pending').toUpperCase()}</small></span>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="master-empty-box">ICA Control has not delivered its first Universal Report yet. The secure bridge will populate this automatically after the report key is synchronized.</div>
-              )}
-            </section>
 
             <div className="master-section-heading">
               <div>
@@ -755,35 +710,36 @@ function MasterDashboard({ user, onLogout }) {
                   product={product}
                   health={summary?.health?.[product.slug]}
                   onManageUsers={openProductUsers}
-                  onOpenDcLiveAdmin={() => setView('dc-live-admin')}
                 />
               ))}
               <PrivateTradingCard onOpen={() => setView('trading')} />
             </div>
 
-            <section className="master-activity-panel">
-              <div className="master-section-heading">
-                <div>
-                  <p className="master-eyebrow">PLATFORM ACTIVITY</p>
-                  <h2>Recent events</h2>
-                </div>
-              </div>
-
-              {(summary?.recentEvents || []).length ? (
-                <div className="master-event-list">
-                  {summary.recentEvents.map((event) => (
-                    <article key={event.id}>
-                      <span>{String(event.severity || 'info').toUpperCase()}</span>
-                      <strong>{event.message}</strong>
-                      <time>{new Date(Number(event.created_at)).toLocaleString()}</time>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <p className="master-empty">No platform events yet.</p>
-              )}
-            </section>
           </>
+        )}
+
+        {view === 'admin' && (
+          <div className="master-product-grid">
+            {[
+              ['ICA Control', 'Security reports and automated operations.', 'control-ops'],
+              ['Urban Director Studio', 'Production and broadcast administration.', PRODUCT_ADMIN_LINKS.scenepilot],
+              ['Urban Carrier OS', 'Dispatch and logistics administration.', PRODUCT_ADMIN_LINKS.dispatchos],
+              ['ICA Unified', 'Manage customer organizations, users, and account requests.', PRODUCT_ADMIN_LINKS['ica-unified']],
+              ['DC Live', 'Manage events, viewer access, and playback.', 'dc-live-admin'],
+            ].map(([name, description, target]) => (
+              <article className="master-product-card" key={name}>
+                <h3>{name}</h3>
+                <p>{description}</p>
+                <div className="master-product-actions">
+                  {target.startsWith('https://') ? (
+                    <a href={target} target="_blank" rel="noreferrer">OPEN ADMIN</a>
+                  ) : (
+                    <button type="button" onClick={() => setView(target)}>OPEN ADMIN</button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
         )}
 
         {view === 'control-ops' && (
@@ -879,7 +835,7 @@ function MasterDashboard({ user, onLogout }) {
               </div>
             ) : (
               <div className="master-empty-box">
-                Company records will populate here as Urban Carrier OS and ICA Unified are rewired into the central ICA database.
+                No company records are available in ICA Master. For Unified company records, open ICA Unified in Admin.
               </div>
             )}
           </section>
@@ -1136,17 +1092,6 @@ function MasterDashboard({ user, onLogout }) {
           </section>
         )}
 
-        {view === 'sales' && (
-          <section className="master-placeholder">
-            <p className="master-eyebrow">STRIPE PHASE</p>
-            <h2>Sales & billing command center</h2>
-            <p>
-              This section is intentionally staged for next weekend. Stripe customers,
-              subscriptions, monthly recurring revenue, failed payments, comped accounts
-              and product-by-product sales will land here.
-            </p>
-          </section>
-        )}
 
 
         {view === 'free-access' && <FreeAccess key={grantProduct} api={api} initialProduct={grantProduct} />}
