@@ -713,10 +713,10 @@ function MasterDashboard({ user, onLogout }) {
         {view === 'overview' && (
           <>
             <div className="master-metrics">
-              <article><button className="master-metric-link" onClick={() => setView('users')}><span>TOTAL USERS</span><strong>{summary?.metrics?.users ?? '—'}</strong></button></article>
-              <article><span>ACTIVE USERS</span><strong>{summary?.metrics?.activeUsers || 0}</strong></article>
-              <article><button className="master-metric-link" onClick={() => setView('companies')}><span>COMPANIES</span><strong>{summary?.metrics?.organizations ?? '—'}</strong></button></article>
-              <article><span>ACTIVE ACCESS</span><strong>{summary?.metrics?.activeProductAccess || 0}</strong></article>
+              <article><button type="button" className="master-metric-link" onClick={() => setView('users')}><span>TOTAL USERS</span><strong>{summary?.metrics?.users ?? '—'}</strong></button></article>
+              <article><button type="button" className="master-metric-link" onClick={() => setView('users')}><span>ACTIVE USERS</span><strong>{summary?.metrics?.activeUsers || 0}</strong></button></article>
+              <article><button type="button" className="master-metric-link" onClick={() => setView('companies')}><span>COMPANIES</span><strong>{summary?.metrics?.organizations ?? '—'}</strong></button></article>
+              <article><button type="button" className="master-metric-link" onClick={() => setView('users')}><span>ACTIVE ACCESS</span><strong>{summary?.metrics?.activeProductAccess || 0}</strong></button></article>
             </div>
 
             <div className="master-section-heading">
