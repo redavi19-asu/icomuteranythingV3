@@ -64,42 +64,6 @@ function SoftwareShowcase({ onRequestService }) {
     <section id="software" className="py-24 px-6 relative">
       <div className="max-w-6xl mx-auto">
 
-        <article id="boxroute-usa" aria-labelledby="boxroute-title" className="relative mb-20 scroll-mt-24 overflow-hidden rounded-3xl border border-blue-300/30 bg-gradient-to-br from-[#061b37] via-[#0a3563] to-[#061b37] text-white">
-          <div className="h-1.5 bg-[#ce1734]" aria-hidden="true" />
-          <div className="grid items-center gap-10 p-7 md:grid-cols-[1.25fr_0.75fr] md:p-11">
-            <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">iPhone delivery app · Field testing</p>
-              <h2 id="boxroute-title" className="mb-4 text-4xl font-black tracking-tight md:text-5xl">
-                BoxRoute <span className="rounded-lg bg-[#ce1734] px-2.5 py-1.5 align-middle text-lg tracking-wider">USA</span>
-              </h2>
-              <p className="mb-3 text-xl font-semibold">Scan the label. Plan the route. Make the delivery.</p>
-              <p className="mb-6 max-w-xl leading-relaxed text-blue-100">A standalone iPhone app for turning a stack of packages into a route you can follow one delivery at a time.</p>
-              <ul className="grid gap-x-5 gap-y-3 text-sm leading-relaxed text-blue-100 sm:grid-cols-2">
-                {[
-                  'Live Apple Vision scanner with flashlight and manual entry',
-                  'Confirm another package when an address repeats',
-                  'Plan stops from your GPS location and choose where to finish',
-                  'Follow spoken turns and an adaptive MapKit driving view',
-                  'Save delivery progress and resume your route later',
-                  'Open your remaining stops in Apple Maps or Google Maps',
-                ].map(feature => (
-                  <li key={feature} className="flex items-start gap-2.5">
-                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#ff6175]" aria-hidden="true" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-7 border-t border-blue-200/25 pt-4 text-sm text-blue-100">App Store release and subscription availability to be announced.</p>
-            </div>
-            <figure className="mx-auto w-full max-w-[15rem]">
-              <a href="/images/boxroute/iphone-home.png" aria-label="View the full-size BoxRoute USA iPhone screenshot" className="block rounded-3xl border-2 border-white/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
-                <img src="/images/boxroute/iphone-home.png" alt="BoxRoute USA home screen showing the Scanner, route controls and sample deliveries" width="1206" height="2622" loading="lazy" decoding="async" className="block h-auto w-full rounded-[1.35rem]" />
-              </a>
-              <figcaption className="mt-3 text-center text-xs text-blue-100">Screenshot with sample deliveries</figcaption>
-            </figure>
-          </div>
-        </article>
-
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -238,6 +202,50 @@ function SoftwareShowcase({ onRequestService }) {
             </div>
           </div>
         </motion.div>
+
+        <section id="boxroute-usa" aria-labelledby="boxroute-title" className="mt-24 scroll-mt-24">
+          <div className="mx-auto mb-14 max-w-3xl text-center">
+            <p className="mb-4 text-xs uppercase tracking-[0.3em] text-blue-300">iPhone delivery app</p>
+            <h2 id="boxroute-title" className="section-title mb-3">BoxRoute USA</h2>
+            <p className="section-subtitle">Package scanning, delivery navigation, and reminders for your mail route.</p>
+          </div>
+          <div className="relative overflow-hidden rounded-3xl border border-blue-300/30 bg-gradient-to-br from-[#061b37] via-[#0a3563] to-[#061b37] text-white">
+            <div className="h-1.5 bg-[#ce1734]" aria-hidden="true" />
+            <div className="grid items-center gap-10 p-7 md:grid-cols-[1.25fr_0.75fr] md:p-11">
+              <div>
+                <img src="/images/boxroute/app-icon.png" alt="" width="96" height="96" className="mb-6 h-24 w-24 rounded-[1.5rem] shadow-xl" />
+                <h3 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">Scan the label. Plan the route. Make the delivery.</h3>
+                <p className="mb-6 max-w-xl leading-relaxed text-blue-100">Scan a stack of packages, organize your stops, and follow spoken turn-by-turn directions on your iPhone.</p>
+                <ul className="grid gap-x-5 gap-y-3 text-sm leading-relaxed text-blue-100 sm:grid-cols-2">
+                  {[
+                    'Live Apple Vision scanner with flashlight and manual entry',
+                    'Confirm another package when an address repeats',
+                    'Plan stops from your GPS location and choose where to finish',
+                    'Follow spoken turns and an adaptive MapKit driving view',
+                    'Save delivery progress and resume your route later',
+                    'Open your remaining stops in Apple Maps or Google Maps',
+                  ].map(feature => (
+                    <li key={feature} className="flex items-start gap-2.5">
+                      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#ff6175]" aria-hidden="true" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-6 rounded-2xl border border-white/25 bg-white/10 p-4">
+                  <h4 className="mb-1 font-bold">Mail Companion</h4>
+                  <p className="text-sm leading-relaxed text-blue-100">Start your mail route to see scanned package stops on the map. When you reach a matched stop, BoxRoute tells you, “You have a package for this address.”</p>
+                </div>
+                <p className="mt-7 border-t border-blue-200/25 pt-4 text-sm text-blue-100">App Store release and subscription availability to be announced.</p>
+              </div>
+              <figure className="mx-auto w-full max-w-[15rem]">
+                <a href="/images/boxroute/iphone-home.png" aria-label="View the full-size BoxRoute USA iPhone screenshot" className="block rounded-3xl border-2 border-white/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+                  <img src="/images/boxroute/iphone-home.png" alt="BoxRoute USA home screen showing the Scanner, route controls and sample deliveries" width="1206" height="2622" loading="lazy" decoding="async" className="block h-auto w-full rounded-[1.35rem]" />
+                </a>
+                <figcaption className="mt-3 text-center text-xs text-blue-100">Screenshot with sample deliveries</figcaption>
+              </figure>
+            </div>
+          </div>
+        </section>
 
         <div className="text-center max-w-3xl mx-auto mt-24 mb-14">
           <p className="text-xs uppercase tracking-[0.3em] text-[#5eb8ff] mb-4">Cloud Business Management Software</p>
