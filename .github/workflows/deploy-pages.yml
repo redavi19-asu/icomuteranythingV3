@@ -5,6 +5,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      website_only:
+        description: Publish the website without deploying the Worker or changing its secrets
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -61,6 +66,7 @@ jobs:
           path: dist
 
   deploy-worker:
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.website_only }}
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -96,6 +102,7 @@ jobs:
           echo "ICA Control → ICA Master report bridge synchronized."
 
   deploy:
+    if: ${{ always() && !cancelled() && needs.build.result == 'success' && (needs.deploy-worker.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.website_only && needs.deploy-worker.result == 'skipped')) }}
     needs: [build, deploy-worker]
     runs-on: ubuntu-latest
     environment:
