@@ -1,6 +1,9 @@
 import React, { useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 
+const developerIntro = 'I’m Ryan Davis, a web and app developer. Everything you see here is for sale, and prices are negotiable.'
+const developerIntroWords = developerIntro.split(' ')
+
 const loaderPalette = [
   { bg: 'rgba(34,211,238,.32)', border: 'rgba(103,232,249,.82)', glow: 'rgba(34,211,238,.44)' },
   { bg: 'rgba(16,185,129,.28)', border: 'rgba(110,231,183,.82)', glow: 'rgba(16,185,129,.42)' },
@@ -33,6 +36,25 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
           transition={{ duration: 0.08, ease: 'linear' }}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.12),transparent_30%),radial-gradient(circle_at_80%_28%,rgba(139,92,246,.10),transparent_34%),radial-gradient(circle_at_50%_80%,rgba(16,185,129,.09),transparent_34%)]" />
+
+          <p className="absolute inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-20 mx-auto max-w-5xl px-5 text-center text-base font-medium leading-snug text-white sm:text-xl md:top-10 md:text-2xl">
+            <span className="sr-only">{developerIntro}</span>
+            <span aria-hidden="true">
+              {reduceMotion ? developerIntro : developerIntroWords.map((word, index) => (
+                <React.Fragment key={index}>
+                  {index > 0 && ' '}
+                  <motion.span
+                    className="inline-block"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.12 + index * 0.105, duration: 0.08 }}
+                  >
+                    {word}
+                  </motion.span>
+                </React.Fragment>
+              ))}
+            </span>
+          </p>
 
           {!reduceMotion && (
             <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
