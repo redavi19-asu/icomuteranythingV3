@@ -13,7 +13,7 @@ import FinalCTA from './components/sections/FinalCTA'
 import Footer from './components/Footer'
 import CookieBanner from './components/CookieBanner'
 import GlobalCinematicBackground from './components/effects/GlobalCinematicBackground'
-import IntroLoaderOverlay from './components/effects/IntroLoaderOverlay'
+import IntroLoaderOverlay, { introDuration } from './components/effects/IntroLoaderOverlay'
 import RequestServiceOverlay from './components/RequestServiceOverlay'
 import MasterPortal from './master/MasterPortal'
 import './master/master.css'
@@ -37,7 +37,7 @@ function App() {
     setMotionPreference()
     mediaQuery.addEventListener('change', setMotionPreference)
 
-    const loaderDuration = mediaQuery.matches ? 1200 : 4500
+    const loaderDuration = mediaQuery.matches ? introDuration.reduced : introDuration.standard
     const timer = window.setTimeout(() => setIntroVisible(false), loaderDuration)
 
     const handleScroll = () => {

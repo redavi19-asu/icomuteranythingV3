@@ -38,16 +38,11 @@ function Hero() {
   }
 
   return (
-    <>
-      <style>
-        {`@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600&display=swap');`}
-      </style>
-
-      <section
-        id="hero"
-        className="min-h-screen flex items-center justify-center relative pt-20 px-6 overflow-hidden"
-        style={{ perspective: '1200px' }}
-      >
+    <section
+      id="hero"
+      className="min-h-screen flex items-center justify-center relative pt-20 px-6 overflow-hidden"
+      style={{ perspective: '1200px' }}
+    >
       {/* Tech grid overlay for depth */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
         <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -124,8 +119,7 @@ function Hero() {
         <p className="text-xs">Scroll to explore</p>
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
       </motion.div>
-      </section>
-    </>
+    </section>
   )
 }
 
