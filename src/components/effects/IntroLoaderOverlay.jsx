@@ -28,7 +28,7 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
   const sequenceDuration = (reduceMotion ? introDuration.reduced : introDuration.standard) / 1000
 
   return (
-    <AnimatePresence initial={false}>
+    <AnimatePresence>
       {visible && (
         <motion.div
           className="fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-[#050914]"
@@ -45,19 +45,29 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
           >
             <span className="sr-only">{developerIntro}</span>
             <span aria-hidden="true">
-              {reduceMotion ? developerIntro : developerIntroWords.map((word, index) => (
-                <React.Fragment key={index}>
-                  {index > 0 && ' '}
-                  <motion.span
-                    className="inline-block"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.25 + index * 0.19 + (index >= 8 ? 0.28 : 0), duration: 0.18, ease: 'easeInOut' }}
-                  >
-                    {word}
-                  </motion.span>
-                </React.Fragment>
-              ))}
+              {reduceMotion ? developerIntro : developerIntroWords.map((word, index) => {
+                const delay = 0.25 + index * 0.21 + (index >= 8 ? 0.25 : 0)
+
+                return (
+                  <React.Fragment key={index}>
+                    {index > 0 && ' '}
+                    <motion.span
+                      className="relative inline-block"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay, duration: 0.16, ease: 'easeOut' }}
+                    >
+                      {word}
+                      <motion.span
+                        className="pointer-events-none absolute bottom-0 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rotate-45 border-l border-t border-cyan-200"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.9, 0.9, 0] }}
+                        transition={{ delay, duration: 0.24, times: [0, 0.3, 0.7, 1] }}
+                      />
+                    </motion.span>
+                  </React.Fragment>
+                )
+              })}
             </span>
           </p>
 
