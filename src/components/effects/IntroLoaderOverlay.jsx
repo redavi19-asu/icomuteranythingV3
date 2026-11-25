@@ -40,8 +40,8 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,.12),transparent_30%),radial-gradient(circle_at_80%_28%,rgba(139,92,246,.10),transparent_34%),radial-gradient(circle_at_50%_80%,rgba(16,185,129,.09),transparent_34%)]" />
 
           <p
-            className="absolute inset-x-0 top-[max(1.25rem,env(safe-area-inset-top))] z-20 mx-auto max-w-4xl px-5 text-balance text-center text-xl font-normal leading-tight text-cyan-50 sm:text-3xl md:top-10 md:text-4xl"
-            style={{ fontFamily: '"DM Serif Display", Georgia, serif', textShadow: '0 0 26px rgba(103, 232, 249, 0.25)' }}
+            className="absolute inset-x-0 top-[max(1.25rem,env(safe-area-inset-top))] z-20 mx-auto max-w-3xl px-6 text-balance text-center text-base font-normal leading-relaxed text-slate-300 sm:text-lg md:top-10 md:text-xl"
+            style={{ fontFamily: '"DM Serif Display", Georgia, serif' }}
           >
             <span className="sr-only">{developerIntro}</span>
             <span aria-hidden="true">
@@ -50,9 +50,9 @@ function IntroLoaderOverlay({ visible, reduceMotion = false }) {
                   {index > 0 && ' '}
                   <motion.span
                     className="inline-block"
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 + index * 0.19 + (index >= 8 ? 0.28 : 0), duration: 0.14, ease: 'easeOut' }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.25 + index * 0.19 + (index >= 8 ? 0.28 : 0), duration: 0.18, ease: 'easeInOut' }}
                   >
                     {word}
                   </motion.span>
